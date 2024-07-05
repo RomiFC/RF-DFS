@@ -423,13 +423,13 @@ Subsection text here
             node[qfpchip, anchor=west, external pins width=0, hide numbers, name=acr, scale=0.8, align=center]{Motor\\Ctrl.};
             \draw([yshift=-8pt]acr.east) -- ++ (3.5, 0)
             node[elmech, rotate=90, anchor=top](m2){};
-            \draw(m2) [->] -| ([yshift=-10pt]dfs.center);
+            \draw(m2) [->, dashed] -| ([yshift=-10pt]dfs.center);
             \draw([yshift=8pt]acr.east) -- ++ (1.5, 0)
             node[elmech, rotate=90, anchor=top](m1){};
             %\draw(m1) [->] -- ++ (3, 0) -- ([yshift=-10pt, xshift=-10pt]dfs.center);
             \path[name path = border3](dfs.center) -- ++ (0, -2);
             \path[name path = line3, overlay](m1.bottom) -- ++ (5, 0);
-            \draw[name intersections={of=border3 and line3}] (m1.bottom) -- (intersection-1)
+            \draw[name intersections={of=border3 and line3}, dashed] (m1.bottom) -- (intersection-1)
             node[diamondpole]{};
             \draw(m1.center) node{Az};
             \draw(m2.center) node{El};
@@ -440,37 +440,48 @@ Subsection text here
 \begin{figure}[!ht]
     \begin{center}
         \begin{circuitikz}
-            \draw(0, 0) node[bnc](port1){To N9040b};
+            %\draw[help lines, dashed] grid (13, 3);
+            %\draw[help lines, dashed] grid (13, -3);
+
+            \draw(0, 0) node[bnc](port1){N9040b};
             \draw(port1.hot) -- ++ (1, 0)
-            node[rotary switch = 3 in 50 wiper 40, anchor=in, ](s1){};
+            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
             
-            \draw(s1.out 1) -| ++ (0.75, 1.5)
+            \draw(sw1.out 1) -- ++ (0.5, 0) |- ++ (0.75, 0.85)
+            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw2){};
+            
+            \draw(sw2.out 1) -| ++ (0.75, 0.5)
             -- ++ (0.5, 0)
             to[amp, invert] ++ (1.5, 0)
             to[amp, invert] ++ (1.5, 0)
             to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
             coordinate(p1);
             
-            \draw(s1.out 2) -- ++ (1, 0)
+            \draw(sw2.out 2) -| ++ (0.75, -0.5)
+            -- ++ (0.5 ,0)
             to[amp, invert] ++ (1.5, 0)
             to[amp, invert] ++ (1.5, 0)
             to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
             coordinate(p2);
 
             \draw($(p1)!0.5!(p2)$) ++ (1, 0)
-            node[rotary switch = 2 in 30 wiper 20, xscale=-1](s2){};
-            \draw(s2.out 1) -| (p1);
-            \draw(s2.out 2) -| (p2);
-            \draw(s2.in) -- ++ (1, 0)
-            node[bnc, xscale=-1](port2){\ctikzflipx{To EMS}};
+            node[rotary switch = 2 in 30 wiper 20, xscale=-1](sw3){};
+            \draw(sw3.out 1) -| (p1);
+            \draw(sw3.out 2) -| (p2);
+            \draw(sw3.in) -- ++ (1, 0)
+            node[bnc, xscale=-1](port2){\ctikzflipx{EMS}};
             
-            \draw(s1.out 3) -| ++ (0.75, -1.5)
-            -- ++ (0.5, 0)
-            to[amp, invert] ++ (1.5, 0)
-            to[amp, invert] ++ (1.5, 0)
-            to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
-            -- ++ (2.4, 0)
-            node[bnc, xscale=-1](port3){\ctikzflipx{To DFS}};
+            \draw(sw1.out 2) -| ++ (1.5, -1.5)
+            -- ++ (1, 0)
+            to[amp, invert] ++ (2, 0)
+            to[amp, invert] ++ (2, 0)
+            to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
+            -- ++ (1.63, 0)
+            node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
+
+            \draw(sw1.north) node[anchor=south]{S1};
+            \draw(sw2.north) node[anchor=south]{S2};
+            \draw(sw3.north) node[anchor=south]{S3};
         \end{circuitikz}
     \caption{Block diagram 3.}\label{fig:rfampblock}
     \end{center}
