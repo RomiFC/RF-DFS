@@ -54,6 +54,7 @@ static inline void clearSerialBuffer()
 /**
  * @brief Takes BUFFER_LENGTH bytes from the serial buffer and searches for a binary number.
  * Calls clearSerialBuffer() if too many characters are found so as to not retain buffer characters on the next loop iteration.
+ * If the buffer contains ASCII characters that are not 0 or 1 after a sequence of 0s and/or 1s, they will be ignored.
  * 
  * @return int binaryLiteral on success (Input successfully parsed as binary). If no valid conversion could be performed, a zero value is returned.
  * Note that it is possible for a zero value binaryLiteral to be successfully parsed and returned.
