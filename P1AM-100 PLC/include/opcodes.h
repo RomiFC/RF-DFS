@@ -15,9 +15,7 @@
  * - 0 for config or sleep operation
  * - 6-bit config opcode
  * 
- * If a leading zero is sent, the PLC will search for a configuration opcode starting at 0b00000001
- * 
- * @date 2024-08-07
+ * @date Last Modified: 2024-08-07
  * 
  * @copyright Copyright (c) 2024
  * 
@@ -25,7 +23,18 @@
 
 
 #define SLEEP           (0b10000000)
-#define SEND_ERROR      ()
+#define RETURN_OPCODES  (0b10000001)
+#define GET_FW_VERSION  (0b10000010)
+#define PRINT_MODULES   (0b10000011)
+#define IS_BASE_ACTIVE  (0b10000100)
+#define P1_INIT         (0b10000101)
+#define P1_DISABLE      (0b10000110)
+#define CHECK_24V_SL1   (0b10001001)
+#define CHECK_24V_SL2   (0b10001010)
+#define CHECK_24V_SL3   (0b10001011)
+#define READ_STATUS_SL1 (0b10010001)
+#define READ_STATUS_SL2 (0b10010010)
+#define READ_STATUS_SL3 (0b10010011)
 #define EMS_CHAIN1      (0b11000000)
 #define EMS_CHAIN2      (0b11000001)
 #define EMS_CHAIN3      (0b11000010)
