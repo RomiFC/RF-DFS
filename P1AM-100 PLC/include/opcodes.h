@@ -4,10 +4,16 @@
  * @brief Header file that contains opcode declarations for the P1AM-100 PLC.
  * 
  * Each opcode is an 8-bit binary number with the following syntax:
- * - Leading 1 for RF selection operations
- * - 0 for sleep operation (following bits ignored), 1 for selection operation
+ * - Leading 1
+ * - 1 for selection operation
  * - 2-bit antenna selection code (00 for EMS, 01 for DFS)
  * - 4-bit RF chain selection code
+ * 
+ * OR
+ * 
+ * - Leading 1
+ * - 0 for config or sleep operation
+ * - 6-bit config opcode
  * 
  * If a leading zero is sent, the PLC will search for a configuration opcode starting at 0b00000001
  * 
@@ -18,9 +24,8 @@
  */
 
 
+#define SLEEP           (0b10000000)
 #define SEND_ERROR      ()
-#define SLEEP_MIN       (0b10000000)
-#define SLEEP_MAX       (0b10111111)
 #define EMS_CHAIN1      (0b11000000)
 #define EMS_CHAIN2      (0b11000001)
 #define EMS_CHAIN3      (0b11000010)

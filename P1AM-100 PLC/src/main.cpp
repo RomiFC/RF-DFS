@@ -116,14 +116,13 @@ void loop() {
     // Print the received opCode
     sprintf(outputStringBuffer, "OpCode: 0x%X (%d)", opCode, opCode);
     Serial.println(outputStringBuffer);
-    // If the opCode is a sleep command, disable all PLC outputs
-    if (opCode >= SLEEP_MIN && opCode <= SLEEP_MAX) {
-        Serial.println("Sleep command detected: all outputs disabled");
-        P1.writeDiscrete(0, SLOT_DISCRETE_OUT_15, 0);
-        return;
-    }
+
     // Test opCode for valid commands
     switch (opCode) {
+        case SLEEP:
+            Serial.println("Sleep command detected: all outputs disabled");
+            P1.writeDiscrete(0, SLOT_DISCRETE_OUT_15, 0);
+            break;
         case EMS_CHAIN1:
             sprintf(outputStringBuffer, "EMS Chain 1 selected: writing to channels %d and %d", CH_EMS_RF1, CH_EMS_SELECT);
             Serial.println(outputStringBuffer);
