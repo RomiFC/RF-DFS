@@ -1,5 +1,18 @@
+/**
+ * @file main.cpp
+ * @author Remy Nguyen (rnguyen@nrao.edu)
+ * @brief Code for the P1AM-100 PLC. This will continuously read and parse ASCII serial inputs for a valid opcode, then
+ * initialize the finite state machine for return operations.
+ * Hardware requirements include a P1-15TD2 discrete output module and a 24VDC power supply connected to the P1AM-100.
+ * @date 2024-08-07
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
+
 #include <Arduino.h>
 #include <P1AM.h>
+#include <opcodes.h>
 
 // GLOBAL VARIABLES
 int status;
@@ -7,6 +20,8 @@ int status;
 // CONSTANTS
 #define BUFFER_LENGTH           (8+2)     // Amount of bytes to accept from serial. Should be equal to the amount of ASCII bytes in the opcode plus 2 for CRLF
 #define SLOT_DISCRETE_OUT_15    1         // Slot on the P1AM that the P1-15TD2 discrete output module is connected to.
+
+// OUTPUT CHANNELS
 #define ALL_CHANNELS            0
 #define CH_EMS_RF1              1
 #define CH_EMS_RF2              2
@@ -19,14 +34,6 @@ int status;
 #define CH_EMS_SELECT           9
 #define CH_DFS_SELECT           10
 
-// TODO: Move opcodes to a separate header file
-// OPCODES
-#define SEND_ERROR ()
-#define SLEEP_MIN  (0b10000000)
-#define SLEEP_MAX  (0b10111111)
-#define EMS_CHAIN1 (0b11000000)
-#define EMS_CHAIN2 (0b11000001)
-#define DFS_CHAIN1 (0b11010000)
 
 /**
  * @brief This function removes surplus characters from the serial buffer.
