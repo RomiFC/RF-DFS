@@ -6,7 +6,7 @@ The RF-DFS is a controllable 3-meter dish antenna with azimuth and elevation dri
 
 - [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) or other suitable PyVISA backend.
 - [NI-488.2](https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html#484357)
-- Ethernet, [GPIB](https://www.ni.com/en-us/shop/model/gpib-usb-hs.html), serial, or other SCPI instrument connection.
+- Ethernet, GPIB, serial, or other SCPI instrument connection.
 
 ## Development Requirements
 
@@ -17,6 +17,7 @@ The RF-DFS is a controllable 3-meter dish antenna with azimuth and elevation dri
   - [PyVisa](https://pyvisa.readthedocs.io/en/latest/)
 - Suitable Python IDE (Recommended [VSCode](https://code.visualstudio.com/))
 - Python packager (Recommended [PyInstaller](https://pyinstaller.org/en/stable/))
+- [PlatformIO](https://platformio.org/) if updating PLC firmware.
 
 > [!NOTE]
 > Freezing tools (Such as PyInstaller) package the entire Python Interpreter and installed libraries which generates large executables and could be flagged as a virus. It is recommended to create a virtual environment and only install/package the libraries used in the program. These executables will also only work on the OS that built them (A Windows deployment must be built on a Windows computer).
