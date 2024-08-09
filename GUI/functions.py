@@ -495,8 +495,8 @@ class FrontEnd():
             termChar = ''
         # Get timeout and chunk size values from respective widgets
         try:
-            timeoutArg = int(self.timeoutWidget.get())
-            chunkSizeArg = int(self.chunkSizeWidget.get())
+            timeoutArg = int(timeoutArg)
+            chunkSizeArg = int(chunkSizeArg)
         except:
             raise TypeError('ttk::spinbox get() did not return type int')
         # Test timeout and chunk size for within range
