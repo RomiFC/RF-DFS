@@ -22,6 +22,7 @@ def redirector(inputStr):
 sys.stdout.write = redirector #whenever sys.stdout.write is called, redirector is called.
 sys.stderr.write = redirector
 
-
+root.update()
+root.minsize(root.winfo_width(), root.winfo_height())
 root.protocol("WM_DELETE_WINDOW", DFSwindow.on_closing )
 root.mainloop()
