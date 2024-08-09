@@ -338,14 +338,14 @@ class FrontEnd():
         self.tab1 = ttk.Frame(tabControl) 
         self.tab2 = ttk.Frame(tabControl) 
 
-        tabControl.add(self.tab1, text ='Tab 1') 
-        tabControl.add(self.tab2, text ='Tab 2') 
+        tabControl.add(self.tab1, text ='Control') 
+        tabControl.add(self.tab2, text ='Config') 
         tabControl.bind('<Button-1>', lambda event: self.resetWidgetValues(vi, event))
         tabControl.pack(expand = 1, fill ="both") 
 
-        self.serialInterface()
+        self.controlTab()
         self.updateOutput( oFile, root )
-        self.scpiInterface(vi)
+        self.configTab(vi)
         self.root.after(1000, self.update_time )
     
     def on_closing( self ):
@@ -359,7 +359,7 @@ class FrontEnd():
     
         self.root.quit()
 
-    def scpiInterface(self, vi):
+    def configTab(self, vi):
         """Generates the SCPI communication interface on the developer's tab of choice at tabSelect
         """
         # CONSTANTS
@@ -513,54 +513,58 @@ class FrontEnd():
         else:
             return RETURN_ERROR
     
-    def serialInterface(self):
+    def controlTab(self):
         """Generates the serial communication interface on the developer's tab of choice at tabSelect
         """
 
         tabSelect = self.tab1   # Select which tab this interface should be placed
+        tabSelect.rowconfigure(0, weight=1)
+        tabSelect.rowconfigure(1, weight=1)
+        tabSelect.columnconfigure(0, weight=1)
+        tabSelect.columnconfigure(1, weight=1)
+        tabSelect.columnconfigure(2, weight=10)
 
         self.motor = MotorControl( 0 , 0 )
         
+        # COLUMN 0 WIDGETS
         ports                   = list( serial.tools.list_ports.comports() ) 
         self.port_selection     = ttk.Combobox( tabSelect , values = ports )
-        self.port_selection.grid(row = 0, column= 0 , padx = 20 , pady = 10, sticky= NW )
-
-        self.clock_label        = tk.Label( tabSelect, font= ('Arial', 14))
-        self.clock_label.grid( row= 0, column= 1, padx = 20 , pady = 10, sticky= NE  )
+        self.port_selection.grid(row = 0, column = 0 , padx = 20 , pady = 10, sticky=(NW, E))
 
         self.positions          = tk.LabelFrame( tabSelect, text = "Antenna Position" )
-        self.quickButton        = tk.Frame( tabSelect )
-        self.positions.grid( row = 1, column = 0 , padx = 20 , pady = 10)
-        self.quickButton.grid( row = 1, column= 1 , padx = 20 , pady = 10)
-
-        self.EmargencyStop      = tk.Button( self.quickButton, text = "Emargency Stop", font = ('Arial', 16 ) , bg = 'red', fg = 'white' , command= self.Estop ,width= 15 )
-        self.Park               = tk.Button( self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white' , command = self.park, width= 15 )
-        self.openFreeWriting    = tk.Button( self.quickButton, text = "Open Free Writing" ,font = ('Arial', 16 ), command= self.freewriting, width= 15 )
-       
-        self.EmargencyStop.pack( pady = 5 )
-        self.Park.pack( pady = 5 )
-        self.openFreeWriting.pack( pady = 5 )
-        
+        self.positions.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
         self.boxFrame           = tk.Frame( self.positions )
         self.boxFrame.pack( pady = 10 )
 
         self.azimuth_label      = tk.Label( self.boxFrame , text = "Azimuth" )
         self.elevation_label    = tk.Label( self.boxFrame , text = "Elevation")
-        # self.current_azimuth = tk.Label( self.boxFrame, text = self.motor.Azimuth )
-        # self.current_elevation = tk.Label( self.boxFrame, text = self.motor.Elevation )
         self.inputAzimuth       = tk.Entry( self.boxFrame, width= 10 )
         self.inputElevation     = tk.Entry( self.boxFrame, width= 10 )
 
         self.azimuth_label.grid( row = 0, column = 0, padx = 10 )
         self.elevation_label.grid( row = 1, column = 0, padx = 10 )
-        # self.current_azimuth.grid( row = 0, column = 1, padx = 10 )
-        # self.current_elevation.grid( row = 1, column = 1, padx = 10 )
         self.inputAzimuth.grid( row = 0, column = 2, padx = 10 )
         self.inputElevation.grid( row = 1, column = 2, padx = 10 )
 
         self.printbutton        = tk.Button( self.positions, text = "Enter", command = self.input )
         self.printbutton.pack( padx = 20, pady = 10, side = 'right' )
 
+        # COLUMN 1 WIDGETS
+        self.clock_label        = tk.Label( tabSelect, font= ('Arial', 14))
+        self.clock_label.grid(row = 0, column = 1, padx = 20 , pady = 10, sticky=(NW, E))
+        self.quickButton        = tk.Frame( tabSelect )
+        self.quickButton.grid(row = 1, column = 1, padx = 20, pady = 10, sticky=(S))
+        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emargency Stop", font = ('Arial', 16 ) , bg = 'red', fg = 'white', command= self.Estop, width=15)
+        self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
+        self.openFreeWriting    = tk.Button(self.quickButton, text = "Open Free Writing" ,font = ('Arial', 16 ), command= self.freewriting, width=15)
+       
+        self.EmargencyStop.pack( pady = 5 )
+        self.Park.pack( pady = 5 )
+        self.openFreeWriting.pack( pady = 5 )
+
+        # COLUMN 2 WIDGETS
+        self.spectrumFrame = tk.LabelFrame(tabSelect, text = "Placeholder Text")
+        self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=(NSEW), rowspan=2)
 
     def update_time( self ):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
