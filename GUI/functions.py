@@ -370,6 +370,7 @@ class FrontEnd():
         self.timeout = TIMEOUT_DEF           # VISA timeout value
         self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
         self.instrument = ''                 # ID of the currently open instrument. Used only in resetWidgetValues method
+        self.isAnalyzerOn = FALSE
 
         # TKINTER VARIABLES
         self.sendEnd = BooleanVar()
@@ -562,9 +563,37 @@ class FrontEnd():
         self.Park.pack( pady = 5 )
         self.openFreeWriting.pack( pady = 5 )
 
-        # COLUMN 2 WIDGETS
+        # COLUMN 2 WIDGETS (Framed)
         self.spectrumFrame = tk.LabelFrame(tabSelect, text = "Placeholder Text")
         self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=(NSEW), rowspan=2)
+        self.spectrumFrame.rowconfigure(0, weight=1)
+        self.spectrumFrame.rowconfigure(1, weight=1)
+        self.spectrumFrame.columnconfigure(0, weight=1)
+        self.spectrumFrame.columnconfigure(1, weight=1)
+
+        # MEASUREMENT COMMANDS
+        self.measurementTab = ttk.Notebook(self.spectrumFrame)
+        tab1 = ttk.Frame(self.measurementTab)
+        tab2 = ttk.Frame(self.measurementTab)
+        tab3 = ttk.Frame(self.measurementTab)
+        self.measurementTab.add(tab1, text="Freq")
+        self.measurementTab.add(tab2, text="BW")
+        self.measurementTab.add(tab3, text="Amp")
+        self.measurementTab.grid(row=0, column=1, sticky=NSEW)
+
+        # TOGGLE BUTTON
+        self.placeholder = tk.Button(self.spectrumFrame, text="Placeholder Text")
+        self.placeholder.grid(row=0, column=0, sticky=NSEW)
+        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=self.toggleAnalyzer)
+        self.spectrumToggle.grid(row=1, column=1, sticky=NSEW)
+
+    def toggleAnalyzer(self):
+        if (self.isAnalyzerOn):
+            # turn it off
+            self.isAnalyzerOn = FALSE
+            return
+        # turn it on
+        return
 
     def update_time( self ):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
