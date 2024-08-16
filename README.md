@@ -1,10 +1,10 @@
-# Radio Frequency Direction Finding System
+# :satellite: Radio Frequency Direction Finding System
 
 The RF-DFS is a movable 3-meter dish antenna with azimuth and elevation drivers to locate the source of RF interference. This project combines the function of the DFS with the RF - Environmental Monitoring System; a similar utility that is built off of an effectively isotropic antenna. Both RF chains are connected to a Keysight N9040B Spectrum Analyzer and are controlled by a Python GUI.
 
 **Hardware:** Automation Direct P1AM-100 PLC with 15-point discrete output module, Parker Hannifin ACR9000 Motion Controller, 2 Aries AR-04AE Servo Drives, Keysight N9040B Spectrum Analyzer, and a Windows computer.
 
-## Tech Stack
+## 🏗️ Tech Stack
 
 ```mermaid
 graph BT
@@ -44,13 +44,13 @@ graph BT
     Database <--> Server
 ```
 
-## Deployment Requirements
+## 🚀 Deployment Requirements
 
 - [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) or other suitable PyVISA backend.
 - [NI-488.2](https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html#484357)
 - Ethernet, GPIB, serial, or other SCPI instrument connection.
 
-## Development Requirements
+## 🛠️ Development Requirements
 
 - All above requirements.
 - [Python 3.6+](https://www.python.org/)
@@ -74,7 +74,7 @@ pip install pyserial
 pip install pyvisa
 ```
 
-## Authors
+## :mailbox: Authors
 
 - [Remy Nguyen](https://github.com/RomiFC)
 - [Hina Suzuki](https://github.com/hina18201716)
