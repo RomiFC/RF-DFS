@@ -79,4 +79,8 @@ pip install pyvisa
 - [Remy Nguyen](https://github.com/RomiFC)
 - [Hina Suzuki](https://github.com/hina18201716)
 
-![Logo](https://public.nrao.edu/wp-content/uploads/2023/02/logoGroupColor.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://public.nrao.edu/wp-content/uploads/2023/02/logoGroupWhite.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://public.nrao.edu/wp-content/uploads/2023/02/logoGroupColor.png">
+  <img alt="If previous images cannot be displayed" src="https://public.nrao.edu/wp-content/uploads/2023/02/logoGroupColor.png">
+</picture>
