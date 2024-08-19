@@ -11,3 +11,4 @@ Figures/*
 *.run.xml
 *.toc
 *.xdv
+Report/*pdf

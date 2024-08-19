@@ -409,7 +409,7 @@ Subsection text here
             node[dinantenna](dfs){DFS};
 
             \draw([yshift=5pt]box.north)[<-] -- ++ (0, 0.4)
-            node[qfpchip, anchor=south, external pins width=0, hide numbers, name=uc, solid, scale=0.8]{$\upmu$C};
+            node[qfpchip, anchor=south, external pins width=0, hide numbers, name=uc, solid, scale=0.8]{PLC};
             
             
             \path[name path = border1](uc.west) -- ++ (-5, 0);
@@ -479,9 +479,13 @@ Subsection text here
             -- ++ (1.63, 0)
             node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
 
-            \draw(sw1.north) node[anchor=south]{S1};
-            \draw(sw2.north) node[anchor=south]{S2};
-            \draw(sw3.north) node[anchor=south]{S3};
+            % Switch labels and arrows
+            \draw(sw1.north) node[anchor=south](sw1lab){S1};
+            \draw(sw2.north) node[anchor=south](sw2lab){S2};
+            \draw(sw3.north) node[anchor=south](sw3lab){S3};
+            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2) node[anchor=south]{PLC};
+            \draw(sw2lab.north) [dashed, <-] -- ++ (0, 0.8) node[anchor=south]{PLC};
+            \draw(sw3lab.north) [dashed, <-] -- ++ (0, 0.8) node[anchor=south]{PLC};
         \end{circuitikz}
     \caption{Block diagram 3.}\label{fig:rfampblock}
     \end{center}
