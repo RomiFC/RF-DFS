@@ -5,6 +5,7 @@ from tkinter import ttk
 import serial
 import serial.tools.list_ports
 import time
+from timestamp import *
 import pyvisa as visa
 from pyvisa import constants
 import sys
@@ -328,10 +329,26 @@ class FrontEnd():
     def __init__(self, root):
         """Initializes the top level tkinter interface
         """
+        # CONSTANTS
+        self.SELECT_TERM_VALUES = ['Line Feed - \\n', 'Carriage Return - \\r']
+
+        # VARIABLES
+        self.timeout = TIMEOUT_DEF           # VISA timeout value
+        self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
+        self.instrument = ''                 # ID of the currently open instrument. Used only in resetWidgetValues method
+        self.isAnalyzerOn = FALSE
+
+        # TKINTER VARIABLES
+        self.sendEnd = BooleanVar()
+        self.sendEnd.set(TRUE)
+        self.enableTerm = BooleanVar()
+        self.enableTerm.set(FALSE)
         
         self.root = root
         self.root.title('RF-DFS')
-        Vi = VisaControl()
+        self.Vi = VisaControl()
+        self.Vi.openRsrcManager()
+
         oFile = DataManagement()
         tabControl = ttk.Notebook(root) 
   
@@ -340,12 +357,12 @@ class FrontEnd():
 
         tabControl.add(self.tab1, text ='Control') 
         tabControl.add(self.tab2, text ='Config') 
-        tabControl.bind('<Button-1>', lambda event: self.resetWidgetValues(Vi, event))
+        tabControl.bind('<Button-1>', lambda event: self.resetWidgetValues(event))
         tabControl.pack(expand = 1, fill ="both") 
 
         self.controlTab()
         self.updateOutput( oFile, root )
-        self.configTab(Vi)
+        self.configTab()
         self.root.after(1000, self.update_time )
     
     def on_closing( self ):
@@ -359,38 +376,22 @@ class FrontEnd():
     
         self.root.quit()
 
-    def configTab(self, Vi):
+    def configTab(self):
         """Generates the SCPI communication interface on the developer's tab of choice at tabSelect
         """
-        # CONSTANTS
-        self.SELECT_TERM_VALUES = ['Line Feed - \\n', 'Carriage Return - \\r']
-
-        # VARIABLES
         tabSelect = self.tab2                # Select which tab this interface should be placed
-        self.timeout = TIMEOUT_DEF           # VISA timeout value
-        self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
-        self.instrument = ''                 # ID of the currently open instrument. Used only in resetWidgetValues method
-        self.isAnalyzerOn = FALSE
-
-        # TKINTER VARIABLES
-        self.sendEnd = BooleanVar()
-        self.sendEnd.set(TRUE)
-        self.enableTerm = BooleanVar()
-        self.enableTerm.set(FALSE)
-
-        Vi.openRsrcManager()
 
         def onConnectPress():
             """Connect to the resource and update the string in self.instrument
             """
-            if Vi.connectToRsrc(self.instrSelectBox.get()) == RETURN_SUCCESS:
+            if self.Vi.connectToRsrc(self.instrSelectBox.get()) == RETURN_SUCCESS:
                 self.instrument = self.instrSelectBox.get()
-                self.scpiApplyConfig(Vi, self.timeoutWidget.get(), self.chunkSizeWidget.get())
+                self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get())
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
             """
             print('Searching for resources...')
-            self.instrSelectBox['values'] = Vi.rm.list_resources()
+            self.instrSelectBox['values'] = self.Vi.rm.list_resources()
         def onEnableTermPress():
             if self.enableTerm.get():
                 self.selectTermWidget.config(state='readonly')
@@ -403,7 +404,7 @@ class FrontEnd():
         ttk.Label(tabSelect, text = "Select a SCPI instrument:", 
           font = ("Times New Roman", 10)).grid(column = 0, 
           row = 0, padx = 5, pady = 25) 
-        self.instrSelectBox = ttk.Combobox(tabSelect, values = Vi.rm.list_resources(), width=40)
+        self.instrSelectBox = ttk.Combobox(tabSelect, values = self.Vi.rm.list_resources(), width=40)
         self.instrSelectBox.grid(row = 0, column = 1, padx = 10 , pady = 10)
         self.refreshButton = tk.Button(tabSelect, text = "Refresh", command = lambda:onRefreshPress())
         self.refreshButton.grid(row = 0, column = 2, padx=5)
@@ -418,7 +419,7 @@ class FrontEnd():
         self.chunkSizeLabel = ttk.Label(self.configFrame, text = 'Chunk size (Bytes)')
         self.chunkSizeWidget = ttk.Spinbox(self.configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240)
         self.chunkSizeWidget.set(self.chunkSize)
-        self.applyButton = tk.Button(self.configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(Vi, self.timeoutWidget.get(), self.chunkSizeWidget.get()))
+        self.applyButton = tk.Button(self.configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
         # VISA CONFIGURATION GRID
         self.timeoutLabel.grid(row = 0, column = 0, pady=5)
         self.timeoutWidget.grid(row = 1, column = 0, padx=20, pady=5, columnspan=2)
@@ -437,11 +438,10 @@ class FrontEnd():
         self.selectTermWidget.grid(row = 2, column = 0, pady = 5)
     
 
-    def resetWidgetValues(self, Vi, event):
+    def resetWidgetValues(self, event):
         """Event handler to reset widget values to their respective variables
 
         Args:
-            Vi (VisaControl): VisaControl object to retrieve VISA values from
             event (event): Argument passed by tkinter event (Varies for each event)
         """
         # These widgets values are stored in variables and will be reset to the variable on function call
@@ -451,10 +451,10 @@ class FrontEnd():
             self.instrSelectBox.set(self.instrument)
         except:
             pass
-        # These widget values are retrieved from Vi.openRsrc and will be reset depending on the values returned
+        # These widget values are retrieved from self.Vi.openRsrc and will be reset depending on the values returned
         try:
-            self.sendEnd.set(Vi.openRsrc.send_end)
-            readTerm = repr(Vi.openRsrc.read_termination)
+            self.sendEnd.set(self.Vi.openRsrc.send_end)
+            readTerm = repr(self.Vi.openRsrc.read_termination)
             if readTerm == repr(''):
                 self.enableTerm.set(FALSE)
                 self.selectTermWidget.set('')
@@ -471,11 +471,10 @@ class FrontEnd():
         except:
             pass
         
-    def scpiApplyConfig(self, Vi, timeoutArg, chunkSizeArg):
+    def scpiApplyConfig(self, timeoutArg, chunkSizeArg):
         """Issues VISA commands to set config and applies changes made in the SCPI configuration frame to variables timeout and chunkSize (for resetWidgetValues)
 
         Args:
-            Vi (VisaControl): Instance of class VisaControl to apply config to. Note some configs will be applied to all VISA attributes, not just the opened resource(s)
             timeoutArg (string): Argument received from timeout widget which will be tested for type int and within range
             chunkSizeArg (string): Argument received from chunkSize widget which will be tested for type int and within range
 
@@ -505,11 +504,11 @@ class FrontEnd():
             raise TypeError(f'int timeout out of range. Min: {TIMEOUT_MIN}, Max: {TIMEOUT_MAX}')
         if chunkSizeArg < CHUNK_SIZE_MIN or chunkSizeArg > CHUNK_SIZE_MAX:
             raise TypeError(f'int chunkSize out of range. Min: {CHUNK_SIZE_MIN}, Max: {CHUNK_SIZE_MAX}')
-        # Call Vi.setConfig and if successful, print output and set variables for resetWidgetValues
-        if Vi.setConfig(timeoutArg, chunkSizeArg, self.sendEnd.get(), self.enableTerm.get(), termChar) == RETURN_SUCCESS:
+        # Call self.Vi.setConfig and if successful, print output and set variables for resetWidgetValues
+        if self.Vi.setConfig(timeoutArg, chunkSizeArg, self.sendEnd.get(), self.enableTerm.get(), termChar) == RETURN_SUCCESS:
             self.timeout = timeoutArg
             self.chunkSize = chunkSizeArg
-            print(f'Timeout: {Vi.openRsrc.timeout}, Chunk size: {Vi.openRsrc.chunk_size}, Send EOI: {Vi.openRsrc.send_end}, Termination: {repr(Vi.openRsrc.write_termination)}')
+            print(f'Timeout: {self.Vi.openRsrc.timeout}, Chunk size: {self.Vi.openRsrc.chunk_size}, Send EOI: {self.Vi.openRsrc.send_end}, Termination: {repr(self.Vi.openRsrc.write_termination)}')
             return RETURN_SUCCESS
         else:
             return RETURN_ERROR
@@ -584,15 +583,23 @@ class FrontEnd():
         # TOGGLE BUTTON
         self.placeholder = tk.Button(self.spectrumFrame, text="Placeholder Text")
         self.placeholder.grid(row=0, column=0, sticky=NSEW)
-        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=self.toggleAnalyzer)
+        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=self.toggleAnalyzer())
         self.spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
     def toggleAnalyzer(self):
-        if (self.isAnalyzerOn):
+        if self.Vi.isSessionOpen == FALSE:
+            print("Error: Session to the analyzer is not open")
+            return
+        if self.isAnalyzerOn:
             # turn it off
             self.isAnalyzerOn = FALSE
             return
         # turn it on
+        # self.Vi.openRsrc.write_ascii_values("*RST")
+        # # is buffer large enough?
+        # self.Vi.openRsrc.write_ascii_values("*WAI")
+        # clear buffer and continue...
+
         return
 
     def update_time( self ):
