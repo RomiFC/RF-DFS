@@ -1,7 +1,7 @@
 # PRIVATE LIBRARIES
 import sys
 import threading
-from functions import *
+from frontendio import *
 from timestamp import *
 
 # TKINTER
