@@ -32,7 +32,7 @@ class FrontEnd():
         """Initializes the top level tkinter interface
         """
         # Generate thread to handle live data plot in background
-        self.t1 = threading.Thread(target=self.initAnalyzer, daemon=TRUE)
+        self.t1 = threading.Thread(target=self.initAnalyzerDisplay, daemon=TRUE)
 
         # CONSTANTS
         self.SELECT_TERM_VALUES = ['Line Feed - \\n', 'Carriage Return - \\r']
@@ -274,9 +274,12 @@ class FrontEnd():
         self.spectrumFrame.rowconfigure(1, weight=1)
         self.spectrumFrame.columnconfigure(0, weight=1)
         self.spectrumFrame.columnconfigure(1, weight=1)
+
+        # MATPLOTLIB GRAPH
         fig, self.ax = plt.subplots()
         self.spectrumDisplay = FigureCanvasTkAgg(fig, master=self.spectrumFrame)
         self.spectrumDisplay.get_tk_widget().grid(row = 1, column = 0)
+        self.setAnalyzerPlotValues(xmin = 0, xmax=20e9)
 
         # MEASUREMENT COMMANDS
         self.measurementTab = ttk.Notebook(self.spectrumFrame)
@@ -291,13 +294,39 @@ class FrontEnd():
         # TOGGLE BUTTON
         self.placeholder = tk.Button(self.spectrumFrame, text="Placeholder Text", command=lambda:self.t1.start())
         self.placeholder.grid(row=0, column=0, sticky=NSEW)
-        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzer())
+        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
         self.spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
-    def initAnalyzer(self):
+    def initAnalyzerPlotValues(self):
         if self.Vi.isSessionOpen == FALSE:
-            print("Error: Session to the analyzer is not open")
-            return
+            print("Error: Session to the analyzer is not open.")
+            return RETURN_ERROR
+        startFreq =         self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:START?")
+        stopFreq =          self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:STOP?")
+        centerFreq =        self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:CENTER?")
+        span =              self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:SPAN?")
+        rbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:RESOUTION?")
+        vbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:VIDEO?")
+        ref =               self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:RLEVEL?")
+        numDivisions =      self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:NDIV?")
+        scalePerDivision =  self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:PDIV?")
+
+        self.setAnalyzerPlotValues(xmin=startFreq, xmax=stopFreq, ymin=ref-numDivisions*scalePerDivision, ymax=ref)
+
+    def setAnalyzerPlotValues(self, **kwargs):
+        if kwargs["xmin"] in kwargs.values() and kwargs["xmax"]:
+            self.ax.set_xlim(kwargs["xmin"], kwargs["xmax"])
+        if kwargs["ymin"] in kwargs.values() and kwargs["ymax"] in kwargs.values():
+            self.ax.set_ylim(kwargs["ymin"], kwargs["ymax"])
+        self.ax.margins(0, 0.05)
+        self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
+        print("set values")
+        return RETURN_SUCCESS
+
+    def initAnalyzerDisplay(self):
+        if self.Vi.isSessionOpen == FALSE:
+            print("Error: Session to the analyzer is not open.")
+            return RETURN_ERROR
         # Reset analyzer state
         self.Vi.openRsrc.write("*RST")
         self.Vi.openRsrc.write("*WAI")
@@ -332,10 +361,10 @@ class FrontEnd():
         print("end of loop")
         return
     
-    def toggleAnalyzer(self):
+    def toggleAnalyzerDisplay(self):
         """Checks if thread t1 is alive. 
-        If yes, sets analyzerKillFlag TRUE so initAnalyzer returns and t1 can be joined. 
-        If no, sets analyzerKillFlag FALSE and starts t1 which calls initAnalyzer.
+        If yes, sets analyzerKillFlag TRUE so initAnalyzerDisplay returns and t1 can be joined. 
+        If no, sets analyzerKillFlag FALSE and starts t1 which calls initAnalyzerDisplay.
 
         Returns:
             Literal: 0 on success, 1 on error
@@ -345,7 +374,7 @@ class FrontEnd():
             self.analyzerKillFlag = TRUE
             self.t1.join()
             if self.t1.is_alive():
-                print("Error: thread.join() timed out. Thread target initAnalyzer() still active.")
+                print("Error: thread.join() timed out. Thread target initAnalyzerDisplay() still active.")
                 return RETURN_ERROR
             else:
                 print("Spectrum display successfully disabled.")
