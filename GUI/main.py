@@ -1,18 +1,39 @@
 # PRIVATE LIBRARIES
-import sys
 import threading
 from frontendio import *
 from timestamp import *
 
+# OTHER MODULES
+import sys
+from pyvisa import attributes
+
+# MATPLOTLIB
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 # TKINTER
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 from tkinter.ttk import *
+ 
+# CONSTANTS
+RETURN_ERROR = 1
+RETURN_SUCCESS = 0
+CHUNK_SIZE_DEF = 20480     # Default byte count to read when issuing viRead
+CHUNK_SIZE_MIN = 1024
+CHUNK_SIZE_MAX = 1048576  # Max chunk size allowed
+TIMEOUT_DEF = 2000        # Default VISA timeout value
+TIMEOUT_MIN = 1000        # Minimum VISA timeout value
+TIMEOUT_MAX = 25000       # Maximum VISA timeout value
 
 class FrontEnd():
     def __init__(self, root):
         """Initializes the top level tkinter interface
         """
+        # Generate thread to handle live data plot in background
+        self.t1 = threading.Thread(target=self.initAnalyzer, daemon=TRUE)
+
         # CONSTANTS
         self.SELECT_TERM_VALUES = ['Line Feed - \\n', 'Carriage Return - \\r']
 
@@ -20,7 +41,7 @@ class FrontEnd():
         self.timeout = TIMEOUT_DEF           # VISA timeout value
         self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
         self.instrument = ''                 # ID of the currently open instrument. Used only in resetWidgetValues method
-        self.isAnalyzerOn = FALSE
+        self.analyzerKillFlag = TRUE
 
         # TKINTER VARIABLES
         self.sendEnd = BooleanVar()
@@ -253,6 +274,9 @@ class FrontEnd():
         self.spectrumFrame.rowconfigure(1, weight=1)
         self.spectrumFrame.columnconfigure(0, weight=1)
         self.spectrumFrame.columnconfigure(1, weight=1)
+        fig, self.ax = plt.subplots()
+        self.spectrumDisplay = FigureCanvasTkAgg(fig, master=self.spectrumFrame)
+        self.spectrumDisplay.get_tk_widget().grid(row = 1, column = 0)
 
         # MEASUREMENT COMMANDS
         self.measurementTab = ttk.Notebook(self.spectrumFrame)
@@ -265,29 +289,73 @@ class FrontEnd():
         self.measurementTab.grid(row=0, column=1, sticky=NSEW)
 
         # TOGGLE BUTTON
-        self.placeholder = tk.Button(self.spectrumFrame, text="Placeholder Text")
+        self.placeholder = tk.Button(self.spectrumFrame, text="Placeholder Text", command=lambda:self.t1.start())
         self.placeholder.grid(row=0, column=0, sticky=NSEW)
-        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=self.toggleAnalyzer())
+        self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzer())
         self.spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
-    def toggleAnalyzer(self):
+    def initAnalyzer(self):
         if self.Vi.isSessionOpen == FALSE:
             print("Error: Session to the analyzer is not open")
             return
-        if self.isAnalyzerOn:
-            # turn it off
-            self.isAnalyzerOn = FALSE
-            return
-        # turn it on
-        # self.Vi.openRsrc.write_ascii_values("*RST")
-        # # is buffer large enough?
-        # self.Vi.openRsrc.write_ascii_values("*WAI")
-        # clear buffer and continue...
-        
+        # Reset analyzer state
+        self.Vi.openRsrc.write("*RST")
+        self.Vi.openRsrc.write("*WAI")
+        # is buffer large enough?
+        self.Vi.openRsrc.write(":INIT:CONT OFF")
+        self.Vi.openRsrc.write(":FETCh:SAN?")
+        buffer = self.Vi.openRsrc.read_ascii_values()
+        statusCode = self.Vi.openRsrc.last_status
+        print(f"Buffer size: {sys.getsizeof(buffer)} bytes")
+        print(f"Status byte: {hex(statusCode)}.")
+        # PyVISA reads until a termination is received, not specified bytes like NI-VISA unless resource.read_bytes() is called.
+        # As a result, this test may not be necessary but edge cases for the maximum return value of resource.read() must be tested.
+        if (statusCode == constants.VI_SUCCESS_MAX_CNT or statusCode == constants.VI_SUCCESS_TERM_CHAR):
+            print(f"Error {hex(statusCode)}: viRead did not return termination character or END indicated. Increase read bytes to fix.")
+            self.Vi.openRsrc.flush(constants.VI_READ_BUF)
+            return RETURN_ERROR
+        # Set widget values (WIP)
+
+        # read stuff...
+        while (TRUE):
+            self.ax.clear()
+            buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
+            xAxis = buffer[::2]
+            yAxis = buffer[1::2]
+            self.ax.plot(xAxis, yAxis)
+            self.spectrumDisplay.draw()
+            time.sleep(0.5)
+
+        # wait for response
+        # read/log
+        # loop
+        print("end of loop")
         return
     
-    def hello(*args):
-        print("Hello")
+    def toggleAnalyzer(self):
+        """Checks if thread t1 is alive. 
+        If yes, sets analyzerKillFlag TRUE so initAnalyzer returns and t1 can be joined. 
+        If no, sets analyzerKillFlag FALSE and starts t1 which calls initAnalyzer.
+
+        Returns:
+            Literal: 0 on success, 1 on error
+        """
+        if self.t1.is_alive():
+            print("Disabling spectrum display.")
+            self.analyzerKillFlag = TRUE
+            self.t1.join()
+            if self.t1.is_alive():
+                print("Error: thread.join() timed out. Thread target initAnalyzer() still active.")
+                return RETURN_ERROR
+            else:
+                print("Spectrum display successfully disabled.")
+                return RETURN_SUCCESS
+        else:
+            print("Starting spectrum display.")
+            self.analyzerKillFlag = FALSE
+            self.t1.start()
+            return RETURN_SUCCESS
+            
 
     def update_time( self ):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -366,12 +434,6 @@ def redirector(inputStr):
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
 sys.stdout.write = redirector
 sys.stderr.write = redirector
-
-# Generate thread to handle live data plot in background
-t1 = threading.Thread(target=DFS_Window.hello)
-t1.start()
-if t1.is_alive():
-    print("thread is alive")
 
 # Limit window size to the minimum size on generation
 root.update()

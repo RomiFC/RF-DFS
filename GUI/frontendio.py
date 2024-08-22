@@ -1,3 +1,6 @@
+"""Module that handles inputs/outputs of the Python Front End.
+"""
+
 # PRIVATE LIBRARIES
 import sys
 from data import *
@@ -6,7 +9,6 @@ from data import *
 import tkinter as tk
 from tkinter import *
 from tkinter import messagebox
-from tkinter import ttk
 
 # SERIAL
 import serial
@@ -20,19 +22,11 @@ from timestamp import *
 import pyvisa as visa
 from pyvisa import constants
 
- 
 # CONSTANTS
 RETURN_ERROR = 1
 RETURN_SUCCESS = 0
-CHUNK_SIZE_DEF = 20480     # Default byte count to read when issuing viRead
-CHUNK_SIZE_MIN = 1024
-CHUNK_SIZE_MAX = 1048576  # Max chunk size allowed
-TIMEOUT_DEF = 2000        # Default VISA timeout value
-TIMEOUT_MIN = 1000        # Minimum VISA timeout value
-TIMEOUT_MAX = 25000       # Maximum VISA timeout value
 
 class MotorControl: 
- 
     def __init__(self, Azimuth, Elevation, userAzi = 0, userEle = 0, Azi_bound = [0,360], Ele_bound = [-90,10] ): 
         self.Azimuth    = Azimuth
         self.Elevation  = Elevation
