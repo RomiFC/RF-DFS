@@ -450,17 +450,17 @@ Subsection text here
             \draw(sw1.out 1) -- ++ (0.5, 0) |- ++ (0.75, 0.85)
             node[rotary switch = 2 in 30 wiper 20, anchor=in](sw2){};
             
-            \draw(sw2.out 1) -| ++ (0.75, 0.5)
+            \draw(sw2.out 1) -| ++ (0.75, 0.75)
             -- ++ (0.5, 0)
             to[amp, invert] ++ (1.5, 0)
-            to[amp, invert] ++ (1.5, 0)
+            to[amp, invert, name=emsref1] ++ (1.5, 0)
             to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
             coordinate(p1);
             
-            \draw(sw2.out 2) -| ++ (0.75, -0.5)
+            \draw(sw2.out 2) -| ++ (0.75, -0.75)
             -- ++ (0.5 ,0)
             to[amp, invert] ++ (1.5, 0)
-            to[amp, invert] ++ (1.5, 0)
+            to[amp, invert, name=emsref2] ++ (1.5, 0)
             to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
             coordinate(p2);
 
@@ -474,7 +474,7 @@ Subsection text here
             \draw(sw1.out 2) -| ++ (1.5, -1.5)
             -- ++ (1, 0)
             to[amp, invert] ++ (2, 0)
-            to[amp, invert] ++ (2, 0)
+            to[amp, invert, name=dfsref1] ++ (2, 0)
             to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
             -- ++ (1.63, 0)
             node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
@@ -483,9 +483,14 @@ Subsection text here
             \draw(sw1.north) node[anchor=south](sw1lab){S1};
             \draw(sw2.north) node[anchor=south](sw2lab){S2};
             \draw(sw3.north) node[anchor=south](sw3lab){S3};
-            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2) node[anchor=south]{PLC};
-            \draw(sw2lab.north) [dashed, <-] -- ++ (0, 0.8) node[anchor=south]{PLC};
-            \draw(sw3lab.north) [dashed, <-] -- ++ (0, 0.8) node[anchor=south]{PLC};
+            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.1) node[anchor=south]{PLC};
+            \draw(sw2lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
+            \draw(sw3lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
+
+            % Amplifier labels
+            \draw(emsref1.north) ++ (0, 0.2) node[anchor=south]{PMA3-14LN+};
+            \draw(emsref2.north) ++ (0, 0.2) node[anchor=south]{PMA-183PLN+};
+            \draw(dfsref1.north) ++ (0, 0.1) node[anchor=south]{TBD};
         \end{circuitikz}
     \caption{Block diagram 3.}\label{fig:rfampblock}
     \end{center}
