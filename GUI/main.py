@@ -229,6 +229,15 @@ class FrontEnd():
         tabSelect.columnconfigure(1, weight=1)
         tabSelect.columnconfigure(2, weight=10)
 
+        # TKINTER VARIABLES
+        spanType = StringVar()
+        rbwType = StringVar()
+        vbwType = StringVar()
+        bwRatioType = StringVar()
+        rbwFilterShape = StringVar()
+        rbwFilterType = StringVar()
+        attenType = StringVar()
+
         self.motor = MotorControl( 0 , 0 )
         
         # COLUMN 0 WIDGETS
@@ -278,8 +287,8 @@ class FrontEnd():
         # MATPLOTLIB GRAPH
         fig, self.ax = plt.subplots()
         self.spectrumDisplay = FigureCanvasTkAgg(fig, master=self.spectrumFrame)
-        self.spectrumDisplay.get_tk_widget().grid(row = 1, column = 0)
-        self.setAnalyzerPlotValues(xmin = 0, xmax=20e9)
+        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0)
+        self.setAnalyzerPlotLimits(xmin = 0, xmax=20e9)
 
         # MEASUREMENT COMMANDS
         self.measurementTab = ttk.Notebook(self.spectrumFrame)
@@ -291,13 +300,104 @@ class FrontEnd():
         self.measurementTab.add(tab3, text="Amp")
         self.measurementTab.grid(row=0, column=1, sticky=NSEW)
 
+        # MEASUREMENT TAB 1 (FREQUENCY)
+        centerFreqFrame = ttk.LabelFrame(tab1, text="Center Frequency")
+        centerFreqFrame.grid(row=0, column=0)
+        centerFreqEntry = ttk.Entry(centerFreqFrame)
+        centerFreqEntry.pack()
+
+        spanFrame = ttk.LabelFrame(tab1, text="Span")
+        spanFrame.grid(row=1, column=0)
+        spanEntry = ttk.Entry(spanFrame)
+        spanEntry.pack()
+        spanSweptButton = ttk.Radiobutton(spanFrame, variable=spanType, text = "Swept Span", value='swept')
+        spanSweptButton.pack(anchor=W)
+        spanZeroButton = ttk.Radiobutton(spanFrame, variable=spanType, text = "Zero Span", value='zero')
+        spanZeroButton.pack(anchor=W)
+        spanFullButton = ttk.Button(spanFrame, text = "Full Span")
+        spanFullButton.pack(anchor=S, fill=BOTH)
+
+        startFreqFrame = ttk.LabelFrame(tab1, text="Start Frequency")
+        startFreqFrame.grid(row=2, column=0)
+        startFreqEntry = ttk.Entry(startFreqFrame)
+        startFreqEntry.pack()
+
+        stopFreqFrame = ttk.LabelFrame(tab1, text="Stop Frequency")
+        stopFreqFrame.grid(row=3, column=0)
+        stopFreqEntry = ttk.Entry(stopFreqFrame)
+        stopFreqEntry.pack()
+
+        # MEASUREMENT TAB 2 (BANDWIDTH)
+        rbwFrame = ttk.LabelFrame(tab2, text="Res BW")
+        rbwFrame.grid(row=0, column=0)
+        rbwEntry = ttk.Entry(rbwFrame)
+        rbwEntry.pack()
+        rbwAutoButton = ttk.Radiobutton(rbwFrame, variable=rbwType, text="Auto", value='auto')
+        rbwAutoButton.pack(anchor=W)
+        rbwManButton = ttk.Radiobutton(rbwFrame, variable=rbwType, text="Manual", value='manual')
+        rbwManButton.pack(anchor=W)
+        
+        vbwFrame = ttk.LabelFrame(tab2, text="Video BW")
+        vbwFrame.grid(row=1, column=0)
+        vbwEntry = ttk.Entry(vbwFrame)
+        vbwEntry.pack()
+        vbwAutoButton = ttk.Radiobutton(vbwFrame, variable=vbwType, text="Auto", value='auto')
+        vbwAutoButton.pack(anchor=W)
+        vbwManButton = ttk.Radiobutton(vbwFrame, variable=vbwType, text="Manual", value='manual')
+        vbwManButton.pack(anchor=W)
+
+        bwRatioFrame = ttk.LabelFrame(tab2, text="VBW:RBW")
+        bwRatioFrame.grid(row=2, column=0)
+        bwRatioEntry = ttk.Entry(bwRatioFrame)
+        bwRatioEntry.pack()
+        bwRatioAutoButton = ttk.Radiobutton(bwRatioFrame, variable=bwRatioType, text="Auto", value='auto')
+        bwRatioAutoButton.pack(anchor=W)
+        bwRatioManButton = ttk.Radiobutton(bwRatioFrame, variable=bwRatioType, text="Manual", value='manual')
+        bwRatioManButton.pack(anchor=W)
+
+        rbwFilterShapeFrame = ttk.LabelFrame(tab2, text="RBW Filter Shape")
+        rbwFilterShapeFrame.grid(row=3, column=0)
+        rbwFilterShapeCombo = ttk.Combobox(rbwFilterShapeFrame, textvariable=rbwFilterShape, values = ["Gaussian", "Flattop"])
+        rbwFilterShapeCombo.pack(anchor=W)
+
+        rbwFilterTypeFrame = ttk.LabelFrame(tab2, text="RBW Filter Type")
+        rbwFilterTypeFrame.grid(row=4, column=0)
+        rbwFilterTypeCombo = ttk.Combobox(rbwFilterTypeFrame, textvariable=rbwFilterType, values = ["-3 dB (Normal)", "-6 dB", "Impulse", "Noise"])
+        rbwFilterTypeCombo.pack(anchor=W)
+
+        # MEASUREMENT TAB 3 (AMPLITUDE)
+        refLevelFrame = ttk.LabelFrame(tab3, text="Ref Level")
+        refLevelFrame.grid(row=0, column=0)
+        refLevelEntry = ttk.Entry(refLevelFrame)
+        refLevelEntry.pack()
+
+        yScaleFrame = ttk.LabelFrame(tab3, text="Scale/Division")
+        yScaleFrame.grid(row=1, column=0)
+        yScaleEntry = ttk.Entry(yScaleFrame)
+        yScaleEntry.pack()
+
+        numDivFrame = ttk.LabelFrame(tab3, text="Number of Divisions")
+        numDivFrame.grid(row=2, column=0)
+        numDivEntry = ttk.Entry(numDivFrame)
+        numDivEntry.pack()
+
+        attenFrame = ttk.LabelFrame(tab3, text="Mech Atten")
+        attenFrame.grid(row=3, column=0)
+        attenEntry = ttk.Entry(attenFrame)
+        attenEntry.pack()
+        attenAutoButton = ttk.Radiobutton(attenFrame, variable=attenType, text="Auto", value='auto')
+        attenAutoButton.pack(anchor=W)
+        attenManButton = ttk.Radiobutton(attenFrame, variable=attenType, text="Manual", value='manual')
+        attenManButton.pack(anchor=W)
+
+
         # TOGGLE BUTTON
         self.placeholder = tk.Button(self.spectrumFrame, text="Placeholder Text", command=lambda:self.t1.start())
-        self.placeholder.grid(row=0, column=0, sticky=NSEW)
+        self.placeholder.grid(row=1, column=0, sticky=NSEW)
         self.spectrumToggle = tk.Button(self.spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
         self.spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
-    def initAnalyzerPlotValues(self):
+    def initAnalyzerPlotLimits(self):
         if self.Vi.isSessionOpen == FALSE:
             print("Error: Session to the analyzer is not open.")
             return RETURN_ERROR
@@ -311,12 +411,12 @@ class FrontEnd():
         numDivisions =      self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:NDIV?")
         scalePerDivision =  self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:PDIV?")
 
-        self.setAnalyzerPlotValues(xmin=startFreq, xmax=stopFreq, ymin=ref-numDivisions*scalePerDivision, ymax=ref)
+        self.setAnalyzerPlotLimits(xmin=startFreq, xmax=stopFreq, ymin=ref-numDivisions*scalePerDivision, ymax=ref)
 
-    def setAnalyzerPlotValues(self, **kwargs):
-        if kwargs["xmin"] in kwargs.values() and kwargs["xmax"]:
+    def setAnalyzerPlotLimits(self, **kwargs):
+        if kwargs.get("xmin") in kwargs.values() and kwargs["xmax"]:
             self.ax.set_xlim(kwargs["xmin"], kwargs["xmax"])
-        if kwargs["ymin"] in kwargs.values() and kwargs["ymax"] in kwargs.values():
+        if kwargs.get("ymin") in kwargs.values() and kwargs.get("ymax") in kwargs.values():
             self.ax.set_ylim(kwargs["ymin"], kwargs["ymax"])
         self.ax.margins(0, 0.05)
         self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
