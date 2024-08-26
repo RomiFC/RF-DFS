@@ -303,15 +303,15 @@ class VisaControl():
         """Tests if a session is open to the variable openRsrc
 
         Returns:
-            False: If session is closed
-            True: If session is open
+            FALSE: If session is closed
+            TRUE: If session is open
         """
         try:
             self.openRsrc.session                           # Is a session open? (Will throw error if not open)
         except:
-            return False
+            return FALSE
         else:
-            return True
+            return TRUE
         
     def isError(self):
         """Checks the last status code returned from an operation at the opened resource manager (self.rm)

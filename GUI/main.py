@@ -32,7 +32,7 @@ class FrontEnd():
         """Initializes the top level tkinter interface
         """
         # Generate thread to handle live data plot in background
-        self.t1 = threading.Thread(target=self.initAnalyzerDisplay, daemon=TRUE)
+        self.t1 = threading.Thread(target=self.loopAnalyzerDisplay, daemon=TRUE)
 
         # CONSTANTS
         self.SELECT_TERM_VALUES = ['Line Feed - \\n', 'Carriage Return - \\r']
@@ -423,10 +423,19 @@ class FrontEnd():
         print("set values")
         return RETURN_SUCCESS
 
-    def initAnalyzerDisplay(self):
-        if self.Vi.isSessionOpen == FALSE:
-            print("Error: Session to the analyzer is not open.")
-            return RETURN_ERROR
+    def loopAnalyzerDisplay(self):
+        printFlag = FALSE
+        while TRUE:
+            if self.Vi.isSessionOpen() == FALSE:
+                if not printFlag:
+                    print("Error: Session to the analyzer is not open.")
+                    printFlag = TRUE
+                # Prevent this thread from taking up too much utilization
+                time.sleep(1)
+                continue
+            else:
+                print("break")
+                break
         # Reset analyzer state
         self.Vi.openRsrc.write("*RST")
         self.Vi.openRsrc.write("*WAI")
@@ -435,55 +444,42 @@ class FrontEnd():
         self.Vi.openRsrc.write(":FETCh:SAN?")
         buffer = self.Vi.openRsrc.read_ascii_values()
         statusCode = self.Vi.openRsrc.last_status
-        print(f"Buffer size: {sys.getsizeof(buffer)} bytes")
-        print(f"Status byte: {hex(statusCode)}.")
         # PyVISA reads until a termination is received, not specified bytes like NI-VISA unless resource.read_bytes() is called.
         # As a result, this test may not be necessary but edge cases for the maximum return value of resource.read() must be tested.
-        if (statusCode == constants.VI_SUCCESS_MAX_CNT or statusCode == constants.VI_SUCCESS_TERM_CHAR):
-            print(f"Error {hex(statusCode)}: viRead did not return termination character or END indicated. Increase read bytes to fix.")
-            self.Vi.openRsrc.flush(constants.VI_READ_BUF)
-            return RETURN_ERROR
+        # if (statusCode == constants.VI_SUCCESS_MAX_CNT or statusCode == constants.VI_SUCCESS_TERM_CHAR):
+        #     print(f"Error {hex(statusCode)}: viRead did not return termination character or END indicated. Increase read bytes to fix.")
+        #     self.Vi.openRsrc.flush(constants.VI_READ_BUF)
+        #     return RETURN_ERROR
+        print(f"Buffer size: {sys.getsizeof(buffer)} bytes")
+        print(f"Status byte: {hex(statusCode)}.")
         # Set widget values (WIP)
 
         # read stuff...
-        while (TRUE):
-            self.ax.clear()
-            buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
-            xAxis = buffer[::2]
-            yAxis = buffer[1::2]
-            self.ax.plot(xAxis, yAxis)
-            self.spectrumDisplay.draw()
-            time.sleep(0.5)
-
-        # wait for response
-        # read/log
-        # loop
-        print("end of loop")
+        # TODO: variable time.sleep based on analyzer sweep time
+        while TRUE:
+            if not self.analyzerKillFlag:
+                self.ax.clear()
+                buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
+                xAxis = buffer[::2]
+                yAxis = buffer[1::2]
+                self.ax.plot(xAxis, yAxis)
+                self.spectrumDisplay.draw()
+                time.sleep(0.5)
+            else:
+                # Prevent this thread from taking up too much utilization
+                time.sleep(0.5)
+                
         return
     
     def toggleAnalyzerDisplay(self):
-        """Checks if thread t1 is alive. 
-        If yes, sets analyzerKillFlag TRUE so initAnalyzerDisplay returns and t1 can be joined. 
-        If no, sets analyzerKillFlag FALSE and starts t1 which calls initAnalyzerDisplay.
-
-        Returns:
-            Literal: 0 on success, 1 on error
+        """sets analyzerKillFlag != analyzerKillFlag to control loopAnalyzerDisplay()
         """
-        if self.t1.is_alive():
-            print("Disabling spectrum display.")
-            self.analyzerKillFlag = TRUE
-            self.t1.join()
-            if self.t1.is_alive():
-                print("Error: thread.join() timed out. Thread target initAnalyzerDisplay() still active.")
-                return RETURN_ERROR
-            else:
-                print("Spectrum display successfully disabled.")
-                return RETURN_SUCCESS
-        else:
+        if self.analyzerKillFlag:
             print("Starting spectrum display.")
             self.analyzerKillFlag = FALSE
-            self.t1.start()
-            return RETURN_SUCCESS
+        else:
+            print("Disabling spectrum display.")
+            self.analyzerKillFlag = TRUE
             
 
     def update_time( self ):
