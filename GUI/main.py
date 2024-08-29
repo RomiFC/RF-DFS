@@ -138,10 +138,10 @@ class FrontEnd():
         self.configFrame = ttk.LabelFrame(tabSelect, borderwidth = 2, text = "VISA Configuration")
         self.configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=tk.N)
         self.timeoutLabel = ttk.Label(self.configFrame, text = 'Timeout (ms)')
-        self.timeoutWidget = ttk.Spinbox(self.configFrame, from_=TIMEOUT_MIN, to=TIMEOUT_MAX, increment=100)
+        self.timeoutWidget = ttk.Spinbox(self.configFrame, from_=TIMEOUT_MIN, to=TIMEOUT_MAX, increment=100, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.timeoutWidget.set(self.timeout)
         self.chunkSizeLabel = ttk.Label(self.configFrame, text = 'Chunk size (Bytes)')
-        self.chunkSizeWidget = ttk.Spinbox(self.configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240)
+        self.chunkSizeWidget = ttk.Spinbox(self.configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.chunkSizeWidget.set(self.chunkSize)
         self.applyButton = tk.Button(self.configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
         # VISA CONFIGURATION GRID
@@ -327,7 +327,7 @@ class FrontEnd():
 
         self.spanFrame = ttk.LabelFrame(tab1, text="Span")
         self.spanFrame.grid(row=1, column=0)
-        self.spanEntry = ttk.Entry(self.spanFrame, validate="focusout")
+        self.spanEntry = ttk.Entry(self.spanFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.spanEntry.pack()
         self.spanSweptButton = ttk.Radiobutton(self.spanFrame, variable=spanType, text = "Swept Span", value='swept')
         self.spanSweptButton.pack(anchor=W)
@@ -338,18 +338,18 @@ class FrontEnd():
 
         self.startFreqFrame = ttk.LabelFrame(tab1, text="Start Frequency")
         self.startFreqFrame.grid(row=2, column=0)
-        self.startFreqEntry = ttk.Entry(self.startFreqFrame, validate="focusout")
+        self.startFreqEntry = ttk.Entry(self.startFreqFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.startFreqEntry.pack()
 
         self.stopFreqFrame = ttk.LabelFrame(tab1, text="Stop Frequency")
         self.stopFreqFrame.grid(row=3, column=0)
-        self.stopFreqEntry = ttk.Entry(self.stopFreqFrame, validate="focusout")
+        self.stopFreqEntry = ttk.Entry(self.stopFreqFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.stopFreqEntry.pack()
 
         # MEASUREMENT TAB 2 (BANDWIDTH)
         self.rbwFrame = ttk.LabelFrame(tab2, text="Res BW")
         self.rbwFrame.grid(row=0, column=0)
-        self.rbwEntry = ttk.Entry(self.rbwFrame, validate="focusout")
+        self.rbwEntry = ttk.Entry(self.rbwFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.rbwEntry.pack()
         self.rbwAutoButton = ttk.Radiobutton(self.rbwFrame, variable=rbwType, text="Auto", value=AUTO)
         self.rbwAutoButton.pack(anchor=W)
@@ -358,7 +358,7 @@ class FrontEnd():
         
         self.vbwFrame = ttk.LabelFrame(tab2, text="Video BW")
         self.vbwFrame.grid(row=1, column=0)
-        self.vbwEntry = ttk.Entry(self.vbwFrame, validate="focusout")
+        self.vbwEntry = ttk.Entry(self.vbwFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.vbwEntry.pack()
         self.vbwAutoButton = ttk.Radiobutton(self.vbwFrame, variable=vbwType, text="Auto", value=AUTO)
         self.vbwAutoButton.pack(anchor=W)
@@ -367,7 +367,7 @@ class FrontEnd():
 
         self.bwRatioFrame = ttk.LabelFrame(tab2, text="VBW:RBW")
         self.bwRatioFrame.grid(row=2, column=0)
-        self.bwRatioEntry = ttk.Entry(self.bwRatioFrame, validate="focusout")
+        self.bwRatioEntry = ttk.Entry(self.bwRatioFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.bwRatioEntry.pack()
         self.bwRatioAutoButton = ttk.Radiobutton(self.bwRatioFrame, variable=bwRatioType, text="Auto", value=AUTO)
         self.bwRatioAutoButton.pack(anchor=W)
@@ -387,22 +387,22 @@ class FrontEnd():
         # MEASUREMENT TAB 3 (AMPLITUDE)
         self.refLevelFrame = ttk.LabelFrame(tab3, text="Ref Level")
         self.refLevelFrame.grid(row=0, column=0)
-        self.refLevelEntry = ttk.Entry(self.refLevelFrame, validate="focusout")
+        self.refLevelEntry = ttk.Entry(self.refLevelFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.refLevelEntry.pack()
 
         self.yScaleFrame = ttk.LabelFrame(tab3, text="Scale/Division")
         self.yScaleFrame.grid(row=1, column=0)
-        self.yScaleEntry = ttk.Entry(self.yScaleFrame, validate="focusout")
+        self.yScaleEntry = ttk.Entry(self.yScaleFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.yScaleEntry.pack()
 
         self.numDivFrame = ttk.LabelFrame(tab3, text="Number of Divisions")
         self.numDivFrame.grid(row=2, column=0)
-        self.numDivEntry = ttk.Entry(self.numDivFrame, validate="focusout")
+        self.numDivEntry = ttk.Entry(self.numDivFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.numDivEntry.pack()
 
         self.attenFrame = ttk.LabelFrame(tab3, text="Mech Atten")
         self.attenFrame.grid(row=3, column=0)
-        self.attenEntry = ttk.Entry(self.attenFrame, validate="focusout")
+        self.attenEntry = ttk.Entry(self.attenFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.attenEntry.pack()
         self.attenAutoButton = ttk.Radiobutton(self.attenFrame, variable=attenType, text="Auto", value=AUTO)
         self.attenAutoButton.pack(anchor=W)
@@ -638,6 +638,7 @@ console.grid(column=0, row=0, sticky=(N, S, E, W))
 
 def redirector(inputStr):
     console.insert(INSERT, inputStr)
+    console.yview(MOVETO, 1)
 
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
 sys.stdout.write = redirector
