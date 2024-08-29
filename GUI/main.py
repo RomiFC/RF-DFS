@@ -56,7 +56,7 @@ class FrontEnd():
         # VARIABLES
         self.timeout = TIMEOUT_DEF           # VISA timeout value
         self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
-        self.instrument = ''                 # ID of the currently open instrument. Used only in resetWidgetValues method
+        self.instrument = ''                 # ID of the currently open instrument. Used only in resetConfigWidgets method
         self.analyzerKillFlag = TRUE
 
         # TKINTER VARIABLES
@@ -81,7 +81,7 @@ class FrontEnd():
 
         tabControl.add(self.tab1, text ='Control') 
         tabControl.add(self.tab2, text ='Config') 
-        tabControl.bind('<Button-1>', lambda event: self.resetWidgetValues(event))
+        tabControl.bind('<Button-1>', lambda event: self.resetConfigWidgets(event))
         tabControl.pack(expand = 1, fill ="both") 
 
         self.controlTab()
@@ -167,7 +167,7 @@ class FrontEnd():
         self.selectTermWidget.grid(row = 2, column = 0, pady = 5)
     
 
-    def resetWidgetValues(self, event):
+    def resetConfigWidgets(self, event):
         """Event handler to reset widget values to their respective variables
 
         Args:
@@ -201,7 +201,7 @@ class FrontEnd():
             pass
         
     def scpiApplyConfig(self, timeoutArg, chunkSizeArg):
-        """Issues VISA commands to set config and applies changes made in the SCPI configuration frame to variables timeout and chunkSize (for resetWidgetValues)
+        """Issues VISA commands to set config and applies changes made in the SCPI configuration frame to variables timeout and chunkSize (for resetConfigWidgets)
 
         Args:
             timeoutArg (string): Argument received from timeout widget which will be tested for type int and within range
@@ -233,7 +233,7 @@ class FrontEnd():
             raise TypeError(f'int timeout out of range. Min: {TIMEOUT_MIN}, Max: {TIMEOUT_MAX}')
         if chunkSizeArg < CHUNK_SIZE_MIN or chunkSizeArg > CHUNK_SIZE_MAX:
             raise TypeError(f'int chunkSize out of range. Min: {CHUNK_SIZE_MIN}, Max: {CHUNK_SIZE_MAX}')
-        # Call self.Vi.setConfig and if successful, print output and set variables for resetWidgetValues
+        # Call self.Vi.setConfig and if successful, print output and set variables for resetConfigWidgets
         if self.Vi.setConfig(timeoutArg, chunkSizeArg, self.sendEnd.get(), self.enableTerm.get(), termChar) == RETURN_SUCCESS:
             self.timeout = timeoutArg
             self.chunkSize = chunkSizeArg
