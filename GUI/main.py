@@ -33,10 +33,15 @@ SWEPT = 'swept'
 ZERO = 'zero'
 
 def isNumber(input):
-    if input.isdigit() or input == "":
+    try:
+        float(f"{input}0")
         return TRUE
-    else:
+    except:
         return FALSE
+    
+def clearAndSetEntry(widget, arg):
+    widget.delete(0, END)
+    widget.insert(0, arg)
 
 class FrontEnd():
     def __init__(self, root):
@@ -409,12 +414,25 @@ class FrontEnd():
         self.attenManButton = ttk.Radiobutton(self.attenFrame, variable=attenType, text="Manual", value=MANUAL)
         self.attenManButton.pack(anchor=W)
 
+        # BIND WIDGETS
+        self.centerFreqEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, centerfreq = self.centerFreqEntry.get()))
+        self.spanEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, span = self.spanEntry.get()))
+        self.startFreqEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, startfreq = self.startFreqEntry.get()))
+        self.stopFreqEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, stopfreq = self.stopFreqEntry.get()))
+        self.rbwEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, rbw = self.rbwEntry.get()))
+        self.vbwEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, vbw = self.vbwEntry.get()))
+        self.bwRatioEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, bwratio = self.bwRatioEntry.get()))
+        self.refLevelEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, ref = self.refLevelEntry.get()))
+        self.yScaleEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, yscale = self.yScaleEntry.get()))
+        self.numDivEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, numdiv = self.numDivEntry.get()))
+        self.attenEntry.bind('<Return>', lambda event: self.setAnalyzerValue(event, atten = self.attenEntry.get()))
+
         # TOGGLE BUTTON
         spectrumToggle = tk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
         spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
     def initAnalyzerPlotLimits(self):
-        if self.Vi.isSessionOpen == FALSE:
+        if self.Vi.isSessionOpen() == FALSE:
             print("Error: Session to the analyzer is not open.")
             return RETURN_ERROR
         startFreq =         self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:START?")
@@ -439,14 +457,20 @@ class FrontEnd():
         print("set values")
         return RETURN_SUCCESS
     
-    def setAnalyzerValue(self, **kwargs):
+    def setAnalyzerValue(self, event, **kwargs):
+        if self.Vi.isSessionOpen() == FALSE:
+            print("Error: Session to the Analyzer is not open.")
+            return
         # if kwargs.get...
         #   call resource.write(kwarg[...])
         #   write resource.read_ascii_values(kwarg[...]) to buffer
         #   set widget value to buffer
         buffer = ''
         if kwargs.get("centerfreq"):
-            self.centerFreqEntry.set(buffer)
+            self.Vi.openRsrc.write(f':SENS:FREQ:CENTER {kwargs["centerfreq"]}')
+            buffer = self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:CENTER?")
+            clearAndSetEntry(self.centerFreqEntry, buffer)
+            print(buffer)
         if kwargs.get("span"):
             self.spanEntry.set(buffer)
         if kwargs.get("startfreq") in kwargs.values():
