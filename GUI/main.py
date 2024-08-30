@@ -67,9 +67,7 @@ class FrontEnd():
 
         # REGISTER CALLBACK FUNCTIONS
         self.isNumWrapper = root.register(isNumber)
-        
-        self.root = root
-        self.root.title('RF-DFS')
+
         self.Vi = VisaControl()
         self.Vi.openRsrcManager()
 
@@ -92,7 +90,7 @@ class FrontEnd():
         t1 = threading.Thread(target=self.loopAnalyzerDisplay, daemon=TRUE)
         t1.start()
 
-        self.root.after(1000, self.update_time )
+        root.after(1000, self.update_time )
     
     def on_closing( self ):
         """ Ask to close serial communication when 'X' button is pressed """
@@ -103,7 +101,7 @@ class FrontEnd():
         else:
             pass
     
-        self.root.quit()
+        root.quit()
 
     def configTab(self):
         """Generates the SCPI communication interface on the developer's tab of choice at tabSelect
@@ -592,7 +590,7 @@ class FrontEnd():
     def update_time( self ):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
         self.clock_label.config(text=current_time)
-        self.root.after(1000, self.update_time)
+        root.after(1000, self.update_time)
 
     def freewriting(self):
         """Frexible serial communication Window
@@ -630,7 +628,7 @@ class FrontEnd():
 
     def quit(self):
         self.motor.CloseSerial()
-        self.root.destroy()
+        root.destroy()
 
     def updateOutput( self, oFile, root ):
         def saveData():
@@ -650,6 +648,7 @@ class FrontEnd():
 
 
 root = tk.Tk()                  # Root tkinter interface (contains DFS_Window and standard output console)
+root.title('RF-DFS')
 DFS_Window = FrontEnd(root)     #
 
 # Generate textbox to print standard output/error
