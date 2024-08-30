@@ -230,8 +230,7 @@ class VisaControl():
         """Opens the VISA resource manager on the default backend (NI-VISA). If the VISA library cannot be found, a path must be passed to pyvisa.highlevel.ResourceManager() constructor
 
         Returns:
-            0: On success
-            1: On error
+            Literal (int): 0 on success, 1 on error.
         """
         print('Initializing VISA Resource Manager...')
         self.rm = visa.ResourceManager()
@@ -247,8 +246,7 @@ class VisaControl():
             inputString (string): Name of the resource ID to attempt to connect to. 
 
         Returns:
-            0: On success
-            1: On error
+            Literal (int): 0 on success, 1 on error.
         """
         try:
             self.openRsrc.session                           # Is a session open? (Will throw error if not open)
@@ -272,12 +270,14 @@ class VisaControl():
         """Applies VISA attributes passed in arguments to the open resource when called
 
         Args:
-            timeout (int): VISA timeout value in milliseconds
-            chunkSize (int): PyVISA chunk size in bytes (Read buffer size)
+            timeout (int): VISA timeout value in milliseconds.
+            chunkSize (int): PyVISA chunk size in bytes (Read buffer size).
+            sendEnd (bool): Determine whether or not to send EOI on VISA communications.
+            enableTerm (bool): Determine whether or not to send a termination character on VISA communications.
+            termChar (string): Termination character to send on VISA communications.
 
         Returns:
-            0: On success
-            1: On error
+            Literal (int): 0 on success, 1 on error.
         """
         if self.isSessionOpen():
             try:
@@ -303,8 +303,7 @@ class VisaControl():
         """Tests if a session is open to the variable openRsrc
 
         Returns:
-            FALSE: If session is closed
-            TRUE: If session is open
+            Literal (bool): FALSE if session is closed, TRUE if session is open.
         """
         try:
             self.openRsrc.session                           # Is a session open? (Will throw error if not open)
@@ -317,8 +316,7 @@ class VisaControl():
         """Checks the last status code returned from an operation at the opened resource manager (self.rm)
 
         Returns:
-            0: On success or warning (Operation succeeded)
-            StatusCode: On error
+            Literal (int): 0 on success or warning (operation succeeded), StatusCode on error.
         """
         if self.rm.last_status < constants.VI_SUCCESS:
             return self.rm.last_status

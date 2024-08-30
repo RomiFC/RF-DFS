@@ -209,8 +209,7 @@ class FrontEnd():
             TypeError: ttk::spinbox get() does not return type int or integer out of range for respective variable
 
         Returns:
-            0: On success
-            1: On error
+            Literal (int): 0 on success, 1 on error.
         """
         # Get the termination character from selectTermWidget
         termSelectIndex = self.selectTermWidget.current()
