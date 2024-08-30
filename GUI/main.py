@@ -32,6 +32,12 @@ MANUAL = 'manual'
 SWEPT = 'swept'
 ZERO = 'zero'
 
+# THREADING EVENTS
+AllowAnalyzer = threading.Event()
+AllowAnalyzer.set()
+isAnalyzerInactive = threading.Event()
+
+
 def isNumber(input):
     try:
         float(f"{input}0")
@@ -57,6 +63,8 @@ class FrontEnd():
         self.timeout = TIMEOUT_DEF           # VISA timeout value
         self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
         self.instrument = ''                 # ID of the currently open instrument. Used only in resetConfigWidgets method
+
+        # FLAGS
         self.analyzerKillFlag = TRUE
 
         # TKINTER VARIABLES
@@ -451,25 +459,33 @@ class FrontEnd():
             self.ax.set_ylim(kwargs["ymin"], kwargs["ymax"])
         self.ax.margins(0, 0.05)
         self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
-        print("set values")
         return RETURN_SUCCESS
     
     def setAnalyzerValue(self, event, **kwargs):
         if self.Vi.isSessionOpen() == FALSE:
             print("Error: Session to the Analyzer is not open.")
             return
-        # if kwargs.get...
-        #   call resource.write(kwarg[...])
-        #   write resource.read_ascii_values(kwarg[...]) to buffer
-        #   set widget value to buffer
-        buffer = ''
+
+        _list = []
+
+        # pause the analyzer
+        print('waiting for analyzer inactive')
+        # Wait for the analyzer display loop to complete so that visa commands from the loop do not interfere with ones sent in this method
+        isAnalyzerInactive.wait()
+        AllowAnalyzer.clear()
+        print('analyzer inactive')
+
         if kwargs.get("centerfreq"):
-            self.Vi.openRsrc.write(f':SENS:FREQ:CENTER {kwargs["centerfreq"]}')
-            buffer = self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:CENTER?")
-            clearAndSetEntry(self.centerFreqEntry, buffer)
-            print(buffer)
+            _dict = {
+                'command': 'SENS:FREQ:CENTER',
+                'arg': kwargs.get("centerfreq"),
+                'widget': self.centerFreqEntry
+            }
+            _list.append(_dict)
         if kwargs.get("span"):
-            self.spanEntry.set(buffer)
+            self.Vi.openRsrc.write(f':SENS:FREQ:SPAN {kwargs["span"]}')
+            buffer = self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:SPAN?")
+            clearAndSetEntry(self.spanEntry, buffer)
         if kwargs.get("startfreq") in kwargs.values():
             self.startFreqEntry.set(buffer)
         if kwargs.get("stopfreq"):
@@ -524,6 +540,19 @@ class FrontEnd():
             self.attenAutoButton.select()
         elif kwargs.get("attentype") == MANUAL:
             self.attenManButton.select()
+
+        # EXECUTE COMMANDS
+        for x in _list:
+            # viWrite...
+            # viQuery...
+            # set widget
+            self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
+            buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
+            clearAndSetEntry(x['widget'], buffer)
+
+        # restart analyzer
+        AllowAnalyzer.set()
+        print('setAnalyzerValue returned')
         return
 
     def loopAnalyzerDisplay(self):
@@ -555,14 +584,18 @@ class FrontEnd():
 
         # read stuff...
         # TODO: variable time.sleep based on analyzer sweep time
+        # NOTE: SLEEP TIME MUST BE LONG ENOUGH TO ALLOW THREADING EVENTS TO COMMUNICATE
         while TRUE:
+            AllowAnalyzer.wait()
             if not self.analyzerKillFlag:
+                isAnalyzerInactive.clear()
                 self.ax.clear()
                 buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
                 xAxis = buffer[::2]
                 yAxis = buffer[1::2]
                 self.ax.plot(xAxis, yAxis)
                 self.spectrumDisplay.draw()
+                isAnalyzerInactive.set()
                 time.sleep(0.5)
             else:
                 # Prevent this thread from taking up too much utilization
@@ -585,6 +618,7 @@ class FrontEnd():
             print("Disabling spectrum display.")
             self.analyzerKillFlag = TRUE
             
+    # TODO: Cleanup boilerplate code below
 
     def update_time( self ):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
