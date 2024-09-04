@@ -38,7 +38,7 @@ visaLock = threading.RLock()
 
 # LOGGING
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="[%(asctime)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -52,8 +52,22 @@ def isNumber(input):
         return FALSE
     
 def clearAndSetEntry(widget, arg):
+    """Clear the ttk::entry passed in 'widget' and replace it with 'arg' in scientific notation if possible.
+    The N9040B and other instruments will return queries in square brackets which python interprets as a list.
+
+    Args:
+        widget (ttk.Entry): Widget to clear/set.
+        arg (list): Value in 'arg[0]' will be taken to set the widget in scientific notation. If that fails, attempt to set the widget to 'arg'.
+    """
     widget.delete(0, END)
-    widget.insert(0, arg)
+    # Try to convert string in list to scientific notation
+    try:
+        arg = float(arg[0])
+        widget.insert(0, "{:e}".format(arg))
+        logging.debug(f"clearAndSetEntry passed argument {arg} to {widget}.")
+    except:
+        widget.insert(0, arg)
+        logging.debug(f"Scientific notation conversion failed. clearAndSetEntry passed argument {arg} to {widget}.")
 
 class FrontEnd():
     def __init__(self, root):
@@ -131,7 +145,7 @@ class FrontEnd():
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
             """
-            print('Searching for resources...')
+            logging.info('Searching for resources...')
             self.instrSelectBox['values'] = self.Vi.rm.list_resources()
         def onEnableTermPress():
             if self.enableTerm.get():
@@ -248,7 +262,7 @@ class FrontEnd():
         if self.Vi.setConfig(timeoutArg, chunkSizeArg, self.sendEnd.get(), self.enableTerm.get(), termChar) == RETURN_SUCCESS:
             self.timeout = timeoutArg
             self.chunkSize = chunkSizeArg
-            print(f'Timeout: {self.Vi.openRsrc.timeout}, Chunk size: {self.Vi.openRsrc.chunk_size}, Send EOI: {self.Vi.openRsrc.send_end}, Termination: {repr(self.Vi.openRsrc.write_termination)}')
+            logging.info(f'Timeout: {self.Vi.openRsrc.timeout}, Chunk size: {self.Vi.openRsrc.chunk_size}, Send EOI: {self.Vi.openRsrc.send_end}, Termination: {repr(self.Vi.openRsrc.write_termination)}')
             return RETURN_SUCCESS
         else:
             return RETURN_ERROR
@@ -426,17 +440,17 @@ class FrontEnd():
         self.attenManButton.pack(anchor=W)
 
         # BIND WIDGETS
-        self.centerFreqEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, centerfreq = self.centerFreqEntry.get()))
-        self.spanEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, span = self.spanEntry.get()))
-        self.startFreqEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, startfreq = self.startFreqEntry.get()))
-        self.stopFreqEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, stopfreq = self.stopFreqEntry.get()))
-        self.rbwEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, rbw = self.rbwEntry.get()))
-        self.vbwEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, vbw = self.vbwEntry.get()))
-        self.bwRatioEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, bwratio = self.bwRatioEntry.get()))
-        self.refLevelEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, ref = self.refLevelEntry.get()))
-        self.yScaleEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, yscale = self.yScaleEntry.get()))
-        self.numDivEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, numdiv = self.numDivEntry.get()))
-        self.attenEntry.bind('<Return>', lambda event: self.analyzerThreadHandler(event, atten = self.attenEntry.get()))
+        self.centerFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, centerfreq = self.centerFreqEntry.get()))
+        self.spanEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, span = self.spanEntry.get()))
+        self.startFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, startfreq = self.startFreqEntry.get()))
+        self.stopFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, stopfreq = self.stopFreqEntry.get()))
+        self.rbwEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, rbw = self.rbwEntry.get()))
+        self.vbwEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, vbw = self.vbwEntry.get()))
+        self.bwRatioEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, bwratio = self.bwRatioEntry.get()))
+        self.refLevelEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, ref = self.refLevelEntry.get()))
+        self.yScaleEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, yscale = self.yScaleEntry.get()))
+        self.numDivEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, numdiv = self.numDivEntry.get()))
+        self.attenEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, atten = self.attenEntry.get()))
 
         # TOGGLE BUTTON
         spectrumToggle = tk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
@@ -444,14 +458,14 @@ class FrontEnd():
 
     def initAnalyzerPlotLimits(self):
         if self.Vi.isSessionOpen() == FALSE:
-            print("Error: Session to the analyzer is not open.")
+            logging.error("Session to the analyzer is not open.")
             return RETURN_ERROR
         startFreq =         self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:START?")
         stopFreq =          self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:STOP?")
-        centerFreq =        self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:CENTER?")
-        span =              self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:SPAN?")
-        rbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:RESOUTION?")
-        vbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:VIDEO?")
+        # centerFreq =        self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:CENTER?")
+        # span =              self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:SPAN?")
+        # rbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:RESOUTION?")
+        # vbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:VIDEO?")
         ref =               self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:RLEVEL?")
         numDivisions =      self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:NDIV?")
         scalePerDivision =  self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:PDIV?")
@@ -467,7 +481,7 @@ class FrontEnd():
         self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
         return RETURN_SUCCESS
     
-    def analyzerThreadHandler(self, event, **kwargs):
+    def setAnalyzerThreadHandler(self, event, **kwargs):
         _dict = {}
         for key in kwargs:
             _dict[key] = kwargs.get(key)
@@ -479,91 +493,91 @@ class FrontEnd():
         _list = []
 
         if self.Vi.isSessionOpen() == FALSE:
-            print("Error: Session to the Analyzer is not open.")
+            logging.error("Session to the Analyzer is not open.")
             return
 
-        # pause the analyzer
+        # Acquire thread lock
         # Wait for the analyzer display loop to complete so that visa commands from the loop do not interfere with ones sent in this method
         visaLock.acquire()
-        # ISSUE: PROGRAM CRASHES WHEN SETANALYZERVALUE IS ISSUED SOMETIMES
 
-        if kwargs.get("centerfreq"):
+        if "centerfreq" in kwargs:
             _dict = {
-                'command': 'SENS:FREQ:CENTER',
+                'command': ':SENS:FREQ:CENTER',
                 'arg': kwargs.get("centerfreq"),
                 'widget': self.centerFreqEntry
             }
             _list.append(_dict)
-        if kwargs.get("span"):
+        if "span" in kwargs:
             _dict = {
-                'command': 'SENS:FREQ:SPAN',
+                'command': ':SENS:FREQ:SPAN',
                 'arg': kwargs.get("span"),
                 'widget': self.spanEntry
             }
             _list.append(_dict)
-        if kwargs.get("startfreq") in kwargs.values():
+        if "startfreq" in kwargs:
             _dict = {
                 'command': ':SENS:FREQ:START',
                 'arg': kwargs.get("startfreq"),
                 'widget': self.startFreqEntry
             }
             _list.append(_dict)
-        if kwargs.get("stopfreq"):
+        if "stopfreq" in kwargs:
             _dict = {
                 'command': ':SENS:FREQ:STOP',
                 'arg': kwargs.get("stopfreq"),
                 'widget': self.stopFreqEntry
             }
             _list.append(_dict)
-        if kwargs.get("rbw"):
+        if "rbw" in kwargs:
             _dict = {
                 'command': ':SENS:BANDWIDTH:RESOLUTION',
                 'arg': kwargs.get("rbw"),
                 'widget': self.rbwEntry
             }
             _list.append(_dict)
-        if kwargs.get("vbw"):
+        if "vbw" in kwargs:
             _dict = {
                 'command': ':SENS:BANDWIDTH:VIDEO',
                 'arg': kwargs.get("vbw"),
                 'widget': self.vbwEntry
             }
             _list.append(_dict)
-        if kwargs.get("bwratio"):
+        if "bwratio" in kwargs:
             _dict = {
                 'command': ':SENS:BANDWIDTH:VIDEO:RATIO',
                 'arg': kwargs.get("bwratio"),
                 'widget': self.bwRatioEntry
             }
             _list.append(_dict)
-        if kwargs.get("ref"):
+        if "ref" in kwargs:
             _dict = {
                 'command': ':DISP:WINDOW:TRACE:Y:RLEVEL',
                 'arg': kwargs.get("ref"),
                 'widget': self.refLevelEntry
             }
             _list.append(_dict)
-        if kwargs.get("numdiv"):
+        if "numdiv" in kwargs:
             _dict = {
                 'command': ':DISP:WINDOW:TRACE:Y:NDIV',
                 'arg': kwargs.get("numdiv"),
                 'widget': self.numDivEntry
             }
             _list.append(_dict)
-        if kwargs.get("yscale"):
+        if "yscale" in kwargs:
             _dict = {
                 'command': ':DISP:WINDOW:TRACE:Y:PDIV',
                 'arg': kwargs.get("yscale"),
                 'widget': self.yScaleEntry
             }
             _list.append(_dict)
-        if kwargs.get("atten"):
+        if "atten" in kwargs:
             _dict = {
                 'command': ':SENS:POWER:RF:ATTENUATION',
                 'arg': kwargs.get("atten"),
                 'widget': self.attenEntry
             }
 
+        # TODO: make these do something
         # SPAN TYPE
         if kwargs.get("spantype") == SWEPT:
             self.spanSweptButton.select()
@@ -601,20 +615,27 @@ class FrontEnd():
             self.attenManButton.select()
 
         # EXECUTE COMMANDS
+        logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
         for x in _list:
-            # viWrite...
-            # viQuery...
-            # set widget
             try:
-                self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
-                buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
-                clearAndSetEntry(x['widget'], buffer)
+                if x['arg'] is None:
+                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
+                    logging.info(f"Command {x['command']}? returned {buffer}")
+                    clearAndSetEntry(x['widget'], buffer)
+                else:    
+                    self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
+                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
+                    clearAndSetEntry(x['widget'], buffer)
             except:
-                logging.fatal("VISA ERROR")
-
-        # restart analyzer
+                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. ATTEMPTING TO RESET ANALYZER STATE")
+                self.Vi.openRsrc.write("*RST")
+                self.Vi.openRsrc.write("*WAI")
+                # timeout should be a placeholder for sleep time, possibly *OPC?
+                time.sleep(self.timeout / 1000 + 2)
+                self.Vi.openRsrc.write(":INIT:CONT OFF")
+                logging.fatal("Analyzer state reset.")
+        # Release thread lock
         visaLock.release()
-        print('setAnalyzerValue returned')
         return
 
     def loopAnalyzerDisplay(self):
@@ -644,15 +665,38 @@ class FrontEnd():
             #     print(f"Error {hex(statusCode)}: viRead did not return termination character or END indicated. Increase read bytes to fix.")
             #     self.Vi.openRsrc.flush(constants.VI_READ_BUF)
             #     return RETURN_ERROR
-            print(f"Buffer size: {sys.getsizeof(buffer)} bytes")
-            print(f"Status byte: {hex(statusCode)}.")
+            logging.info(f"Buffer size: {sys.getsizeof(buffer)} bytes")
+            logging.info(f"Status byte: {hex(statusCode)}.")
 
-        resetAnalyzerState()
-        # Set widget values (WIP)
+        # Maintain this loop to prevent fatal error if the connected device is not a spectrum analyzer.
+        errorFlag = TRUE
+        while errorFlag:
+            try:
+                visaLock.acquire()
+                resetAnalyzerState()
+                # Set widget values
+                self.setAnalyzerValue(
+                    centerfreq=None,
+                    span=None,
+                    startfreq=None,
+                    stopfreq=None,
+                    rbw=None,
+                    vbw=None,
+                    bwratio=None,
+                    ref=None,
+                    numdiv=None,
+                    yscale=None,
+                    atten=None,
+                )
+                visaLock.release()
+                errorFlag = FALSE
+            except:
+                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. Attempting to reset analyzer state.")
+                visaLock.release()
+                time.sleep(8)
 
-        # read stuff...
+        # Main analyzer loop
         # TODO: variable time.sleep based on analyzer sweep time
-        # NOTE: fatal error on visa timeout
         while TRUE:
             if not self.analyzerKillFlag:
                 visaLock.acquire()
@@ -664,13 +708,13 @@ class FrontEnd():
                     self.ax.plot(xAxis, yAxis)
                     self.spectrumDisplay.draw()
                 except:
-                    logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. RESETTING ANALYZER STATE")
-                    time.sleep(self.timeout + 2)
-                    # resetAnalyzerState()
+                    logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. ATTEMPTING TO RESET ANALYZER STATE")
                     self.Vi.openRsrc.write("*RST")
                     self.Vi.openRsrc.write("*WAI")
+                    # timeout should be a placeholder for sleep time, possibly *OPC?
+                    time.sleep(self.timeout / 1000 + 2)
                     self.Vi.openRsrc.write(":INIT:CONT OFF")
-                    logging.fatal("Analyzer successfully reset.")
+                    logging.fatal("Analyzer state reset.")
                 visaLock.release()
                 time.sleep(0.5)
             else:
@@ -683,15 +727,15 @@ class FrontEnd():
         """sets analyzerKillFlag != analyzerKillFlag to control loopAnalyzerDisplay()
         """
         if self.Vi.isSessionOpen() == FALSE:
-            print("Error: Session to the analyzer is not open.")
+            logging.info("Error: Session to the analyzer is not open.")
             self.analyzerKillFlag = TRUE
             return
         
         if self.analyzerKillFlag:
-            print("Starting spectrum display.")
+            logging.info("Starting spectrum display.")
             self.analyzerKillFlag = FALSE
         else:
-            print("Disabling spectrum display.")
+            logging.info("Disabling spectrum display.")
             self.analyzerKillFlag = TRUE
             
     # TODO: Cleanup boilerplate code below
