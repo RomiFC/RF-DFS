@@ -334,8 +334,12 @@ class FrontEnd():
         spectrumFrame.columnconfigure(1, weight=1)
 
         # MATPLOTLIB GRAPH
-        fig, self.ax = plt.subplots()
-        self.spectrumDisplay = FigureCanvasTkAgg(fig, master=spectrumFrame)
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot()
+        self.ax.set_title("Spectrum Plot")
+        self.ax.set_xlabel("Frequency (Hz)")
+        self.ax.set_ylabel("Power Spectral Density (dBm/RBW)")
+        self.spectrumDisplay = FigureCanvasTkAgg(self.fig, master=spectrumFrame)
         self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0)
         self.setAnalyzerPlotLimits(xmin = 0, xmax=20e9)
 
@@ -618,21 +622,20 @@ class FrontEnd():
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
         for x in _list:
             try:
+                # Set widgets without issuing a parameter to command
                 if x['arg'] is None:
                     buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
-                    logging.info(f"Command {x['command']}? returned {buffer}")
+                    logging.debug(f"Command {x['command']}? returned {buffer}")
                     clearAndSetEntry(x['widget'], buffer)
+                # Issue a command with parameter and then query that parameter to set widget
                 else:    
                     self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
                     buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
+                    logging.debug(f"Command {x['command']}? returned {buffer}")
                     clearAndSetEntry(x['widget'], buffer)
             except:
                 logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. ATTEMPTING TO RESET ANALYZER STATE")
-                self.Vi.openRsrc.write("*RST")
-                self.Vi.openRsrc.write("*WAI")
-                # timeout should be a placeholder for sleep time, possibly *OPC?
-                time.sleep(self.timeout / 1000 + 2)
-                self.Vi.openRsrc.write(":INIT:CONT OFF")
+                self.Vi.resetAnalyzerState()
                 logging.fatal("Analyzer state reset.")
         # Release thread lock
         visaLock.release()
@@ -650,30 +653,13 @@ class FrontEnd():
             else:
                 break
 
-        # Reset analyzer state
-        def resetAnalyzerState():
-            self.Vi.openRsrc.write("*RST")
-            self.Vi.openRsrc.write("*WAI")
-            # is buffer large enough?
-            self.Vi.openRsrc.write(":INIT:CONT OFF")
-            self.Vi.openRsrc.write(":FETCh:SAN?")
-            buffer = self.Vi.openRsrc.read_ascii_values()
-            statusCode = self.Vi.openRsrc.last_status
-            # PyVISA reads until a termination is received, not specified bytes like NI-VISA unless resource.read_bytes() is called.
-            # As a result, this test may not be necessary but edge cases for the maximum return value of resource.read() must be tested.
-            # if (statusCode == constants.VI_SUCCESS_MAX_CNT or statusCode == constants.VI_SUCCESS_TERM_CHAR):
-            #     print(f"Error {hex(statusCode)}: viRead did not return termination character or END indicated. Increase read bytes to fix.")
-            #     self.Vi.openRsrc.flush(constants.VI_READ_BUF)
-            #     return RETURN_ERROR
-            logging.info(f"Buffer size: {sys.getsizeof(buffer)} bytes")
-            logging.info(f"Status byte: {hex(statusCode)}.")
-
         # Maintain this loop to prevent fatal error if the connected device is not a spectrum analyzer.
         errorFlag = TRUE
         while errorFlag:
             try:
                 visaLock.acquire()
-                resetAnalyzerState()
+                self.Vi.resetAnalyzerState()
+                self.Vi.testBufferSize()
                 # Set widget values
                 self.setAnalyzerValue(
                     centerfreq=None,
@@ -706,14 +692,11 @@ class FrontEnd():
                     xAxis = buffer[::2]
                     yAxis = buffer[1::2]
                     self.ax.plot(xAxis, yAxis)
+                    self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
                 except:
                     logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. ATTEMPTING TO RESET ANALYZER STATE")
-                    self.Vi.openRsrc.write("*RST")
-                    self.Vi.openRsrc.write("*WAI")
-                    # timeout should be a placeholder for sleep time, possibly *OPC?
-                    time.sleep(self.timeout / 1000 + 2)
-                    self.Vi.openRsrc.write(":INIT:CONT OFF")
+                    self.Vi.resetAnalyzerState()
                     logging.fatal("Analyzer state reset.")
                 visaLock.release()
                 time.sleep(0.5)
@@ -802,11 +785,10 @@ class FrontEnd():
 
 root = tk.Tk()                  # Root tkinter interface (contains DFS_Window and standard output console)
 root.title('RF-DFS')
-DFS_Window = FrontEnd(root)     #
 
 # Generate textbox to print standard output/error
 stdoutFrame = tk.Frame(root)
-stdoutFrame.pack(fill=BOTH)
+stdoutFrame.pack(fill=BOTH, side=BOTTOM)
 stdoutFrame.rowconfigure(0, weight=1)
 stdoutFrame.columnconfigure(0, weight=1)
 console = tk.Text(stdoutFrame, height=20)
@@ -819,6 +801,8 @@ def redirector(inputStr):
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
 sys.stdout.write = redirector
 sys.stderr.write = redirector
+
+DFS_Window = FrontEnd(root)
 
 # Limit window size to the minimum size on generation
 root.update()

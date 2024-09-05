@@ -1,8 +1,9 @@
 """Module that handles inputs/outputs of the Python Front End.
 """
 
-# PRIVATE LIBRARIES
+# MISC LIBRARIES
 import sys
+import logging
 from data import *
 
 # TKINTER
@@ -76,9 +77,9 @@ class MotorControl:
         """
         try:
             while( self.ser.in_waiting > 0):
-                print(self.ser.in_waiting)
+                logging.info(f'{self.ser.in_waiting}')
                 msg = self.ser.readline()
-                print(msg)
+                logging.info(f'{msg}')
                 
         except:
             self.errorType = self.connectionError[0]
@@ -130,7 +131,7 @@ class MotorControl:
             isInRange = False
         if isInRange:
             commandToSend = self.commandGen + " x " + self.userAzi + " y " + self.userEle 
-            print("Raange Check cleared")
+            logging.info("Raange Check cleared")
             self.sendCommand( commandToSend )
             self.readLine()
             self.Azimuth = self.userAzi
@@ -150,10 +151,10 @@ class MotorControl:
             try:    
                 self.ser = serial.Serial(port= self.port, baudrate=9600 , bytesize= 8, parity='N', stopbits=1,xonxoff=0, timeout = 1)
                 
-                print( self.ser.is_open )
+                logging.info(f'{self.ser.is_open}')
 
                 # while( self.ser.readline().isspace() ): 
-                #     print( "waiting" )
+                #     logging.info( "waiting" )
         
                 # if ( self.ser.readline() == b'SYS'  ):
                 #     self.ser.write( 'prog 0' )
@@ -162,7 +163,7 @@ class MotorControl:
                 self.sendCommand('\n')
                 time.sleep(3) #needed to let arduino to send it back 
                 self.readLine()
-                print( "communication to motor controller is ready" )
+                logging.info( "communication to motor controller is ready" )
                 
             except: 
                  self.errorType = self.connectionError[0]
@@ -232,10 +233,10 @@ class VisaControl():
         Returns:
             Literal (int): 0 on success, 1 on error.
         """
-        print('Initializing VISA Resource Manager...')
+        logging.info('Initializing VISA Resource Manager...')
         self.rm = visa.ResourceManager()
         if self.isError():
-            print('Could not open a session to the resource manager, error code:', hex(self.rm.last_status))
+            logging.error(f'Could not open a session to the resource manager, error code: {hex(self.rm.last_status)}')
             return RETURN_ERROR     
         return RETURN_SUCCESS
     
@@ -254,17 +255,38 @@ class VisaControl():
             pass                                            # If not open --> continue
         else:
             if self.openRsrc.resource_name == inputString:  # Is the open resource's ID the same as inputString?
-                print('Device is already connected')
+                logging.info('Device is already connected')
                 return RETURN_SUCCESS                       # If yes --> return
         
         # If a session is not open or the open resource does not match inputString, attempt connection to inputString
-        print('Connecting to resource: ' + inputString)
+        logging.info(f'Connecting to resource: {inputString}')
         self.openRsrc = self.rm.open_resource(inputString)
         if self.isError():
-            print('Could not open a session to ' + inputString)
-            print('Error Code:' + self.rm.last_status)
+            logging.error(f'Could not open a session to {inputString}')
+            logging.error(f'Error Code: {self.rm.last_status}')
             return RETURN_ERROR
         return RETURN_SUCCESS
+    
+    def resetAnalyzerState(self):
+        """Issues *RST, *WAI, and :INIT CONT OFF to the open resource.
+        """
+        self.openRsrc.write("*RST")
+        self.openRsrc.write("*WAI")
+        # Consider issuing sleep time or *OPC? here
+        self.openRsrc.write(":INIT:CONT OFF")
+
+    def testBufferSize(self):
+        # PyVISA reads until a termination is received, not specified bytes like NI-VISA unless resource.read_bytes() is called.
+        # As a result, this test may not be necessary but edge cases for the maximum return value of resource.read() must be tested.
+        self.openRsrc.write(":FETCh:SAN?")
+        buffer = self.openRsrc.read_ascii_values()
+        statusCode = self.openRsrc.last_status
+        # if (statusCode == constants.VI_SUCCESS_MAX_CNT or statusCode == constants.VI_SUCCESS_TERM_CHAR):
+        #     logging.error(f"Error {hex(statusCode)}: viRead did not return termination character or END indicated. Increase read bytes to fix.")
+        #     self.Vi.openRsrc.flush(constants.VI_READ_BUF)
+        #     return RETURN_ERROR
+        logging.info(f"Buffer size: {sys.getsizeof(buffer)} bytes")
+        logging.info(f"Status byte: {hex(statusCode)}.")
     
     def setConfig(self, timeout, chunkSize, sendEnd, enableTerm, termChar):
         """Applies VISA attributes passed in arguments to the open resource when called
@@ -292,10 +314,10 @@ class VisaControl():
                     self.openRsrc.read_termination = ''
                 return RETURN_SUCCESS
             except:
-                print(f'An exception occurred. Error code: {self.rm.last_status}')
+                logging.error(f'An exception occurred. Error code: {self.rm.last_status}')
                 return RETURN_ERROR
         else:
-            print("Session to a resource is not open")
+            logging.error("Session to a resource is not open")
             return RETURN_ERROR
             
         
@@ -321,6 +343,6 @@ class VisaControl():
         if self.rm.last_status < constants.VI_SUCCESS:
             return self.rm.last_status
         else:
-            print('Success code:', hex(self.rm.last_status))
+            logging.info(f'Success code: {hex(self.rm.last_status)}')
             return RETURN_SUCCESS
         
