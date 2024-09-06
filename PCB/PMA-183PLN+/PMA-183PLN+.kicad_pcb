@@ -54,7 +54,7 @@
       (layer "B.Mask" (type "Bottom Solder Mask") (color "Purple") (thickness 0.0254) (material "Liquid Ink") (epsilon_r 3.3) (loss_tangent 0))
       (layer "B.Paste" (type "Bottom Solder Paste"))
       (layer "B.SilkS" (type "Bottom Silk Screen") (color "White") (material "Liquid Photo"))
-      (copper_finish "ENIG")
+      (copper_finish "None")
       (dielectric_constraints yes)
     )
     (pad_to_mask_clearance 0.051)
@@ -105,7 +105,7 @@
   (net 7 "Net-(IC2-VE)")
   (net 8 "Net-(IC2-VDD)")
 
-  (footprint "Resistor_SMD:R_0603_1608Metric" (layer "F.Cu")
+  (footprint "rf-dfs:R_0603_1608Metric" (layer "F.Cu")
     (tstamp 06a541f1-b16b-4981-9b13-bd377eea0ef1)
     (at 140.2 82.065 90)
     (descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -159,7 +159,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp 12161165-6b69-4c14-904a-6913ac0778b4)
     (at 140.68 88.13)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -213,7 +213,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_1206_3216Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_1206_3216Metric" (layer "F.Cu")
     (tstamp 16f272fb-e011-4b5a-94b2-d40a12887989)
     (at 144.325 79.4)
     (descr "Capacitor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -267,7 +267,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp 2b287f0f-5c03-4695-81e0-2d3bc4105e95)
     (at 131.7 76.86 -90)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -321,7 +321,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp 39e8622e-a3d4-4836-8f82-ea045eebbd5c)
     (at 140.68 90.1)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -375,7 +375,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp 5117381d-ec71-4829-a488-d20a9b993176)
     (at 137.92 86.16)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -429,7 +429,7 @@
     )
   )
 
-  (footprint "TestPoint:TestPoint_Loop_D2.54mm_Drill1.5mm_Beaded" (layer "F.Cu")
+  (footprint "rf-dfs:TestPoint_Loop_D2.54mm_Drill1.5mm_Beaded" (layer "F.Cu")
     (tstamp 5ac8b10b-1c67-4847-8dd9-ad7eab663d60)
     (at 128.8 86.32)
     (descr "wire loop with bead as test point, loop diameter2.548mm, hole diameter 1.5mm")
@@ -474,7 +474,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp 7014627a-3c11-4f88-9232-f0cbba3c4dac)
     (at 140.2 77.59 -90)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -528,7 +528,7 @@
     )
   )
 
-  (footprint "footprints:Mueller BU-1420761881" (layer "F.Cu")
+  (footprint "rf-dfs:Mueller BU-1420761881" (layer "F.Cu")
     (tstamp 707f36cf-599a-4701-aeaf-80f1ec4fdbd6)
     (at 149.31 94 180)
     (descr "Molex SMA RF Connectors, Edge Mount, (http://www.molex.com/pdm_docs/sd/732511150_sd.pdf)")
@@ -636,7 +636,7 @@
     )
   )
 
-  (footprint "imports:SOT-23-5_M5_MCH" (layer "F.Cu")
+  (footprint "rf-dfs:SOT-23-5_M5_MCH" (layer "F.Cu")
     (tstamp 82f5ea45-6d2a-4db7-9bdd-a7e026cba405)
     (at 137 76.16)
     (tags "MIC5219-2.6YM5-TR ")
@@ -760,7 +760,7 @@
     )
   )
 
-  (footprint "FabDrawingTemplates:FabDrawing-4Layer-Metric-Compact-OSH" (layer "F.Cu")
+  (footprint "rf-dfs:FabDrawing-4Layer-Metric-Compact-OSH" (layer "F.Cu")
     (tstamp 85b12cf6-bd25-47b0-bdcf-50d88eb24811)
     (at 55.5 135.5)
     (attr through_hole)
@@ -1667,7 +1667,7 @@
       (stroke (width 0.1) (type solid)) (fill solid) (layer "Dwgs.User") (tstamp 920a39e5-fa7f-4395-81b4-3e24e1c61619))
   )
 
-  (footprint "TestPoint:TestPoint_Loop_D2.54mm_Drill1.5mm_Beaded" (layer "F.Cu")
+  (footprint "rf-dfs:TestPoint_Loop_D2.54mm_Drill1.5mm_Beaded" (layer "F.Cu")
     (tstamp 8d4a77ac-219a-4506-9fbd-7d2f5098c8f8)
     (at 128.8 81.24)
     (descr "wire loop with bead as test point, loop diameter2.548mm, hole diameter 1.5mm")
@@ -1712,7 +1712,7 @@
     )
   )
 
-  (footprint "Mini-Circuits:QFN51P250X350X85-17N" (layer "F.Cu")
+  (footprint "rf-dfs:QFN51P250X350X85-17N" (layer "F.Cu")
     (tstamp 99f0810d-fc94-4948-9c63-625c16d80e9f)
     (at 139.3 94 -90)
     (descr "JV2579-DFN=16_")
@@ -1800,7 +1800,7 @@
     )
   )
 
-  (footprint "MountingHole:MountingHole_2.7mm_M2.5" (layer "F.Cu")
+  (footprint "rf-dfs:MountingHole_2.7mm_M2.5" (layer "F.Cu")
     (tstamp a509f67d-5e9b-40c5-b2d4-164bc4eeb7dc)
     (at 150.85 103.15)
     (descr "Mounting Hole 2.7mm, no annular, M2.5")
@@ -1825,7 +1825,7 @@
     (pad "" np_thru_hole circle (at 0 0) (size 2.7 2.7) (drill 2.7) (layers "*.Mask" "F.Cu" "In1.Cu" "In2.Cu" "B.Cu") (tstamp 4637b641-c45f-44b4-9c92-9ddbefd12960))
   )
 
-  (footprint "Resistor_SMD:R_0603_1608Metric" (layer "F.Cu")
+  (footprint "rf-dfs:R_0603_1608Metric" (layer "F.Cu")
     (tstamp a814e881-6058-41da-ace2-2994725e3266)
     (at 139.3 84.5)
     (descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -1879,7 +1879,7 @@
     )
   )
 
-  (footprint "TestPoint:TestPoint_Loop_D2.54mm_Drill1.5mm_Beaded" (layer "F.Cu")
+  (footprint "rf-dfs:TestPoint_Loop_D2.54mm_Drill1.5mm_Beaded" (layer "F.Cu")
     (tstamp b57349d2-0efb-4dc6-be00-d7596aaf32b7)
     (at 128.8 76.16)
     (descr "wire loop with bead as test point, loop diameter2.548mm, hole diameter 1.5mm")
@@ -1924,7 +1924,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp d0289072-9fdb-4682-b001-55a5a9e0e486)
     (at 137.92 90.1)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -1978,7 +1978,7 @@
     )
   )
 
-  (footprint "footprints.pretty:nrao1_6mm_silk" (layer "F.Cu")
+  (footprint "rf-dfs:nrao1_6mm_silk" (layer "F.Cu")
     (tstamp d0391345-be4a-4e30-8178-81f192611990)
     (at 129.2 101.5)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -2799,7 +2799,7 @@
       (stroke (width 0) (type solid)) (fill solid) (layer "F.SilkS") (tstamp fcfb4f7a-9b71-42a5-8a4f-30b26e2af672))
   )
 
-  (footprint "MountingHole:MountingHole_2.7mm_M2.5" (layer "F.Cu")
+  (footprint "rf-dfs:MountingHole_2.7mm_M2.5" (layer "F.Cu")
     (tstamp dee34ca4-ad53-4d55-9a97-52ffd33df483)
     (at 150.85 74.15)
     (descr "Mounting Hole 2.7mm, no annular, M2.5")
@@ -2824,7 +2824,7 @@
     (pad "" np_thru_hole circle (at 0 0) (size 2.7 2.7) (drill 2.7) (layers "*.Mask" "F.Cu" "In1.Cu" "In2.Cu" "B.Cu") (tstamp d7acbdc6-eb1a-432f-8294-d2e271eebed5))
   )
 
-  (footprint "MountingHole:MountingHole_2.7mm_M2.5" (layer "F.Cu")
+  (footprint "rf-dfs:MountingHole_2.7mm_M2.5" (layer "F.Cu")
     (tstamp e32ec9c5-8d32-458f-830d-2c0d07cd3da4)
     (at 121.85 74.15)
     (descr "Mounting Hole 2.7mm, no annular, M2.5")
@@ -2849,7 +2849,7 @@
     (pad "" np_thru_hole circle (at 0 0) (size 2.7 2.7) (drill 2.7) (layers "*.Mask" "F.Cu" "In1.Cu" "In2.Cu" "B.Cu") (tstamp febc0dbb-93ee-4253-af79-42a09153d94a))
   )
 
-  (footprint "footprints:Mueller BU-1420761881" (layer "F.Cu")
+  (footprint "rf-dfs:Mueller BU-1420761881" (layer "F.Cu")
     (tstamp e73c6cd7-0f99-4477-9b7a-5b07b0c0cc37)
     (at 123.39 94)
     (descr "Molex SMA RF Connectors, Edge Mount, (http://www.molex.com/pdm_docs/sd/732511150_sd.pdf)")
@@ -2957,7 +2957,7 @@
     )
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp e8dd7435-620f-43a5-aab0-2eae20eab236)
     (at 137.92 88.13)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -3011,7 +3011,7 @@
     )
   )
 
-  (footprint "MountingHole:MountingHole_2.7mm_M2.5" (layer "F.Cu")
+  (footprint "rf-dfs:MountingHole_2.7mm_M2.5" (layer "F.Cu")
     (tstamp e98543c2-e4fc-46f0-bd2b-412c1deed36c)
     (at 121.85 103.15)
     (descr "Mounting Hole 2.7mm, no annular, M2.5")
@@ -3036,7 +3036,7 @@
     (pad "" np_thru_hole circle (at 0 0) (size 2.7 2.7) (drill 2.7) (layers "*.Cu" "*.Mask") (tstamp cec383be-67bd-4a23-a9ff-c63474256fcb))
   )
 
-  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
+  (footprint "rf-dfs:C_0402_1005Metric" (layer "F.Cu")
     (tstamp f957fc6d-4f8c-436f-97d2-e60727409c05)
     (at 140.68 86.16)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
@@ -3090,7 +3090,7 @@
     )
   )
 
-  (footprint "footprints.pretty:GCPW_osh3_90mm_user" (layer "F.Cu")
+  (footprint "rf-dfs:GCPW_osh3_90mm_user" (layer "F.Cu")
     (tstamp fa3a47ce-6940-417a-aebd-ad0988147402)
     (at 207 147.5)
     (attr board_only exclude_from_pos_files exclude_from_bom)

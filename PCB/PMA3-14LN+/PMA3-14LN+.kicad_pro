@@ -402,7 +402,10 @@
   },
   "libraries": {
     "pinned_footprint_libs": [],
-    "pinned_symbol_libs": []
+    "pinned_symbol_libs": [
+      "pma3-14ln",
+      "rf-dfs"
+    ]
   },
   "meta": {
     "filename": "PMA3-14LN+.kicad_pro",

@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "rf-dfs")(type "KiCad")(uri "${KIPRJMOD}/../_dependencies/symbols/rf-dfs.kicad_sym")(options "")(descr ""))
+)
