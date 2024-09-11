@@ -51,23 +51,25 @@ def isNumber(input):
     except:
         return FALSE
     
-def clearAndSetEntry(widget, arg):
-    """Clear the ttk::entry passed in 'widget' and replace it with 'arg' in scientific notation if possible.
+def clearAndSetWidget(widget, arg):
+    """Clear the ttk::widget passed in 'widget' and replace it with 'arg' in scientific notation if possible.
     The N9040B and other instruments will return queries in square brackets which python interprets as a list.
 
     Args:
-        widget (ttk.Entry): Widget to clear/set.
-        arg (list): Value in 'arg[0]' will be taken to set the widget in scientific notation. If that fails, attempt to set the widget to 'arg'.
+        widget (ttk.Widget): Widget to clear/set.
+        arg (list, str): Value in 'arg[0]' will be taken to set the widget in scientific notation. If that fails, attempt to set the widget to 'arg'.
     """
-    widget.delete(0, END)
-    # Try to convert string in list to scientific notation
-    try:
-        arg = float(arg[0])
-        widget.insert(0, "{:e}".format(arg))
-        logging.debug(f"clearAndSetEntry passed argument {arg} to {widget}.")
-    except:
-        widget.insert(0, arg)
-        logging.debug(f"Scientific notation conversion failed. clearAndSetEntry passed argument {arg} to {widget}.")
+    if isinstance(widget, (tk.Entry, ttk.Entry, ttk.Combobox)):
+        widget.delete(0, END)
+        # Try to convert string in list to scientific notation
+        try:
+            arg = float(arg[0])
+            widget.insert(0, "{:e}".format(arg))
+        except:
+            widget.insert(0, arg)
+        finally:
+            logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {widget} ({type(widget)}).")
+            
 
 class FrontEnd():
     def __init__(self, root):
@@ -75,9 +77,11 @@ class FrontEnd():
         """
 
         # CONSTANTS
-        self.SELECT_TERM_VALUES = ['Line Feed - \\n', 'Carriage Return - \\r']
-        self.RBW_FILTER_SHAPE_VALUES = ['Gaussian', 'Flattop']
-        self.RBW_FILTER_TYPE_VALUES = ["-3 dB (Normal)", "-6 dB", "Impulse", "Noise"]
+        self.SELECT_TERM_VALUES = ('Line Feed - \\n', 'Carriage Return - \\r')
+        self.RBW_FILTER_SHAPE_VALUES = ('Gaussian', 'Flattop')
+        self.RBW_FILTER_SHAPE_VAL_ARGS = ('GAUS', 'FLAT')
+        self.RBW_FILTER_TYPE_VALUES = ("-3 dB (Normal)", "-6 dB", "Impulse", "Noise")
+        self.RBW_FILTER_TYPE_VAL_ARGS = ('DB3', 'DB6', 'IMP', 'NOISE')
 
         # VARIABLES
         self.timeout = TIMEOUT_DEF           # VISA timeout value
@@ -161,9 +165,9 @@ class FrontEnd():
           row = 0, padx = 5, pady = 25) 
         self.instrSelectBox = ttk.Combobox(tabSelect, values = self.Vi.rm.list_resources(), width=40)
         self.instrSelectBox.grid(row = 0, column = 1, padx = 10 , pady = 10)
-        self.refreshButton = tk.Button(tabSelect, text = "Refresh", command = lambda:onRefreshPress())
+        self.refreshButton = ttk.Button(tabSelect, text = "Refresh", command = lambda:onRefreshPress())
         self.refreshButton.grid(row = 0, column = 2, padx=5)
-        self.confirmButton = tk.Button(tabSelect, text = "Connect", command = lambda:onConnectPress())
+        self.confirmButton = ttk.Button(tabSelect, text = "Connect", command = lambda:onConnectPress())
         self.confirmButton.grid(row = 0, column = 3, padx=5)
         # VISA CONFIGURATION FRAME
         self.configFrame = ttk.LabelFrame(tabSelect, borderwidth = 2, text = "VISA Configuration")
@@ -174,7 +178,7 @@ class FrontEnd():
         self.chunkSizeLabel = ttk.Label(self.configFrame, text = 'Chunk size (Bytes)')
         self.chunkSizeWidget = ttk.Spinbox(self.configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.chunkSizeWidget.set(self.chunkSize)
-        self.applyButton = tk.Button(self.configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
+        self.applyButton = ttk.Button(self.configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
         # VISA CONFIGURATION GRID
         self.timeoutLabel.grid(row = 0, column = 0, pady=5)
         self.timeoutWidget.grid(row = 1, column = 0, padx=20, pady=5, columnspan=2)
@@ -456,8 +460,22 @@ class FrontEnd():
         self.numDivEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, numdiv = self.numDivEntry.get()))
         self.attenEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, atten = self.attenEntry.get()))
 
+        self.spanSweptButton.bind()
+        self.spanZeroButton.bind()
+        self.spanFullButton.bind()
+        self.rbwAutoButton.bind()
+        self.rbwManButton.bind()
+        self.vbwAutoButton.bind()
+        self.vbwManButton.bind()
+        self.bwRatioAutoButton.bind()
+        self.bwRatioManButton.bind()
+        self.rbwFilterShapeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, rbwfiltershape = self.rbwFilterShapeCombo.current()))
+        self.rbwFilterTypeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, rbwfiltertype = self.rbwFilterTypeCombo.current()))
+        self.attenAutoButton.bind()
+        self.attenManButton.bind()
+
         # TOGGLE BUTTON
-        spectrumToggle = tk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
+        spectrumToggle = ttk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
         spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
     def initAnalyzerPlotLimits(self):
@@ -603,15 +621,35 @@ class FrontEnd():
         elif kwargs.get("bwratiotype") == MANUAL:
             self.bwRatioManButton.select()
         # RBW FILTER SHAPE
-        if kwargs.get("rbwfiltershape") == self.RBW_FILTER_SHAPE_VALUES[0]:
-            self.rbwFilterShapeCombo.set(self.RBW_FILTER_SHAPE_VALUES[0])
-        elif kwargs.get("rbwfiltershape") == self.RBW_FILTER_SHAPE_VALUES[1]:
-            self.rbwFilterShapeCombo.set(self.RBW_FILTER_SHAPE_VALUES[1])
+        if "rbwfiltershape" in kwargs:
+            _dict = {
+                'command': ':SENS:BAND:SHAP',
+                'widget': self.rbwFilterShapeCombo,
+            }
+            if kwargs.get('rbwfiltershape') is None:
+                _dict.update({
+                    'arg': None
+                })
+            else:
+                _dict.update({
+                    'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[kwargs.get("rbwfiltershape")]
+                })
+            _list.append(_dict)
         # RBW FILTER TYPE
-        if kwargs.get("rbwfiltertype") == self.RBW_FILTER_TYPE_VALUES[0]:
-            self.rbwFilterTypeCombo.set(self.RBW_FILTER_TYPE_VALUES[0])
-        elif kwargs.get("rbwfiltertype") == self.RBW_FILTER_TYPE_VALUES[1]:
-            self.rbwFilterTypeCombo.set(self.RBW_FILTER_TYPE_VALUES[1])
+        if "rbwfiltertype" in kwargs:
+            _dict = {
+                'command': ':SENS:BAND:TYPE',
+                'widget': self.rbwFilterTypeCombo,
+            }
+            if kwargs.get('rbwfiltertype') is None:
+                _dict.update({
+                    'arg': None
+                })
+            else:
+                _dict.update({
+                    'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]
+                })
+            _list.append(_dict)
         # ATTENUATION TYPE
         if kwargs.get("attentype") == AUTO:
             self.attenAutoButton.select()
@@ -624,17 +662,23 @@ class FrontEnd():
             try:
                 # Set widgets without issuing a parameter to command
                 if x['arg'] is None:
-                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
+                    try:
+                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
+                    except:
+                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
                     logging.debug(f"Command {x['command']}? returned {buffer}")
-                    clearAndSetEntry(x['widget'], buffer)
+                    clearAndSetWidget(x['widget'], buffer)
                 # Issue a command with parameter and then query that parameter to set widget
                 else:    
                     self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
-                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?')
+                    try:
+                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
+                    except:
+                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
                     logging.debug(f"Command {x['command']}? returned {buffer}")
-                    clearAndSetEntry(x['widget'], buffer)
+                    clearAndSetWidget(x['widget'], buffer)
             except:
-                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. ATTEMPTING TO RESET ANALYZER STATE")
+                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE. ATTEMPTING TO RESET ANALYZER STATE")
                 self.Vi.resetAnalyzerState()
                 logging.fatal("Analyzer state reset.")
         # Release thread lock
@@ -673,6 +717,8 @@ class FrontEnd():
                     numdiv=None,
                     yscale=None,
                     atten=None,
+                    rbwfiltershape=None,
+                    rbwfiltertype=None,
                 )
                 visaLock.release()
                 errorFlag = FALSE
@@ -691,7 +737,7 @@ class FrontEnd():
                     buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
                     xAxis = buffer[::2]
                     yAxis = buffer[1::2]
-                    self.ax.plot(xAxis, yAxis)
+                    self.ax.plot(xAxis, yAxis, scalex=False, scaley=False)
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
                 except:
@@ -766,6 +812,7 @@ class FrontEnd():
         self.motor.CloseSerial()
         root.destroy()
 
+    # TODO: Figure out what this does or maybe deprecate it
     def updateOutput( self, oFile, root ):
         def saveData():
             # position information is not updated now, path from motor servo is needed. 
