@@ -287,8 +287,6 @@ class FrontEnd():
         rbwType = StringVar()
         vbwType = StringVar()
         bwRatioType = StringVar()
-        rbwFilterShape = StringVar()
-        rbwFilterType = StringVar()
         attenType = StringVar()
 
         self.motor = MotorControl( 0 , 0 )
@@ -343,9 +341,10 @@ class FrontEnd():
         self.ax.set_title("Spectrum Plot")
         self.ax.set_xlabel("Frequency (Hz)")
         self.ax.set_ylabel("Power Spectral Density (dBm/RBW)")
+        self.ax.autoscale(enable=False, tight=True)
         self.spectrumDisplay = FigureCanvasTkAgg(self.fig, master=spectrumFrame)
         self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0)
-        self.setAnalyzerPlotLimits(xmin = 0, xmax=20e9)
+        self.setAnalyzerPlotLimits(xmin = 0, xmax=20e9, ymin=-100, ymax=0)
 
         # MEASUREMENT COMMANDS
         measurementTab = ttk.Notebook(spectrumFrame)
@@ -414,12 +413,12 @@ class FrontEnd():
 
         self.rbwFilterShapeFrame = ttk.LabelFrame(tab2, text="RBW Filter Shape")
         self.rbwFilterShapeFrame.grid(row=3, column=0)
-        self.rbwFilterShapeCombo = ttk.Combobox(self.rbwFilterShapeFrame, textvariable=rbwFilterShape, values = self.RBW_FILTER_SHAPE_VALUES)
+        self.rbwFilterShapeCombo = ttk.Combobox(self.rbwFilterShapeFrame, values = self.RBW_FILTER_SHAPE_VALUES)
         self.rbwFilterShapeCombo.pack(anchor=W)
 
         self.rbwFilterTypeFrame = ttk.LabelFrame(tab2, text="RBW Filter Type")
         self.rbwFilterTypeFrame.grid(row=4, column=0)
-        self.rbwFilterTypeCombo = ttk.Combobox(self.rbwFilterTypeFrame, textvariable=rbwFilterType, values = self.RBW_FILTER_TYPE_VALUES)
+        self.rbwFilterTypeCombo = ttk.Combobox(self.rbwFilterTypeFrame, values = self.RBW_FILTER_TYPE_VALUES)
         self.rbwFilterTypeCombo.pack(anchor=W)
 
         # MEASUREMENT TAB 3 (AMPLITUDE)
@@ -462,7 +461,7 @@ class FrontEnd():
 
         self.spanSweptButton.bind()
         self.spanZeroButton.bind()
-        self.spanFullButton.bind()
+        self.spanFullButton.bind("<Button-1>", lambda event: self.setAnalyzerThreadHandler(event, startfreq=0, stopfreq=50e9))
         self.rbwAutoButton.bind()
         self.rbwManButton.bind()
         self.vbwAutoButton.bind()
@@ -733,11 +732,14 @@ class FrontEnd():
             if not self.analyzerKillFlag:
                 visaLock.acquire()
                 try:
-                    self.ax.clear()
+                    try:
+                        lines.pop(0).remove()
+                    except:
+                        pass
                     buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
                     xAxis = buffer[::2]
                     yAxis = buffer[1::2]
-                    self.ax.plot(xAxis, yAxis, scalex=False, scaley=False)
+                    lines = self.ax.plot(xAxis, yAxis)
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
                 except:
