@@ -29,8 +29,8 @@ CHUNK_SIZE_MAX = 1048576  # Max chunk size allowed
 TIMEOUT_DEF = 2000        # Default VISA timeout value
 TIMEOUT_MIN = 1000        # Minimum VISA timeout value
 TIMEOUT_MAX = 25000       # Maximum VISA timeout value
-AUTO = 'auto'
-MANUAL = 'manual'
+AUTO = 1
+MANUAL = 0
 SWEPT = 'swept'
 ZERO = 'zero'
 
@@ -57,9 +57,20 @@ def clearAndSetWidget(widget, arg):
     The N9040B and other instruments will return queries in square brackets which python interprets as a list.
 
     Args:
-        widget (ttk.Widget): Widget to clear/set.
+        widget (ttk.Widget or Tkinter_variable): Widget to clear/set.
         arg (list, str): Value in 'arg[0]' will be taken to set the widget in scientific notation. If that fails, attempt to set the widget to 'arg'.
     """
+    logging.debug(f"clearAndSetWidget received widget {widget} and argument {arg}")
+    # Set radiobutton widgets
+    if isinstance(widget, (BooleanVar, IntVar, StringVar)):
+        try:
+            arg = bool(arg[0])
+            widget.set(arg)
+        except:
+            widget.set(arg)
+        finally:
+            logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {widget} ({type(widget)})")
+    # Set entry/combobox widgets
     if isinstance(widget, (tk.Entry, ttk.Entry, ttk.Combobox)):
         widget.delete(0, END)
         # Try to convert string in list to scientific notation
@@ -284,11 +295,12 @@ class FrontEnd():
         tabSelect.columnconfigure(2, weight=10)
 
         # TKINTER VARIABLES
-        spanType = StringVar()
-        rbwType = StringVar()
-        vbwType = StringVar()
-        bwRatioType = StringVar()
-        attenType = StringVar()
+        global tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
+        tkSpanType = StringVar()
+        tkRbwType = BooleanVar()
+        tkVbwType = BooleanVar()
+        tkBwRatioType = BooleanVar()
+        tkAttenType = BooleanVar()
 
         self.motor = MotorControl( 0 , 0 )
         
@@ -370,9 +382,9 @@ class FrontEnd():
         self.spanFrame.grid(row=1, column=0)
         self.spanEntry = ttk.Entry(self.spanFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.spanEntry.pack()
-        self.spanSweptButton = ttk.Radiobutton(self.spanFrame, variable=spanType, text = "Swept Span", value='swept')
+        self.spanSweptButton = ttk.Radiobutton(self.spanFrame, variable=tkSpanType, text = "Swept Span", value='swept')
         self.spanSweptButton.pack(anchor=W)
-        self.spanZeroButton = ttk.Radiobutton(self.spanFrame, variable=spanType, text = "Zero Span", value='zero')
+        self.spanZeroButton = ttk.Radiobutton(self.spanFrame, variable=tkSpanType, text = "Zero Span", value='zero')
         self.spanZeroButton.pack(anchor=W)
         self.spanFullButton = ttk.Button(self.spanFrame, text = "Full Span")
         self.spanFullButton.pack(anchor=S, fill=BOTH)
@@ -392,27 +404,27 @@ class FrontEnd():
         self.rbwFrame.grid(row=0, column=0)
         self.rbwEntry = ttk.Entry(self.rbwFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.rbwEntry.pack()
-        self.rbwAutoButton = ttk.Radiobutton(self.rbwFrame, variable=rbwType, text="Auto", value=AUTO)
+        self.rbwAutoButton = ttk.Radiobutton(self.rbwFrame, variable=tkRbwType, text="Auto", value=AUTO)
         self.rbwAutoButton.pack(anchor=W)
-        self.rbwManButton = ttk.Radiobutton(self.rbwFrame, variable=rbwType, text="Manual", value=MANUAL)
+        self.rbwManButton = ttk.Radiobutton(self.rbwFrame, variable=tkRbwType, text="Manual", value=MANUAL)
         self.rbwManButton.pack(anchor=W)
         
         self.vbwFrame = ttk.LabelFrame(tab2, text="Video BW")
         self.vbwFrame.grid(row=1, column=0)
         self.vbwEntry = ttk.Entry(self.vbwFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.vbwEntry.pack()
-        self.vbwAutoButton = ttk.Radiobutton(self.vbwFrame, variable=vbwType, text="Auto", value=AUTO)
+        self.vbwAutoButton = ttk.Radiobutton(self.vbwFrame, variable=tkVbwType, text="Auto", value=AUTO)
         self.vbwAutoButton.pack(anchor=W)
-        self.vbwManButton = ttk.Radiobutton(self.vbwFrame, variable=vbwType, text="Manual", value=MANUAL)
+        self.vbwManButton = ttk.Radiobutton(self.vbwFrame, variable=tkVbwType, text="Manual", value=MANUAL)
         self.vbwManButton.pack(anchor=W)
 
         self.bwRatioFrame = ttk.LabelFrame(tab2, text="VBW:RBW")
         self.bwRatioFrame.grid(row=2, column=0)
         self.bwRatioEntry = ttk.Entry(self.bwRatioFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.bwRatioEntry.pack()
-        self.bwRatioAutoButton = ttk.Radiobutton(self.bwRatioFrame, variable=bwRatioType, text="Auto", value=AUTO)
+        self.bwRatioAutoButton = ttk.Radiobutton(self.bwRatioFrame, variable=tkBwRatioType, text="Auto", value=AUTO)
         self.bwRatioAutoButton.pack(anchor=W)
-        self.bwRatioManButton = ttk.Radiobutton(self.bwRatioFrame, variable=bwRatioType, text="Manual", value=MANUAL)
+        self.bwRatioManButton = ttk.Radiobutton(self.bwRatioFrame, variable=tkBwRatioType, text="Manual", value=MANUAL)
         self.bwRatioManButton.pack(anchor=W)
 
         self.rbwFilterShapeFrame = ttk.LabelFrame(tab2, text="RBW Filter Shape")
@@ -445,9 +457,9 @@ class FrontEnd():
         self.attenFrame.grid(row=3, column=0)
         self.attenEntry = ttk.Entry(self.attenFrame, validate="key", validatecommand=(self.isNumWrapper, '%P'))
         self.attenEntry.pack()
-        self.attenAutoButton = ttk.Radiobutton(self.attenFrame, variable=attenType, text="Auto", value=AUTO)
+        self.attenAutoButton = ttk.Radiobutton(self.attenFrame, variable=tkAttenType, text="Auto", value=AUTO)
         self.attenAutoButton.pack(anchor=W)
-        self.attenManButton = ttk.Radiobutton(self.attenFrame, variable=attenType, text="Manual", value=MANUAL)
+        self.attenManButton = ttk.Radiobutton(self.attenFrame, variable=tkAttenType, text="Manual", value=MANUAL)
         self.attenManButton.pack(anchor=W)
 
         # BIND WIDGETS
@@ -463,19 +475,19 @@ class FrontEnd():
         self.numDivEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, numdiv = self.numDivEntry.get()))
         self.attenEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, atten = self.attenEntry.get()))
 
-        self.spanSweptButton.bind()
-        self.spanZeroButton.bind()
+        self.spanSweptButton.configure(command = lambda: self.setAnalyzerThreadHandler())
+        self.spanZeroButton.configure(command = lambda: self.setAnalyzerThreadHandler())
         self.spanFullButton.bind("<Button-1>", lambda event: self.setAnalyzerThreadHandler(event, startfreq=0, stopfreq=50e9))
-        self.rbwAutoButton.bind()
-        self.rbwManButton.bind()
-        self.vbwAutoButton.bind()
-        self.vbwManButton.bind()
-        self.bwRatioAutoButton.bind()
-        self.bwRatioManButton.bind()
+        self.rbwAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(rbwtype=AUTO))
+        self.rbwManButton.configure(command = lambda: self.setAnalyzerThreadHandler(rbwtype=MANUAL))
+        self.vbwAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(vbwtype=AUTO))
+        self.vbwManButton.configure(command = lambda: self.setAnalyzerThreadHandler(vbwtype=MANUAL))
+        self.bwRatioAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(bwratiotype=AUTO))
+        self.bwRatioManButton.configure(command = lambda: self.setAnalyzerThreadHandler(bwratiotype=MANUAL))
         self.rbwFilterShapeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, rbwfiltershape = self.rbwFilterShapeCombo.current()))
         self.rbwFilterTypeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, rbwfiltertype = self.rbwFilterTypeCombo.current()))
-        self.attenAutoButton.bind()
-        self.attenManButton.bind()
+        self.attenAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=AUTO))
+        self.attenManButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=MANUAL))
 
         # TOGGLE BUTTON
         spectrumToggle = ttk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
@@ -499,7 +511,7 @@ class FrontEnd():
         self.ax.margins(0, 0.05)
         self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
     
-    def setAnalyzerThreadHandler(self, event, **kwargs):
+    def setAnalyzerThreadHandler(self, *event, **kwargs):
         _dict = {}
         for key in kwargs:
             _dict[key] = kwargs.get(key)
@@ -602,34 +614,45 @@ class FrontEnd():
         if "yscale" in kwargs:
             _dict.update({'arg': kwargs.get("yscale")})
         _list.append(_dict)
+        # Mechanical attenuation
+        _dict = {
+            'command': ':SENS:POWER:RF:ATTENUATION',
+            'arg': None,
+            'widget': self.attenEntry
+        }
         if "atten" in kwargs:
-            _dict = {
-                'command': ':SENS:POWER:RF:ATTENUATION',
-                'arg': kwargs.get("atten"),
-                'widget': self.attenEntry
-            }
-
-        # TODO: make these do something
+            _dict.update({'arg': kwargs.get("atten")})
+        _list.append(_dict)
+        # TODO: make spantype do something
         # SPAN TYPE
-        if kwargs.get("spantype") == SWEPT:
-            self.spanSweptButton.select()
-        elif kwargs.get("spantype") == ZERO:
-            self.spanZeroButton.select()
+
         # RBW TYPE
-        if kwargs.get("rbwtype") == AUTO:
-            self.rbwAutoButton.select()
-        elif kwargs.get("rbwtype") == MANUAL:
-            self.rbwManButton.select()
+        _dict = {
+            'command': ':SENS:BAND:RES:AUTO',
+            'arg': None,
+            'widget': tkRbwType
+        }
+        if 'rbwtype' in kwargs:
+            _dict.update({'arg': kwargs.get('rbwtype')})
+        _list.append(_dict)
         # VBW TYPE
-        if kwargs.get("vbwtype") == AUTO:
-            self.vbwAutoButton.select()
-        elif kwargs.get("vbwtype") == MANUAL:
-            self.vbwManButton.select()
+        _dict = {
+            'command': ':SENS:BAND:VID:AUTO',
+            'arg': None,
+            'widget': tkVbwType
+        }
+        if 'vbwtype' in kwargs:
+            _dict.update({'arg': kwargs.get('vbwtype')})
+        _list.append(_dict)
         # BW RATIO TYPE
-        if kwargs.get("bwratiotype") == AUTO:
-            self.bwRatioAutoButton.select()
-        elif kwargs.get("bwratiotype") == MANUAL:
-            self.bwRatioManButton.select()
+        _dict = {
+            'command': ':SENS:BAND:VID:RATIO',
+            'arg': None,
+            'widget': tkBwRatioType
+        }
+        if 'bwratiotype' in kwargs:
+            _dict.update({'arg': kwargs.get('bwratiotype')})
+        _list.append(_dict)
         # RBW FILTER SHAPE
         if "rbwfiltershape" in kwargs:
             _dict = {
@@ -653,36 +676,32 @@ class FrontEnd():
                 _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]})
             _list.append(_dict)
         # ATTENUATION TYPE
-        if kwargs.get("attentype") == AUTO:
-            self.attenAutoButton.select()
-        elif kwargs.get("attentype") == MANUAL:
-            self.attenManButton.select()
+        _dict = {
+            'command': ':SENS:POWER:ATT:AUTO',
+            'arg': None,
+            'widget': tkAttenType
+        }
+        if 'attentype' in kwargs:
+            _dict.update({'arg': kwargs.get('attentype')})
+        _list.append(_dict)
 
         # EXECUTE COMMANDS
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
         for x in _list:
             try:
-                # Set widgets without issuing a parameter to command
-                if x['arg'] is None:
-                    try:
-                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
-                    except:
-                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
-                    logging.debug(f"Command {x['command']}? returned {buffer}")
-                    clearAndSetWidget(x['widget'], buffer)
-                # Issue a command with parameter and then query that parameter to set widget
-                else:    
+                # Issue command with argument
+                if x['arg'] is not None:
                     self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
-                    try:
-                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
-                    except:
-                        buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
-                    logging.debug(f"Command {x['command']}? returned {buffer}")
-                    clearAndSetWidget(x['widget'], buffer)
-            except:
-                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE. ATTEMPTING TO RESET ANALYZER STATE")
+                # Set widgets without issuing a parameter to command
+                try:
+                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
+                except:
+                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
+                logging.debug(f"Command {x['command']}? returned {buffer}")
+                clearAndSetWidget(x['widget'], buffer)
+            except Exception as e:
+                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE: {e}. ATTEMPTING TO RESET ANALYZER STATE")
                 self.Vi.resetAnalyzerState()
-                logging.fatal("Analyzer state reset.")
         # Set plot limits
         self.setAnalyzerPlotLimits()
         # Release thread lock
@@ -727,7 +746,7 @@ class FrontEnd():
                 visaLock.release()
                 errorFlag = FALSE
             except Exception as e:
-                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}: {e}. Attempting to reset analyzer state.")
+                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}: {e}. Could not initialize analyzer state, retrying...")
                 visaLock.release()
                 time.sleep(8)
 
@@ -748,9 +767,8 @@ class FrontEnd():
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
                 except:
-                    logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)}. ATTEMPTING TO RESET ANALYZER STATE")
+                    logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay: {e}. Attempting to reset analyzer state.")
                     self.Vi.resetAnalyzerState()
-                    logging.fatal("Analyzer state reset.")
                 visaLock.release()
                 time.sleep(0.5)
             else:
