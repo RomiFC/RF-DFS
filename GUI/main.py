@@ -11,6 +11,7 @@ import logging
 
 # MATPLOTLIB
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # TKINTER
@@ -342,6 +343,9 @@ class FrontEnd():
         self.ax.set_xlabel("Frequency (Hz)")
         self.ax.set_ylabel("Power Spectral Density (dBm/RBW)")
         self.ax.autoscale(enable=False, tight=True)
+        self.ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        self.ax.xaxis.set_major_formatter(ticker.EngFormatter(unit=''))
         self.spectrumDisplay = FigureCanvasTkAgg(self.fig, master=spectrumFrame)
         self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0)
         self.setAnalyzerPlotLimits(xmin = 0, xmax=20e9, ymin=-100, ymax=0)
@@ -477,30 +481,23 @@ class FrontEnd():
         spectrumToggle = ttk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
         spectrumToggle.grid(row=1, column=1, sticky=NSEW)
 
-    def initAnalyzerPlotLimits(self):
-        if self.Vi.isSessionOpen() == FALSE:
-            logging.error("Session to the analyzer is not open.")
-            return RETURN_ERROR
-        startFreq =         self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:START?")
-        stopFreq =          self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:STOP?")
-        # centerFreq =        self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:CENTER?")
-        # span =              self.Vi.openRsrc.query_ascii_values(":SENS:FREQ:SPAN?")
-        # rbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:RESOUTION?")
-        # vbw =               self.Vi.openRsrc.query_ascii_values(":SENS:BANDWIDTH:VIDEO?")
-        ref =               self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:RLEVEL?")
-        numDivisions =      self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:NDIV?")
-        scalePerDivision =  self.Vi.openRsrc.query_ascii_values(":DISP:WINDOW:TRACE:Y:PDIV?")
-
-        self.setAnalyzerPlotLimits(xmin=startFreq, xmax=stopFreq, ymin=ref-numDivisions*scalePerDivision, ymax=ref)
-
     def setAnalyzerPlotLimits(self, **kwargs):
-        if kwargs.get("xmin") in kwargs.values() and kwargs["xmax"]:
+        """Sets self.ax limits to parameters passed in **kwargs if they exist. If not, gets relevant widget values to set limits
+        """
+        if 'xmin' in kwargs and 'xmax' in kwargs:
             self.ax.set_xlim(kwargs["xmin"], kwargs["xmax"])
-        if kwargs.get("ymin") in kwargs.values() and kwargs.get("ymax") in kwargs.values():
+        else:
+            xmin = float(self.startFreqEntry.get())
+            xmax = float(self.stopFreqEntry.get())
+            self.ax.set_xlim(xmin, xmax)
+        if 'ymin' in kwargs and 'ymax' in kwargs:
             self.ax.set_ylim(kwargs["ymin"], kwargs["ymax"])
+        else:
+            ymax = float(self.refLevelEntry.get())
+            ymin = ymax - float(self.numDivEntry.get()) * float(self.yScaleEntry.get())
+            self.ax.set_ylim(ymin, ymax)
         self.ax.margins(0, 0.05)
         self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
-        return RETURN_SUCCESS
     
     def setAnalyzerThreadHandler(self, event, **kwargs):
         _dict = {}
@@ -520,35 +517,43 @@ class FrontEnd():
         # Acquire thread lock
         # Wait for the analyzer display loop to complete so that visa commands from the loop do not interfere with ones sent in this method
         visaLock.acquire()
-
+        # Center Frequency
+        _dict = {
+            'command': ':SENS:FREQ:CENTER',
+            'arg': None,
+            'widget': self.centerFreqEntry
+        }
         if "centerfreq" in kwargs:
-            _dict = {
-                'command': ':SENS:FREQ:CENTER',
-                'arg': kwargs.get("centerfreq"),
-                'widget': self.centerFreqEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("centerfreq")})
+        _list.append(_dict)
+        # Span
+        _dict = {
+            'command': ':SENS:FREQ:SPAN',
+            'arg': None,
+            'widget': self.spanEntry
+        }
         if "span" in kwargs:
-            _dict = {
-                'command': ':SENS:FREQ:SPAN',
-                'arg': kwargs.get("span"),
-                'widget': self.spanEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("span")})
+        _list.append(_dict)
+        # Start Frequency
+        _dict = {
+            'command': ':SENS:FREQ:START',
+            'arg': None,
+            'widget': self.startFreqEntry
+        }
         if "startfreq" in kwargs:
-            _dict = {
-                'command': ':SENS:FREQ:START',
-                'arg': kwargs.get("startfreq"),
-                'widget': self.startFreqEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("startfreq")})
+        _list.append(_dict)
+        # Stop Frequency
+        _dict = {
+            'command': ':SENS:FREQ:STOP',
+            'arg': None,
+            'widget': self.stopFreqEntry
+        }
         if "stopfreq" in kwargs:
-            _dict = {
-                'command': ':SENS:FREQ:STOP',
-                'arg': kwargs.get("stopfreq"),
-                'widget': self.stopFreqEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("stopfreq")})
+        _list.append(_dict)
+
         if "rbw" in kwargs:
             _dict = {
                 'command': ':SENS:BANDWIDTH:RESOLUTION',
@@ -570,27 +575,33 @@ class FrontEnd():
                 'widget': self.bwRatioEntry
             }
             _list.append(_dict)
+        # Reference Level
+        _dict = {
+            'command': ':DISP:WINDOW:TRACE:Y:RLEVEL',
+            'arg': None,
+            'widget': self.refLevelEntry
+        }
         if "ref" in kwargs:
-            _dict = {
-                'command': ':DISP:WINDOW:TRACE:Y:RLEVEL',
-                'arg': kwargs.get("ref"),
-                'widget': self.refLevelEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("ref")})
+        _list.append(_dict)
+        # Number of divisions
+        _dict = {
+            'command': ':DISP:WINDOW:TRACE:Y:NDIV',
+            'arg': None,
+            'widget': self.numDivEntry
+        }
         if "numdiv" in kwargs:
-            _dict = {
-                'command': ':DISP:WINDOW:TRACE:Y:NDIV',
-                'arg': kwargs.get("numdiv"),
-                'widget': self.numDivEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("numdiv")})
+        _list.append(_dict)
+        # Scale per division
+        _dict = {
+            'command': ':DISP:WINDOW:TRACE:Y:PDIV',
+            'arg': None,
+            'widget': self.yScaleEntry
+        }
         if "yscale" in kwargs:
-            _dict = {
-                'command': ':DISP:WINDOW:TRACE:Y:PDIV',
-                'arg': kwargs.get("yscale"),
-                'widget': self.yScaleEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("yscale")})
+        _list.append(_dict)
         if "atten" in kwargs:
             _dict = {
                 'command': ':SENS:POWER:RF:ATTENUATION',
@@ -626,13 +637,9 @@ class FrontEnd():
                 'widget': self.rbwFilterShapeCombo,
             }
             if kwargs.get('rbwfiltershape') is None:
-                _dict.update({
-                    'arg': None
-                })
+                _dict.update({'arg': None})
             else:
-                _dict.update({
-                    'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[kwargs.get("rbwfiltershape")]
-                })
+                _dict.update({'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[kwargs.get("rbwfiltershape")]})
             _list.append(_dict)
         # RBW FILTER TYPE
         if "rbwfiltertype" in kwargs:
@@ -641,13 +648,9 @@ class FrontEnd():
                 'widget': self.rbwFilterTypeCombo,
             }
             if kwargs.get('rbwfiltertype') is None:
-                _dict.update({
-                    'arg': None
-                })
+                _dict.update({'arg': None})
             else:
-                _dict.update({
-                    'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]
-                })
+                _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]})
             _list.append(_dict)
         # ATTENUATION TYPE
         if kwargs.get("attentype") == AUTO:
@@ -680,6 +683,8 @@ class FrontEnd():
                 logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE. ATTEMPTING TO RESET ANALYZER STATE")
                 self.Vi.resetAnalyzerState()
                 logging.fatal("Analyzer state reset.")
+        # Set plot limits
+        self.setAnalyzerPlotLimits()
         # Release thread lock
         visaLock.release()
         return
@@ -721,8 +726,8 @@ class FrontEnd():
                 )
                 visaLock.release()
                 errorFlag = FALSE
-            except:
-                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. Attempting to reset analyzer state.")
+            except Exception as e:
+                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}: {e}. Attempting to reset analyzer state.")
                 visaLock.release()
                 time.sleep(8)
 
@@ -739,7 +744,7 @@ class FrontEnd():
                     buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
                     xAxis = buffer[::2]
                     yAxis = buffer[1::2]
-                    lines = self.ax.plot(xAxis, yAxis)
+                    lines = self.ax.plot(xAxis, yAxis, )
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
                 except:
