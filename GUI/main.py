@@ -39,7 +39,7 @@ visaLock = threading.RLock()
 
 # LOGGING
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="[%(asctime)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -776,7 +776,7 @@ class FrontEnd():
                     lines = self.ax.plot(xAxis, yAxis, )
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
-                except:
+                except Exception as e:
                     logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay: {e}. Attempting to reset analyzer state.")
                     self.Vi.resetAnalyzerState()
                 visaLock.release()
