@@ -346,3 +346,25 @@ class VisaControl():
             logging.info(f'Success code: {hex(self.rm.last_status)}')
             return RETURN_SUCCESS
         
+    def queryErrors(self):
+        """Issues ':SYST:ERR?' to the open resource and logs response at level INFO
+        """
+        buffer = self.openRsrc.query_ascii_values(":SYST:ERR?", converter='s')
+        # Conversion because this device returns string wrapped in brackets. Python interprets this as a list with a single string
+        if len(buffer[0]) > 1:
+            try:
+                buffer = buffer[0].strip("[]")
+            except:
+                pass
+        logging.info(f'{buffer}')
+        
+    def queryPowerUpErrors(self):
+        """Issues ':SYST:ERR:PUP?' to the open resource and logs response at level INFO
+        """
+        buffer = self.openRsrc.query_ascii_values(":SYST:ERR:PUP?", converter='s')
+        if len(buffer[0]) > 1:
+            try:
+                buffer = buffer[0].strip("[]")
+            except:
+                pass
+        logging.info(f'{buffer.strip("[]")}')

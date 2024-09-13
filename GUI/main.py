@@ -711,6 +711,7 @@ class FrontEnd():
                 clearAndSetWidget(x['widget'], buffer)
             except Exception as e:
                 logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE: {e}. ATTEMPTING TO RESET ANALYZER STATE")
+                self.Vi.queryErrors()
                 self.Vi.resetAnalyzerState()
         # Set plot limits
         self.setAnalyzerPlotLimits()
@@ -736,6 +737,7 @@ class FrontEnd():
             try:
                 visaLock.acquire()
                 self.Vi.resetAnalyzerState()
+                self.Vi.queryPowerUpErrors()
                 self.Vi.testBufferSize()
                 # Set widget values
                 self.setAnalyzerValue(
@@ -756,7 +758,11 @@ class FrontEnd():
                 visaLock.release()
                 errorFlag = FALSE
             except Exception as e:
-                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}: {e}. Could not initialize analyzer state, retrying...")
+                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. {e}. Could not initialize analyzer state, retrying...")
+                try:
+                    self.Vi.queryErrors()
+                except Exception as e:
+                    logging.warning(f'Could not query errors from device. {e}')
                 visaLock.release()
                 time.sleep(8)
 
@@ -778,6 +784,7 @@ class FrontEnd():
                     self.spectrumDisplay.draw()
                 except Exception as e:
                     logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay: {e}. Attempting to reset analyzer state.")
+                    self.Vi.queryErrors
                     self.Vi.resetAnalyzerState()
                 visaLock.release()
                 time.sleep(0.5)
