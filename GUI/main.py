@@ -8,6 +8,7 @@ import sys
 from pyvisa import attributes
 import re
 import logging
+import decimal
 
 # MATPLOTLIB
 import matplotlib.pyplot as plt
@@ -53,12 +54,12 @@ def isNumber(input):
         return FALSE
     
 def clearAndSetWidget(widget, arg):
-    """Clear the ttk::widget passed in 'widget' and replace it with 'arg' in scientific notation if possible.
+    """Clear the ttk::widget passed in 'widget' and replace it with 'arg' in engineering notation if possible.
     The N9040B and other instruments will return queries in square brackets which python interprets as a list.
 
     Args:
         widget (ttk.Widget or Tkinter_variable): Widget to clear/set.
-        arg (list, str): Value in 'arg[0]' will be taken to set the widget in scientific notation. If that fails, attempt to set the widget to 'arg'.
+        arg (list, str): Value in 'arg[0]' will be taken to set the widget in engineering notation. If that fails, attempt to set the widget to 'arg'.
     """
     logging.debug(f"clearAndSetWidget received widget {widget} and argument {arg}")
     # Set radiobutton widgets
@@ -73,10 +74,12 @@ def clearAndSetWidget(widget, arg):
     # Set entry/combobox widgets
     if isinstance(widget, (tk.Entry, ttk.Entry, ttk.Combobox)):
         widget.delete(0, END)
-        # Try to convert string in list to scientific notation
+        # Try to convert string in list to engineering notation
         try:
             arg = float(arg[0])
-            widget.insert(0, "{:e}".format(arg))
+            x = decimal.Decimal(arg)
+            x = x.normalize().to_eng_string()
+            widget.insert(0, x)
         except:
             widget.insert(0, arg)
         finally:
