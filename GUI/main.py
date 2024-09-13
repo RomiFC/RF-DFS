@@ -39,7 +39,7 @@ visaLock = threading.RLock()
 
 # LOGGING
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="[%(asctime)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -565,28 +565,33 @@ class FrontEnd():
         if "stopfreq" in kwargs:
             _dict.update({'arg': kwargs.get("stopfreq")})
         _list.append(_dict)
-
+        # Resolution Bandwidth
+        _dict = {
+            'command': ':SENS:BANDWIDTH:RESOLUTION',
+            'arg': None,
+            'widget': self.rbwEntry
+        }
         if "rbw" in kwargs:
-            _dict = {
-                'command': ':SENS:BANDWIDTH:RESOLUTION',
-                'arg': kwargs.get("rbw"),
-                'widget': self.rbwEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("rbw")}),
+        _list.append(_dict)
+        # Video Bandwidth
+        _dict = {
+            'command': ':SENS:BANDWIDTH:VIDEO',
+            'arg': None,
+            'widget': self.vbwEntry
+        }
         if "vbw" in kwargs:
-            _dict = {
-                'command': ':SENS:BANDWIDTH:VIDEO',
-                'arg': kwargs.get("vbw"),
-                'widget': self.vbwEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("vbw")})
+        _list.append(_dict)
+        # VBW: 3 dB RBW
+        _dict = {
+            'command': ':SENS:BANDWIDTH:VIDEO:RATIO',
+            'arg': None,
+            'widget': self.bwRatioEntry
+        }
         if "bwratio" in kwargs:
-            _dict = {
-                'command': ':SENS:BANDWIDTH:VIDEO:RATIO',
-                'arg': kwargs.get("bwratio"),
-                'widget': self.bwRatioEntry
-            }
-            _list.append(_dict)
+            _dict.update({'arg': kwargs.get("bwratio")})
+        _list.append(_dict)
         # Reference Level
         _dict = {
             'command': ':DISP:WINDOW:TRACE:Y:RLEVEL',
@@ -684,6 +689,11 @@ class FrontEnd():
         if 'attentype' in kwargs:
             _dict.update({'arg': kwargs.get('attentype')})
         _list.append(_dict)
+
+        # Sort the list so dictionaries with 'arg': None are placed (and executed) after issued parameters
+        for index in range(len(_list)):
+            if _list[index]['arg'] is not None:
+                _list.insert(0, _list.pop(index))
 
         # EXECUTE COMMANDS
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
