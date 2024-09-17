@@ -19,7 +19,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import colorchooser
 from tkinter.ttk import *
+from ttkthemes import ThemedTk
  
 # CONSTANTS
 RETURN_ERROR = 1
@@ -44,6 +46,7 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
 
 
 def isNumber(input):
@@ -80,11 +83,11 @@ def clearAndSetWidget(widget, arg):
             x = decimal.Decimal(arg)
             x = x.normalize().to_eng_string()
             widget.insert(0, x)
+            logging.debug(f"clearAndSetWidget passed argument {x} ({type(x)}) to {widget} ({type(widget)}).")
         except:
             widget.insert(0, arg)
-        finally:
             logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {widget} ({type(widget)}).")
-            
+
 
 class FrontEnd():
     def __init__(self, root):
@@ -155,8 +158,8 @@ class FrontEnd():
         """
         tabSelect = self.tab2                # Select which tab this interface should be placed
 
-        def onConnectPress():
-            """Connect to the resource and update the string in self.instrument
+        def onConnectPress(*args):
+            """Connect to the VISA resource and update the string in self.instrument
             """
             if self.Vi.connectToRsrc(self.instrSelectBox.get()) == RETURN_SUCCESS:
                 self.instrument = self.instrSelectBox.get()
@@ -166,6 +169,7 @@ class FrontEnd():
             """
             logging.info('Searching for resources...')
             self.instrSelectBox['values'] = self.Vi.rm.list_resources()
+            self.motorSelectBox['values'] = list(serial.tools.list_ports.comports())
         def onEnableTermPress():
             if self.enableTerm.get():
                 self.selectTermWidget.config(state='readonly')
@@ -174,16 +178,31 @@ class FrontEnd():
 
 
         # INSTRUMENT SELECTION FRAME & GRID
-        # ISSUE: Apply changes should only be pressable when changes are detected
-        ttk.Label(tabSelect, text = "Select a SCPI instrument:", 
-          font = ("Times New Roman", 10)).grid(column = 0, 
-          row = 0, padx = 5, pady = 25) 
-        self.instrSelectBox = ttk.Combobox(tabSelect, values = self.Vi.rm.list_resources(), width=40)
-        self.instrSelectBox.grid(row = 0, column = 1, padx = 10 , pady = 10)
-        self.refreshButton = ttk.Button(tabSelect, text = "Refresh", command = lambda:onRefreshPress())
-        self.refreshButton.grid(row = 0, column = 2, padx=5)
-        self.confirmButton = ttk.Button(tabSelect, text = "Connect", command = lambda:onConnectPress())
-        self.confirmButton.grid(row = 0, column = 3, padx=5)
+        # ISSUE: Apply changes should only be pressable when changes are detected 
+        connectFrame = ttk.LabelFrame(tabSelect, borderwidth = 2, text = "Instrument Connections")
+        connectFrame.grid(column=0, row=0, padx=20, pady=20, columnspan=3, ipadx=5, ipady=5)
+        ttk.Label(
+            connectFrame, text = "SCPI:", font = ("Times New Roman", 10)).grid(
+            column = 0, row = 0, padx = 5, sticky=W) 
+        ttk.Label(
+            connectFrame, text = "Motor:", font = ("Times New Roman", 10)).grid(
+            column = 0, row = 1, padx = 5, sticky=W) 
+        ttk.Label(
+            connectFrame, text = "PLC:", font = ("Times New Roman", 10)).grid(
+            column = 0, row = 2, padx = 5, sticky=W) 
+        self.instrSelectBox = ttk.Combobox(connectFrame, values = self.Vi.rm.list_resources(), width=40)
+        self.instrSelectBox.grid(row = 0, column = 1, padx = 10 , pady = 5)
+        self.motorSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
+        self.motorSelectBox.grid(row = 1, column = 1, padx = 10, pady = 5)
+        self.plcSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
+        self.plcSelectBox.grid(row = 2, column = 1, padx = 10, pady = 5)
+        self.refreshButton = ttk.Button(connectFrame, text = "Refresh All", command = lambda:onRefreshPress())
+        self.refreshButton.grid(row = 2, column = 2, padx=5)
+
+        self.instrSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event))
+        self.motorSelectBox.bind("<<ComboboxSelected>>", lambda event:'')
+        self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event:'')
+
         # VISA CONFIGURATION FRAME
         self.configFrame = ttk.LabelFrame(tabSelect, borderwidth = 2, text = "VISA Configuration")
         self.configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=tk.N)
@@ -202,7 +221,7 @@ class FrontEnd():
         self.applyButton.grid(row = 7, column = 0, columnspan=2, pady=10)
         # VISA TERMINATION FRAME
         self.termFrame = ttk.LabelFrame(tabSelect, borderwidth=2, text = 'Termination Methods')
-        self.termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=tk.N+tk.W)
+        self.termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=tk.N+tk.W, ipadx=5, ipady=5)
         self.sendEndWidget = ttk.Checkbutton(self.termFrame, text = 'Send \'End or Identify\' on write', variable=self.sendEnd)
         self.selectTermWidget = ttk.Combobox(self.termFrame, text='Termination Character', values=self.SELECT_TERM_VALUES, state='disabled')
         self.enableTermWidget = ttk.Checkbutton(self.termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
@@ -308,19 +327,15 @@ class FrontEnd():
         self.motor = MotorControl( 0 , 0 )
         
         # COLUMN 0 WIDGETS
-        ports                   = list( serial.tools.list_ports.comports() ) 
-        self.port_selection     = ttk.Combobox( tabSelect , values = ports )
-        self.port_selection.grid(row = 0, column = 0 , padx = 20 , pady = 10, sticky=(NW, E))
-
-        self.positions          = tk.LabelFrame( tabSelect, text = "Antenna Position" )
+        self.positions          = ttk.LabelFrame( tabSelect, text = "Antenna Position" )
         self.positions.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
-        self.boxFrame           = tk.Frame( self.positions )
+        self.boxFrame           = ttk.Frame( self.positions )
         self.boxFrame.pack( pady = 10 )
 
-        self.azimuth_label      = tk.Label( self.boxFrame , text = "Azimuth" )
-        self.elevation_label    = tk.Label( self.boxFrame , text = "Elevation")
-        self.inputAzimuth       = tk.Entry( self.boxFrame, width= 10 )
-        self.inputElevation     = tk.Entry( self.boxFrame, width= 10 )
+        self.azimuth_label      = ttk.Label( self.boxFrame , text = "Azimuth" )
+        self.elevation_label    = ttk.Label( self.boxFrame , text = "Elevation")
+        self.inputAzimuth       = ttk.Entry( self.boxFrame, width= 10 )
+        self.inputElevation     = ttk.Entry( self.boxFrame, width= 10 )
 
         self.azimuth_label.grid( row = 0, column = 0, padx = 10 )
         self.elevation_label.grid( row = 1, column = 0, padx = 10 )
@@ -331,9 +346,9 @@ class FrontEnd():
         self.printbutton.pack( padx = 20, pady = 10, side = 'right' )
 
         # COLUMN 1 WIDGETS
-        self.clock_label        = tk.Label( tabSelect, font= ('Arial', 14))
+        self.clock_label        = ttk.Label( tabSelect, font= ('Arial', 14))
         self.clock_label.grid(row = 0, column = 1, padx = 20 , pady = 10, sticky=(NW, E))
-        self.quickButton        = tk.Frame( tabSelect )
+        self.quickButton        = ttk.Frame( tabSelect )
         self.quickButton.grid(row = 1, column = 1, padx = 20, pady = 10, sticky=(S))
         self.EmargencyStop      = tk.Button(self.quickButton, text = "Emargency Stop", font = ('Arial', 16 ) , bg = 'red', fg = 'white', command= self.Estop, width=15)
         self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
@@ -344,7 +359,7 @@ class FrontEnd():
         self.openFreeWriting.pack( pady = 5 )
 
         # COLUMN 2 WIDGETS (Framed)
-        spectrumFrame = tk.LabelFrame(tabSelect, text = "Placeholder Text")
+        spectrumFrame = ttk.LabelFrame(tabSelect, text = "Placeholder Text")
         spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=(NSEW), rowspan=2)
         spectrumFrame.rowconfigure(0, weight=1)
         spectrumFrame.rowconfigure(1, weight=1)
@@ -352,7 +367,7 @@ class FrontEnd():
         spectrumFrame.columnconfigure(1, weight=1)
 
         # MATPLOTLIB GRAPH
-        self.fig = plt.figure()
+        self.fig = plt.figure(linewidth=0, edgecolor="#04253a")
         self.ax = self.fig.add_subplot()
         self.ax.set_title("Spectrum Plot")
         self.ax.set_xlabel("Frequency (Hz)")
@@ -822,30 +837,30 @@ class FrontEnd():
     def freewriting(self):
         """Frexible serial communication Window
         """
-        if self.motor.port != self.port_selection.get()[:4]: 
-            portName = self.port_selection.get()
+        if self.motor.port != self.motorSelectBox.get()[:4]: 
+            portName = self.motorSelectBox.get()
             self.motor.port = portName[:4]
             self.motor.OpenSerial()
         self.motor.freeInput()
 
     def Estop(self):
         
-        if self.motor.port != self.port_selection.get()[:4]: 
-            portName = self.port_selection.get()
+        if self.motor.port != self.motorSelectBox.get()[:4]: 
+            portName = self.motorSelectBox.get()
             self.motor.port = portName[:4]
             self.motor.OpenSerial()
         self.motor.EmargencyStop()
     
     def park( self ):
-        if self.motor.port != self.port_selection.get()[:4]: 
-            portName = self.port_selection.get()
+        if self.motor.port != self.motorSelectBox.get()[:4]: 
+            portName = self.motorSelectBox.get()
             self.motor.port = portName[:4]
             self.motor.OpenSerial()
         self.motor.Park()
 
     def input(self):
-        if self.motor.port != self.port_selection.get()[:4]: 
-            portName = self.port_selection.get()
+        if self.motor.port != self.motorSelectBox.get()[:4]: 
+            portName = self.motorSelectBox.get()
             self.motor.port = portName[:4]
             self.motor.OpenSerial()
         self.motor.userAzi = self.inputAzimuth.get()
@@ -875,8 +890,16 @@ class FrontEnd():
         get_logfile.pack()
 
 
-root = tk.Tk()                  # Root tkinter interface (contains DFS_Window and standard output console)
+# Root tkinter interface (contains DFS_Window and standard output console)
+root = ThemedTk(theme="clearlooks")
 root.title('RF-DFS')
+dummy = ttk.Entry()
+s = ttk.Style()
+s.configure("TCombobox",
+            selectbackground=dummy.cget('background'),
+            selectforeground=dummy.cget('foreground'),
+            activebackground=dummy.cget('background'))
+dummy.destroy()
 
 # Generate textbox to print standard output/error
 stdoutFrame = tk.Frame(root)
