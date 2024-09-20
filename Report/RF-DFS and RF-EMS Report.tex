@@ -440,8 +440,8 @@ Subsection text here
 \begin{figure}[!ht]
     \begin{center}
         \begin{circuitikz}
-            %\draw[help lines, dashed] grid (13, 3);
-            %\draw[help lines, dashed] grid (13, -3);
+            \draw[help lines, dashed] grid (13, 3);
+            \draw[help lines, dashed] grid (13, -3);
 
             \draw(0, 0) node[bnc](port1){N9040b};
             \draw(port1.hot) -- ++ (1, 0)
@@ -483,7 +483,7 @@ Subsection text here
             \draw(sw1.north) node[anchor=south](sw1lab){S1};
             \draw(sw2.north) node[anchor=south](sw2lab){S2};
             \draw(sw3.north) node[anchor=south](sw3lab){S3};
-            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.1) node[anchor=south]{PLC};
+            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.2) node[anchor=south]{PLC};
             \draw(sw2lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
             \draw(sw3lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
 

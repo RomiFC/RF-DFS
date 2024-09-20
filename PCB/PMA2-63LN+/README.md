@@ -1,6 +1,6 @@
 # Changelog
 
-## Revision C - 2/23/2023
+## Revision C - 2/23/2024
 
 ### Added
 
@@ -16,7 +16,7 @@
 - SMA launch pad widened with ground plane cutout to improve Z-matching.
 - Mounting holes now correctly part of GND net.
 
-## Revision B - 1/23/2023
+## Revision B - 1/23/2024
 
 ### Added
 
