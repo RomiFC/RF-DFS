@@ -438,6 +438,55 @@ Subsection text here
     \end{center}
 \end{figure}
 \begin{figure}[!ht]
+  \begin{center}
+      \begin{circuitikz}
+          % \draw[help lines, dashed] grid (13, 3);
+          % \draw[help lines, dashed] grid (13, -3);
+
+          \draw(0, 0) node[bnc](port1){N9040b};
+          \draw(port1.hot) -- ++ (1, 0)
+          node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
+        
+          \draw(sw1.out 1) -| ++ (1.5, 1.5)
+          -- ++ (0.5, 0)
+          to[twoport, name=tp1, fill=green!20] ++ (2, 0)
+          to[amp, invert] ++ (2, 0)
+          to[amp, invert, name=emsref1] ++ (2, 0)
+          to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
+          node[antenna]{EMS};
+          % node[bnc, xscale=-1](port3){\ctikzflipx{EMS}};
+          
+          \draw(sw1.out 2) -| ++ (1.5, -1.5)
+          -- ++ (0.5, 0)
+          to[twoport, name=tp2, fill=green!20] ++ (2, 0)
+          to[amp, invert] ++ (2, 0)
+          to[amp, invert, name=dfsref1] ++ (2, 0)
+          to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
+          node[antenna]{DFS};
+          % node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
+
+          % Attenuator
+          \draw (tp1.center)
+          node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
+          \draw (tp1.north)
+          node[anchor=south]{62 ft Heliax};
+          \draw (tp2.center)
+          node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
+          \draw (tp2.north)
+          node[anchor=south]{120 ft Heliax};
+
+          % Switch labels and arrows
+          \draw(sw1.north) node[anchor=south](sw1lab){S1};
+          \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.2) node[anchor=south]{PLC};
+
+          % Amplifier labels
+          \draw(emsref1.north) ++ (0, 0.2) node[anchor=south]{PMA3-14LN+};
+          \draw(dfsref1.north) ++ (0, 0.1) node[anchor=south]{PMA3-14LN+};
+      \end{circuitikz}
+  \caption{Phase 2 Block Diagram}\label{fig:ph2ampblock}
+  \end{center}
+\end{figure}
+\begin{figure}[!ht]
     \begin{center}
         \begin{circuitikz}
             \draw[help lines, dashed] grid (13, 3);
@@ -492,7 +541,7 @@ Subsection text here
             \draw(emsref2.north) ++ (0, 0.2) node[anchor=south]{PMA-183PLN+};
             \draw(dfsref1.north) ++ (0, 0.1) node[anchor=south]{TBD};
         \end{circuitikz}
-    \caption{Block diagram 3.}\label{fig:rfampblock}
+    \caption{Phase 2 Block Diagram}\label{fig:ph3ampblock}
     \end{center}
 \end{figure}
 
