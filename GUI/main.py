@@ -113,15 +113,17 @@ class FrontEnd():
   
         self.tab1 = ttk.Frame(tabControl) 
         self.tab2 = ttk.Frame(tabControl) 
+        self.spectrumFrame = ttk.LabelFrame(self.tab1, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
+        self.directionFrame = ttk.LabelFrame(self.tab1, text = "Placeholder Text")  # Frame that holds matplotlib azimuth/elevation plot
 
         tabControl.add(self.tab1, text ='Control') 
         tabControl.add(self.tab2, text ='Config') 
         tabControl.bind('<Button-1>', lambda event: self.resetConfigWidgets(event))
-        tabControl.pack(expand = 1, fill ="both") 
+        tabControl.pack(expand = True, fill=BOTH, side=TOP) 
 
         self.controlTab()
-        self.updateOutput( oFile, root )
         self.configTab()
+        # self.updateOutput( oFile, root )
 
         root.after(1000, self.update_time )
     
@@ -295,9 +297,11 @@ class FrontEnd():
         tabSelect = self.tab1   # Select which tab this interface should be placed
         tabSelect.rowconfigure(0, weight=1)
         tabSelect.rowconfigure(1, weight=1)
-        tabSelect.columnconfigure(0, weight=1)
+        tabSelect.rowconfigure(2, weight=1)
+        tabSelect.rowconfigure(3, weight=1)
+        tabSelect.columnconfigure(0, weight=0)
         tabSelect.columnconfigure(1, weight=1)
-        tabSelect.columnconfigure(2, weight=10)
+        tabSelect.columnconfigure(2, weight=1)
 
         # TKINTER VARIABLES
         global tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
@@ -310,40 +314,41 @@ class FrontEnd():
         self.motor = MotorControl( 0 , 0 )
         
         # COLUMN 0 WIDGETS
-        self.positions          = ttk.LabelFrame( tabSelect, text = "Antenna Position" )
-        self.positions.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
-        self.boxFrame           = ttk.Frame( self.positions )
-        self.boxFrame.pack( pady = 10 )
+        antennaPosFrame          = ttk.LabelFrame( tabSelect, text = "Antenna Position" )
+        antennaPosFrame.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
 
-        self.azimuth_label      = ttk.Label( self.boxFrame , text = "Azimuth" )
-        self.elevation_label    = ttk.Label( self.boxFrame , text = "Elevation")
-        self.inputAzimuth       = ttk.Entry( self.boxFrame, width= 10 )
-        self.inputElevation     = ttk.Entry( self.boxFrame, width= 10 )
+        self.azimuth_label      = ttk.Label(antennaPosFrame, text = "Azimuth:" )
+        self.elevation_label    = ttk.Label(antennaPosFrame, text = "Elevation:")
+        self.inputAzimuth       = ttk.Entry(antennaPosFrame)
+        self.inputElevation     = ttk.Entry(antennaPosFrame)
 
-        self.azimuth_label.grid( row = 0, column = 0, padx = 10 )
-        self.elevation_label.grid( row = 1, column = 0, padx = 10 )
-        self.inputAzimuth.grid( row = 0, column = 2, padx = 10 )
-        self.inputElevation.grid( row = 1, column = 2, padx = 10 )
+        self.azimuth_label.grid( row = 0, column = 0, padx = 10, pady=5)
+        self.elevation_label.grid( row = 1, column = 0, padx = 10, pady=5)
+        self.inputAzimuth.grid( row = 0, column = 1, padx = 10)
+        self.inputElevation.grid( row = 1, column = 1, padx = 10)
 
-        self.printbutton        = tk.Button( self.positions, text = "Enter", command = self.input )
-        self.printbutton.pack( padx = 20, pady = 10, side = 'right' )
+        self.printbutton        = tk.Button( antennaPosFrame, text = "Enter", command = self.input )
+        self.printbutton.grid(row = 2, column = 1, padx = 20, pady = 5, sticky=E)
 
-        # COLUMN 1 WIDGETS
-        self.clock_label        = ttk.Label( tabSelect, font= ('Arial', 14))
-        self.clock_label.grid(row = 0, column = 1, padx = 20 , pady = 10, sticky=(NW, E))
+        clockFrame              = ttk.Frame(tabSelect)
+        clockFrame.grid(row=0,column=0)
+        self.clock_label        = ttk.Label(clockFrame, font= ('Arial', 14))
+        self.clock_label.pack()
         self.quickButton        = ttk.Frame( tabSelect )
-        self.quickButton.grid(row = 1, column = 1, padx = 20, pady = 10, sticky=(S))
-        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emargency Stop", font = ('Arial', 16 ) , bg = 'red', fg = 'white', command= self.Estop, width=15)
+        self.quickButton.grid(row = 2, column = 0, padx = 20, pady = 10, sticky=(S))
+        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = ('Arial', 16 ), bg = 'red', fg = 'white', command= self.Estop, width=15)
         self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
-        self.openFreeWriting    = tk.Button(self.quickButton, text = "Open Free Writing" ,font = ('Arial', 16 ), command= self.freewriting, width=15)
+        self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = ('Arial', 16 ), command= self.freewriting, width=15)
        
         self.EmargencyStop.pack( pady = 5 )
         self.Park.pack( pady = 5 )
         self.openFreeWriting.pack( pady = 5 )
 
+        # COLUMN 1 WIDGETS
+        self.directionFrame.grid(row=0, column=1, padx = 20, pady = 10, sticky = NSEW, rowspan = 3)
+
         # COLUMN 2 WIDGETS (Framed)
-
-
+        self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=NSEW, rowspan=3)
 
             
     # TODO: Cleanup boilerplate code below
@@ -419,14 +424,12 @@ class SpecAn(FrontEnd):
         self.RBW_FILTER_TYPE_VAL_ARGS = ('DB3', 'DB6', 'IMP', 'NOISE')
         # VISA OBJECT
         self.Vi = Vi
-
-        # COLUMN 2 WIDGETS (Framed)
-        spectrumFrame = ttk.LabelFrame(parentWidget, text = "Placeholder Text")
-        spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=(NSEW), rowspan=2)
-        spectrumFrame.rowconfigure(0, weight=1)
-        spectrumFrame.rowconfigure(1, weight=1)
-        spectrumFrame.columnconfigure(0, weight=1)
-        spectrumFrame.columnconfigure(1, weight=1)
+        # PARENT
+        spectrumFrame = parentWidget
+        spectrumFrame.rowconfigure(0, weight=1)     # Prevent this row from resizing
+        spectrumFrame.rowconfigure(1, weight=0)     # Prevent this row from resizing
+        spectrumFrame.columnconfigure(0, weight=1)  # Allow this column to resize
+        spectrumFrame.columnconfigure(1, weight=0)  # Prevent this column from resizing
 
         # MATPLOTLIB GRAPH
         fig = plt.figure(linewidth=0, edgecolor="#04253a")
@@ -439,7 +442,7 @@ class SpecAn(FrontEnd):
         self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         self.ax.xaxis.set_major_formatter(ticker.EngFormatter(unit=''))
         self.spectrumDisplay = FigureCanvasTkAgg(fig, master=spectrumFrame)
-        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0)
+        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, rowspan=2)
 
         # MEASUREMENT COMMANDS
         measurementTab = ttk.Notebook(spectrumFrame)
@@ -453,12 +456,12 @@ class SpecAn(FrontEnd):
 
         # MEASUREMENT TAB 1 (FREQUENCY)
         centerFreqFrame = ttk.LabelFrame(tab1, text="Center Frequency")
-        centerFreqFrame.grid(row=0, column=0)
+        centerFreqFrame.grid(row=0, column=0, sticky=E)
         self.centerFreqEntry = ttk.Entry(centerFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.centerFreqEntry.pack()
 
         spanFrame = ttk.LabelFrame(tab1, text="Span")
-        spanFrame.grid(row=1, column=0)
+        spanFrame.grid(row=1, column=0, sticky=E)
         self.spanEntry = ttk.Entry(spanFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.spanEntry.pack()
         self.spanSweptButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Swept Span", value='swept')
@@ -543,11 +546,13 @@ class SpecAn(FrontEnd):
 
         # TOGGLE BUTTON
         spectrumToggle = ttk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
-        spectrumToggle.grid(row=1, column=1, sticky=NSEW)  
+        spectrumToggle.grid(row=1, column=1, sticky=NSEW) 
+
+        self.bindWidgets() 
 
         # Generate thread to handle live data plot in background
-        t1 = threading.Thread(target=self.loopAnalyzerDisplay, daemon=TRUE)
-        t1.start()
+        analyzerLoop = threading.Thread(target=self.loopAnalyzerDisplay, daemon=TRUE)
+        analyzerLoop.start()
 
     def bindWidgets(self):
         # BIND WIDGETS
@@ -893,6 +898,25 @@ class SpecAn(FrontEnd):
             logging.info("Disabling spectrum display.")
             self.analyzerKillFlag = TRUE
 
+class AziElePlot(FrontEnd):
+    def __init__(self, parentWidget):
+        # PARENT
+        self.parentWidget = parentWidget
+        self.parentWidget.rowconfigure(0, weight=1)
+        self.parentWidget.columnconfigure(0, weight=1)
+
+        # PLOT
+        fig, (ax1, ax2) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
+        ax1.set_title("Azimuth", va='bottom')
+        ax2.set_title("Elevation", va='bottom')
+        ax1.set_rticks([0.25, 0.5, 0.75], labels=[])
+        ax2.set_rticks([0.25, 0.5, 0.75], labels=[])
+        ax1.set_theta_zero_location('N')
+        ax2.set_thetagrids([0, 30, 60, 90, 120])
+
+        self.azimuthDisplay = FigureCanvasTkAgg(fig, master=self.parentWidget)
+        self.azimuthDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW)
+
 
 
 # Root tkinter interface (contains DFS_Window and standard output console)
@@ -920,13 +944,13 @@ def redirector(inputStr):
     console.yview(MOVETO, 1)
 
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
-sys.stdout.write = redirector
-sys.stderr.write = redirector
+# sys.stdout.write = redirector
+# sys.stderr.write = redirector
 
 Vi = VisaControl()
 DFS_Window = FrontEnd(root, Vi)
-sa = SpecAn(Vi, DFS_Window.tab1)
-sa.bindWidgets()
+Spec_An = SpecAn(Vi, DFS_Window.spectrumFrame)
+Azi_Ele = AziElePlot(DFS_Window.directionFrame)
 
 # Limit window size to the minimum size on generation
 root.update()
