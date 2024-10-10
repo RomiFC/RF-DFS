@@ -351,11 +351,11 @@ class VisaControl():
         """
         buffer = self.openRsrc.query_ascii_values(":SYST:ERR?", converter='s')
         # Conversion because this device returns string wrapped in brackets. Python interprets this as a list with a single string
-        if len(buffer[0]) > 1:
-            try:
-                buffer = buffer[0].strip("[]")
-            except:
-                pass
+        # if len(buffer[0]) > 1:
+        #     try:
+        #         buffer = buffer[0].strip("[]")
+        #     except:
+        #         pass
         logging.info(f'{buffer}')
         
     def queryPowerUpErrors(self):
@@ -368,3 +368,33 @@ class VisaControl():
             except:
                 pass
         logging.info(f'{buffer.strip("[]")}')
+
+    def getEventRegister(self):
+        """Issues '*ESR?' to the open resource and returns integer response
+
+        Returns:
+            Status (int): Integer sum of bits in Event Status Register
+        """
+        return self.openRsrc.query_ascii_values("*ESR?")
+
+    def getOperationRegister(self):
+        """Issues ':STAT:OPER:COND?' to the open resource and returns integer response
+
+        Returns:
+            Status (int): Integer sum of bits in Operation Status Condition Register
+        """
+        # Conversion because this device returns number wrapped in brackets. Python interprets this as a list with a single float
+        buffer = self.openRsrc.query_ascii_values(":STAT:OPER:COND?")
+        buffer = int(buffer[0])
+        return buffer
+
+    def getCalCondRegister(self):
+        """Issues ':STAT:QUES:CAL:COND?' to the open resource and returns integer response
+
+        Returns:
+            Status (int): Integer sum of bits in Questionable Calibration Register
+        """
+        # Conversion because this device returns number wrapped in brackets. Python interprets this as a list with a single float
+        buffer = self.openRsrc.query_ascii_values(":STAT:QUES:CAL:COND?")
+        buffer = int(buffer[0])
+        return buffer

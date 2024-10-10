@@ -416,7 +416,8 @@ class FrontEnd():
 class SpecAn(FrontEnd):
     def __init__(self, Vi, parentWidget):
         # FLAGS
-        self.analyzerKillFlag = TRUE
+        self.contSweepFlag = False
+        self.singleSweepFlag = False
         # CONSTANTS
         self.RBW_FILTER_SHAPE_VALUES = ('Gaussian', 'Flattop')
         self.RBW_FILTER_SHAPE_VAL_ARGS = ('GAUS', 'FLAT')
@@ -426,8 +427,9 @@ class SpecAn(FrontEnd):
         self.Vi = Vi
         # PARENT
         spectrumFrame = parentWidget
-        spectrumFrame.rowconfigure(0, weight=1)     # Prevent this row from resizing
+        spectrumFrame.rowconfigure(0, weight=1)     # Allow this row to resize
         spectrumFrame.rowconfigure(1, weight=0)     # Prevent this row from resizing
+        spectrumFrame.rowconfigure(2, weight=0)     # Prevent this row from resizing
         spectrumFrame.columnconfigure(0, weight=1)  # Allow this column to resize
         spectrumFrame.columnconfigure(1, weight=0)  # Prevent this column from resizing
 
@@ -442,7 +444,7 @@ class SpecAn(FrontEnd):
         self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         self.ax.xaxis.set_major_formatter(ticker.EngFormatter(unit=''))
         self.spectrumDisplay = FigureCanvasTkAgg(fig, master=spectrumFrame)
-        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, rowspan=2)
+        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, rowspan=3)
 
         # MEASUREMENT COMMANDS
         measurementTab = ttk.Notebook(spectrumFrame)
@@ -544,9 +546,11 @@ class SpecAn(FrontEnd):
         self.attenManButton = ttk.Radiobutton(attenFrame, variable=tkAttenType, text="Manual", value=MANUAL)
         self.attenManButton.pack(anchor=W)
 
-        # TOGGLE BUTTON
-        spectrumToggle = ttk.Button(spectrumFrame, text="Toggle Analyzer", command=lambda:self.toggleAnalyzerDisplay())
-        spectrumToggle.grid(row=1, column=1, sticky=NSEW) 
+        # SWEEP BUTTONS
+        singleSweepButton = ttk.Button(spectrumFrame, text="Single Sweep", command=lambda:self.singleSweep())
+        singleSweepButton.grid(row=1, column=1, sticky=NSEW)
+        continuousSweepButton = ttk.Button(spectrumFrame, text="Continuous", command=lambda:self.toggleAnalyzerDisplay())
+        continuousSweepButton.grid(row=2, column=1, sticky=NSEW) 
 
         self.bindWidgets() 
 
@@ -799,7 +803,8 @@ class SpecAn(FrontEnd):
                 logging.debug(f"Command {x['command']}? returned {buffer}")
                 clearAndSetWidget(x['widget'], buffer)
             except Exception as e:
-                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE: {e}. ATTEMPTING TO RESET ANALYZER STATE")
+                logging.fatal(e)
+                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE: ATTEMPTING TO RESET ANALYZER STATE")
                 self.Vi.queryErrors()
                 self.Vi.resetAnalyzerState()
         # Set plot limits
@@ -847,35 +852,47 @@ class SpecAn(FrontEnd):
                 visaLock.release()
                 errorFlag = FALSE
             except Exception as e:
-                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. {e}. Could not initialize analyzer state, retrying...")
+                logging.warning(e)
+                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. Could not initialize analyzer state, retrying...")
                 try:
                     self.Vi.queryErrors()
                 except Exception as e:
-                    logging.warning(f'Could not query errors from device. {e}')
+                    logging.warning(e)
+                    logging.warning(f'Could not query errors from device.')
                 visaLock.release()
                 time.sleep(8)
 
         # Main analyzer loop
         # TODO: variable time.sleep based on analyzer sweep time
         while TRUE:
-            if not self.analyzerKillFlag:
+            if self.contSweepFlag or self.singleSweepFlag:
                 visaLock.acquire()
+                try: # Check if the instrument is busy calibrating, settling, sweeping, or measuring 
+                    if self.Vi.getOperationRegister() & 0b00011011:
+                        continue 
+                except Exception as e:
+                    logging.fatal(e)
+                    logging.fatal("Could not retrieve information from Operation Status Register. Retrying...")
+                    visaLock.release()
+                    time.sleep(8)
+                    continue
                 try:
-                    try:
+                    if 'lines' in locals():     # Remove previous plot if it exists
                         lines.pop(0).remove()
-                    except:
-                        pass
                     buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
                     xAxis = buffer[::2]
                     yAxis = buffer[1::2]
-                    lines = self.ax.plot(xAxis, yAxis, )
+                    lines = self.ax.plot(xAxis, yAxis)
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
                 except Exception as e:
-                    logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay: {e}. Attempting to reset analyzer state.")
+                    logging.fatal(e)
+                    logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, attempting to reset analyzer state.")
                     self.Vi.queryErrors
                     self.Vi.resetAnalyzerState()
+                    time.sleep(5)
                 visaLock.release()
+                self.singleSweepFlag = False
                 time.sleep(0.5)
             else:
                 # Prevent this thread from taking up too much utilization
@@ -884,20 +901,32 @@ class SpecAn(FrontEnd):
         return
 
     def toggleAnalyzerDisplay(self):
-        """sets analyzerKillFlag != analyzerKillFlag to control loopAnalyzerDisplay()
+        """sets contSweepFlag != contSweepFlag to control loopAnalyzerDisplay()
         """
         if self.Vi.isSessionOpen() == FALSE:
-            logging.info("Error: Session to the analyzer is not open.")
-            self.analyzerKillFlag = TRUE
+            logging.error("Cannot initiate sweep, session to the analyzer is not open.")
+            self.contSweepFlag = False
             return
         
-        if self.analyzerKillFlag:
+        if not self.contSweepFlag:
             logging.info("Starting spectrum display.")
-            self.analyzerKillFlag = FALSE
+            self.contSweepFlag = True
         else:
             logging.info("Disabling spectrum display.")
-            self.analyzerKillFlag = TRUE
+            self.contSweepFlag = False
 
+    def singleSweep(self):
+        """Sets singleSweepFlag TRUE and contSweepFlag FALSE to control loopAnalyzerDisplay()
+        """
+        if self.Vi.isSessionOpen() == FALSE:
+            logging.error("Cannot initiate sweep, session to the analyzer is not open.")
+            self.contSweepFlag = False
+            return
+        
+        self.contSweepFlag = False
+        self.singleSweepFlag = True
+
+            
 class AziElePlot(FrontEnd):
     def __init__(self, parentWidget):
         # PARENT
@@ -944,8 +973,8 @@ def redirector(inputStr):
     console.yview(MOVETO, 1)
 
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
-# sys.stdout.write = redirector
-# sys.stderr.write = redirector
+sys.stdout.write = redirector
+sys.stderr.write = redirector
 
 Vi = VisaControl()
 DFS_Window = FrontEnd(root, Vi)
