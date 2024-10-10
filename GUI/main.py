@@ -90,7 +90,7 @@ def clearAndSetWidget(widget, arg):
 
 
 class FrontEnd():
-    def __init__(self, root, Vi):
+    def __init__(self, root, Vi, Motor):
         """Initializes the top level tkinter interface
         """
         # CONSTANTS
@@ -107,22 +107,17 @@ class FrontEnd():
 
         self.Vi = Vi
         self.Vi.openRsrcManager()
+        self.motor = Motor
 
         oFile = DataManagement()
-        tabControl = ttk.Notebook(root) 
+        controlFrame = ttk.Frame(root) 
   
-        self.tab1 = ttk.Frame(tabControl) 
-        self.tab2 = ttk.Frame(tabControl) 
-        self.spectrumFrame = ttk.LabelFrame(self.tab1, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
-        self.directionFrame = ttk.LabelFrame(self.tab1, text = "Placeholder Text")  # Frame that holds matplotlib azimuth/elevation plot
+        self.spectrumFrame = ttk.LabelFrame(controlFrame, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
+        self.directionFrame = ttk.LabelFrame(controlFrame, text = "Placeholder Text")  # Frame that holds matplotlib azimuth/elevation plot
 
-        tabControl.add(self.tab1, text ='Control') 
-        tabControl.add(self.tab2, text ='Config') 
-        tabControl.bind('<Button-1>', lambda event: self.resetConfigWidgets(event))
-        tabControl.pack(expand = True, fill=BOTH, side=TOP) 
+        controlFrame.pack(expand = True, fill=BOTH, side=TOP) 
 
-        self.controlTab()
-        self.configTab()
+        self.controlInterface(controlFrame)
         # self.updateOutput( oFile, root )
 
         root.after(1000, self.update_time )
@@ -138,10 +133,10 @@ class FrontEnd():
     
         root.quit()
 
-    def configTab(self):
-        """Generates the SCPI communication interface on the developer's tab of choice at tabSelect
+    def openConfig(self):
+        """Opens configuration menu on a new toplevel window
         """
-        tabSelect = self.tab2                # Select which tab this interface should be placed
+        parent = Toplevel()
 
         def onConnectPress(*args):
             """Connect to the VISA resource and update the string in self.instrument
@@ -164,7 +159,7 @@ class FrontEnd():
 
         # INSTRUMENT SELECTION FRAME & GRID
         # ISSUE: Apply changes should only be pressable when changes are detected 
-        connectFrame = ttk.LabelFrame(tabSelect, borderwidth = 2, text = "Instrument Connections")
+        connectFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "Instrument Connections")
         connectFrame.grid(column=0, row=0, padx=20, pady=20, columnspan=3, ipadx=5, ipady=5)
         ttk.Label(
             connectFrame, text = "SCPI:", font = ("Times New Roman", 10)).grid(
@@ -177,6 +172,7 @@ class FrontEnd():
             column = 0, row = 2, padx = 5, sticky=W) 
         self.instrSelectBox = ttk.Combobox(connectFrame, values = self.Vi.rm.list_resources(), width=40)
         self.instrSelectBox.grid(row = 0, column = 1, padx = 10 , pady = 5)
+        self.instrSelectBox.set(self.instrument)
         self.motorSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
         self.motorSelectBox.grid(row = 1, column = 1, padx = 10, pady = 5)
         self.plcSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
@@ -189,7 +185,7 @@ class FrontEnd():
         self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event:'')
 
         # VISA CONFIGURATION FRAME
-        self.configFrame = ttk.LabelFrame(tabSelect, borderwidth = 2, text = "VISA Configuration")
+        self.configFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "VISA Configuration")
         self.configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=tk.N)
         self.timeoutLabel = ttk.Label(self.configFrame, text = 'Timeout (ms)')
         self.timeoutWidget = ttk.Spinbox(self.configFrame, from_=TIMEOUT_MIN, to=TIMEOUT_MAX, increment=100, validate="key", validatecommand=(isNumWrapper, '%P'))
@@ -205,7 +201,7 @@ class FrontEnd():
         self.chunkSizeWidget.grid(row = 3, column = 0, padx=20, pady=5, columnspan=2)
         self.applyButton.grid(row = 7, column = 0, columnspan=2, pady=10)
         # VISA TERMINATION FRAME
-        self.termFrame = ttk.LabelFrame(tabSelect, borderwidth=2, text = 'Termination Methods')
+        self.termFrame = ttk.LabelFrame(parent, borderwidth=2, text = 'Termination Methods')
         self.termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=tk.N+tk.W, ipadx=5, ipady=5)
         self.sendEndWidget = ttk.Checkbutton(self.termFrame, text = 'Send \'End or Identify\' on write', variable=self.sendEnd)
         self.selectTermWidget = ttk.Combobox(self.termFrame, text='Termination Character', values=self.SELECT_TERM_VALUES, state='disabled')
@@ -216,7 +212,8 @@ class FrontEnd():
         self.selectTermWidget.grid(row = 2, column = 0, pady = 5)
     
 
-    def resetConfigWidgets(self, event):
+    def resetConfigWidgets(self, *event):
+        # DEPRECATED WITH THE REMOVAL OF CONTROL AND CONFIG TABS
         """Event handler to reset widget values to their respective variables
 
         Args:
@@ -290,18 +287,18 @@ class FrontEnd():
         else:
             return RETURN_ERROR
     
-    def controlTab(self):
-        """Generates the serial communication interface on the developer's tab of choice at tabSelect
+    def controlInterface(self, parentWidget):
+        """Generates the main control interface the root level. Also generates frames to contain objects for SpecAn and AziElePlot
         """
 
-        tabSelect = self.tab1   # Select which tab this interface should be placed
-        tabSelect.rowconfigure(0, weight=1)
-        tabSelect.rowconfigure(1, weight=1)
-        tabSelect.rowconfigure(2, weight=1)
-        tabSelect.rowconfigure(3, weight=1)
-        tabSelect.columnconfigure(0, weight=0)
-        tabSelect.columnconfigure(1, weight=1)
-        tabSelect.columnconfigure(2, weight=1)
+        parent = parentWidget
+        parent.rowconfigure(0, weight=1)
+        parent.rowconfigure(1, weight=1)
+        parent.rowconfigure(2, weight=1)
+        parent.rowconfigure(3, weight=1)
+        parent.columnconfigure(0, weight=0)
+        parent.columnconfigure(1, weight=1)
+        parent.columnconfigure(2, weight=1)
 
         # TKINTER VARIABLES
         global tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
@@ -310,14 +307,12 @@ class FrontEnd():
         tkVbwType = BooleanVar()
         tkBwRatioType = BooleanVar()
         tkAttenType = BooleanVar()
-
-        self.motor = MotorControl( 0 , 0 )
         
         # COLUMN 0 WIDGETS
-        antennaPosFrame          = ttk.LabelFrame( tabSelect, text = "Antenna Position" )
+        antennaPosFrame          = ttk.LabelFrame( parent, text = "Antenna Position" )
         antennaPosFrame.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
 
-        self.azimuth_label      = ttk.Label(antennaPosFrame, text = "Azimuth:" )
+        self.azimuth_label      = ttk.Label(antennaPosFrame, text = "Azimuth:")
         self.elevation_label    = ttk.Label(antennaPosFrame, text = "Elevation:")
         self.inputAzimuth       = ttk.Entry(antennaPosFrame)
         self.inputElevation     = ttk.Entry(antennaPosFrame)
@@ -330,11 +325,11 @@ class FrontEnd():
         self.printbutton        = tk.Button( antennaPosFrame, text = "Enter", command = self.input )
         self.printbutton.grid(row = 2, column = 1, padx = 20, pady = 5, sticky=E)
 
-        clockFrame              = ttk.Frame(tabSelect)
+        clockFrame              = ttk.Frame(parent)
         clockFrame.grid(row=0,column=0)
         self.clock_label        = ttk.Label(clockFrame, font= ('Arial', 14))
         self.clock_label.pack()
-        self.quickButton        = ttk.Frame( tabSelect )
+        self.quickButton        = ttk.Frame( parent )
         self.quickButton.grid(row = 2, column = 0, padx = 20, pady = 10, sticky=(S))
         self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = ('Arial', 16 ), bg = 'red', fg = 'white', command= self.Estop, width=15)
         self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
@@ -347,7 +342,7 @@ class FrontEnd():
         # COLUMN 1 WIDGETS
         self.directionFrame.grid(row=0, column=1, padx = 20, pady = 10, sticky = NSEW, rowspan = 3)
 
-        # COLUMN 2 WIDGETS (Framed)
+        # COLUMN 2 WIDGETS
         self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=NSEW, rowspan=3)
 
             
@@ -414,6 +409,12 @@ class FrontEnd():
         get_logfile.pack()
 
 class SpecAn(FrontEnd):
+    """Generates tkinter-embedded matplotlib graph of spectrum analyzer.
+
+    Args:
+        Vi (class): Instance of VisaControl that contains methods for communicating with SCPI instruments.
+        parentWidget (tk::LabelFrame, tk::Frame): Parent widget which will contain graph and control widgets.
+    """
     def __init__(self, Vi, parentWidget):
         # FLAGS
         self.contSweepFlag = False
@@ -559,7 +560,8 @@ class SpecAn(FrontEnd):
         analyzerLoop.start()
 
     def bindWidgets(self):
-        # BIND WIDGETS
+        """Binds tkinter events to the widgets' respective commands.
+        """
         self.centerFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, centerfreq = self.centerFreqEntry.get()))
         self.spanEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, span = self.spanEntry.get()))
         self.startFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, startfreq = self.startFreqEntry.get()))
@@ -783,7 +785,7 @@ class SpecAn(FrontEnd):
             _dict.update({'arg': kwargs.get('attentype')})
         _list.append(_dict)
 
-        # Sort the list so dictionaries with 'arg': None are placed (and executed) after issued parameters
+        # Sort the list so dictionaries with 'arg': None are placed (and executed) after write commands
         for index in range(len(_list)):
             if _list[index]['arg'] is not None:
                 _list.insert(0, _list.pop(index))
@@ -852,8 +854,8 @@ class SpecAn(FrontEnd):
                 visaLock.release()
                 errorFlag = FALSE
             except Exception as e:
-                logging.warning(e)
-                logging.warning(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. Could not initialize analyzer state, retrying...")
+                logging.error(e)
+                logging.error(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. Could not initialize analyzer state, retrying...")
                 try:
                     self.Vi.queryErrors()
                 except Exception as e:
@@ -928,6 +930,12 @@ class SpecAn(FrontEnd):
 
             
 class AziElePlot(FrontEnd):
+    """Generates tkinter-embedded matplotlib graph of spectrum analyzer
+
+    Args:
+        Motor (class): Instance of MotorControl that contains methods for communicating with the Parker Hannifin Motor Controller.
+        parentWidget (tk::LabelFrame, tk::Frame): Parent widget which will contain graph and control widgets.
+    """
     def __init__(self, parentWidget):
         # PARENT
         self.parentWidget = parentWidget
@@ -952,6 +960,7 @@ class AziElePlot(FrontEnd):
 root = ThemedTk(theme="clearlooks")
 root.title('RF-DFS')
 isNumWrapper = root.register(isNumber)
+# Change combobox highlight colors to match entry
 dummy = ttk.Entry()
 s = ttk.Style()
 s.configure("TCombobox",
@@ -976,14 +985,38 @@ def redirector(inputStr):
 sys.stdout.write = redirector
 sys.stderr.write = redirector
 
+# Generate objects within root window
 Vi = VisaControl()
-DFS_Window = FrontEnd(root, Vi)
+Motor = MotorControl(0, 0)
+
+DFS_Window = FrontEnd(root, Vi, Motor)
 Spec_An = SpecAn(Vi, DFS_Window.spectrumFrame)
 Azi_Ele = AziElePlot(DFS_Window.directionFrame)
+
+# Generate menu bars
+root.option_add('*tearOff', False)
+menubar = Menu(root)
+root['menu'] = menubar
+menuFile = Menu(menubar)
+menuOptions = Menu(menubar)
+menuHelp = Menu(menubar)
+menubar.add_cascade(menu=menuFile, label='File')
+menubar.add_cascade(menu=menuOptions, label='Options')
+menubar.add_cascade(menu=menuHelp, label='Help')
+
+# File
+menuFile.add_command(label='Save trace')
+menuFile.add_command(label='Save log')
+menuFile.add_command(label='Save image')
+menuFile.add_separator()
+menuFile.add_command(label='Exit')
+
+# Options
+menuOptions.add_command(label='Configure...', command=DFS_Window.openConfig)
 
 # Limit window size to the minimum size on generation
 root.update()
 root.minsize(root.winfo_width(), root.winfo_height())
-root.protocol("WM_DELETE_WINDOW", DFS_Window.on_closing )
 
+root.protocol("WM_DELETE_WINDOW", DFS_Window.on_closing)
 root.mainloop()

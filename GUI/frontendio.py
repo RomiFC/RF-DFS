@@ -238,6 +238,7 @@ class VisaControl():
         if self.isError():
             logging.error(f'Could not open a session to the resource manager, error code: {hex(self.rm.last_status)}')
             return RETURN_ERROR     
+        logging.info(f'Success code {hex(self.rm.last_status)}')
         return RETURN_SUCCESS
     
     def connectToRsrc(self, inputString):
@@ -343,7 +344,7 @@ class VisaControl():
         if self.rm.last_status < constants.VI_SUCCESS:
             return self.rm.last_status
         else:
-            logging.info(f'Success code: {hex(self.rm.last_status)}')
+            # logging.info(f'Success code: {hex(self.rm.last_status)}')
             return RETURN_SUCCESS
         
     def queryErrors(self):
@@ -367,7 +368,7 @@ class VisaControl():
                 buffer = buffer[0].strip("[]")
             except:
                 pass
-        logging.info(f'{buffer.strip("[]")}')
+        logging.info(f'{buffer.strip("[]").strip()}')   # Remove brackets, leading and trailing whitespace, and newline characters
 
     def getEventRegister(self):
         """Issues '*ESR?' to the open resource and returns integer response
