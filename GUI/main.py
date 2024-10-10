@@ -6,7 +6,7 @@ from timestamp import *
 # OTHER MODULES
 import sys
 from pyvisa import attributes
-import re
+import numpy as np
 import logging
 import decimal
 
@@ -122,16 +122,17 @@ class FrontEnd():
 
         root.after(1000, self.update_time )
     
-    def on_closing( self ):
+    def onExit( self ):
         """ Ask to close serial communication when 'X' button is pressed """
         SaveCheck = messagebox.askokcancel( title = "Window closing", message = "Do you want to close communication to the motor?" )
         if SaveCheck is True:      
             while (self.motor.ser.is_open):
                 self.motor.CloseSerial()
+            root.quit()
+            logging.info("Program executed with exit code: 0")
         else:
             pass
     
-        root.quit()
 
     def openConfig(self):
         """Opens configuration menu on a new toplevel window
@@ -158,7 +159,6 @@ class FrontEnd():
 
 
         # INSTRUMENT SELECTION FRAME & GRID
-        # ISSUE: Apply changes should only be pressable when changes are detected 
         connectFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "Instrument Connections")
         connectFrame.grid(column=0, row=0, padx=20, pady=20, columnspan=3, ipadx=5, ipady=5)
         ttk.Label(
@@ -386,12 +386,12 @@ class FrontEnd():
         self.motor.userEle = self.inputElevation.get()
         self.motor.readUserInput()      
 
-
+        # TODO: This isn't called anywhere? Delete?
     def quit(self):
         self.motor.CloseSerial()
         root.destroy()
 
-    # TODO: Figure out what this does or maybe deprecate it
+        # TODO: Figure out what this does or maybe deprecate it
     def updateOutput( self, oFile, root ):
         def saveData():
             # position information is not updated now, path from motor servo is needed. 
@@ -950,10 +950,21 @@ class AziElePlot(FrontEnd):
         ax2.set_rticks([0.25, 0.5, 0.75], labels=[])
         ax1.set_theta_zero_location('N')
         ax2.set_thetagrids([0, 30, 60, 90, 120])
+        ax1.autoscale(enable=False, tight=True)
+        ax2.autoscale(enable=False, tight=True)
+        ax1.set_facecolor('#d5de9c')
+        ax2.set_facecolor('#d5de9c')
+        ax2.axvspan(0, -240/180.*np.pi, facecolor='0.85')
+        ax1.grid(color='#316931')
+        ax2.grid(color='#316931')
 
         self.azimuthDisplay = FigureCanvasTkAgg(fig, master=self.parentWidget)
         self.azimuthDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW)
 
+        # Arrow demonstration
+        ax1.arrow(0/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
+        ax2.arrow(90/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
+        self.azimuthDisplay.draw()
 
 
 # Root tkinter interface (contains DFS_Window and standard output console)
@@ -1009,7 +1020,7 @@ menuFile.add_command(label='Save trace')
 menuFile.add_command(label='Save log')
 menuFile.add_command(label='Save image')
 menuFile.add_separator()
-menuFile.add_command(label='Exit')
+menuFile.add_command(label='Exit', command=DFS_Window.onExit)
 
 # Options
 menuOptions.add_command(label='Configure...', command=DFS_Window.openConfig)
@@ -1018,5 +1029,5 @@ menuOptions.add_command(label='Configure...', command=DFS_Window.openConfig)
 root.update()
 root.minsize(root.winfo_width(), root.winfo_height())
 
-root.protocol("WM_DELETE_WINDOW", DFS_Window.on_closing)
+root.protocol("WM_DELETE_WINDOW", DFS_Window.onExit)
 root.mainloop()
