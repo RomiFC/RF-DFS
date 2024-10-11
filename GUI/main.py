@@ -132,7 +132,6 @@ class FrontEnd():
             logging.info("Program executed with exit code: 0")
         else:
             pass
-    
 
     def openConfig(self):
         """Opens configuration menu on a new toplevel window
@@ -347,6 +346,8 @@ class FrontEnd():
 
             
     # TODO: Cleanup boilerplate code below
+    def getMotorPort(self):
+        return self.motorSelectBox.get()
 
     def update_time( self ):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -930,44 +931,95 @@ class SpecAn(FrontEnd):
 
             
 class AziElePlot(FrontEnd):
-    """Generates tkinter-embedded matplotlib graph of spectrum analyzer
+    """Generates tkinter-embedded matplotlib graph of spectrum analyzer. Requires an instance of FrontEnd to be constructed with the name Front_End.
 
     Args:
         Motor (class): Instance of MotorControl that contains methods for communicating with the Parker Hannifin Motor Controller.
         parentWidget (tk::LabelFrame, tk::Frame): Parent widget which will contain graph and control widgets.
     """
-    def __init__(self, parentWidget):
+    def __init__(self, Motor, parentWidget):
+        # MOTOR INSTANCE
+        self.Motor = Motor
+
         # PARENT
-        self.parentWidget = parentWidget
-        self.parentWidget.rowconfigure(0, weight=1)
-        self.parentWidget.columnconfigure(0, weight=1)
+        self.parent = parentWidget
+        self.parent.rowconfigure(0, weight=1)
+        self.parent.columnconfigure(0, weight=1)
 
         # PLOT
-        fig, (ax1, ax2) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
-        ax1.set_title("Azimuth", va='bottom')
-        ax2.set_title("Elevation", va='bottom')
-        ax1.set_rticks([0.25, 0.5, 0.75], labels=[])
-        ax2.set_rticks([0.25, 0.5, 0.75], labels=[])
-        ax1.set_theta_zero_location('N')
-        ax2.set_thetagrids([0, 30, 60, 90, 120])
-        ax1.autoscale(enable=False, tight=True)
-        ax2.autoscale(enable=False, tight=True)
-        ax1.set_facecolor('#d5de9c')
-        ax2.set_facecolor('#d5de9c')
-        ax2.axvspan(0, -240/180.*np.pi, facecolor='0.85')
-        ax1.grid(color='#316931')
-        ax2.grid(color='#316931')
+        fig, (azAxis, elAxis) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
+        azAxis.set_title("Azimuth", va='bottom')
+        elAxis.set_title("Elevation", va='bottom')
+        azAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
+        elAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
+        azAxis.set_theta_zero_location('N')
+        elAxis.set_thetagrids([0, 30, 60, 90, 120])
+        azAxis.autoscale(enable=False, tight=True)
+        elAxis.autoscale(enable=False, tight=True)
+        azAxis.set_facecolor('#d5de9c')
+        elAxis.set_facecolor('#d5de9c')
+        elAxis.axvspan(0, -240/180.*np.pi, facecolor='0.85')
+        azAxis.grid(color='#316931')
+        elAxis.grid(color='#316931')
 
-        self.azimuthDisplay = FigureCanvasTkAgg(fig, master=self.parentWidget)
-        self.azimuthDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW)
+        self.bearingDisplay = FigureCanvasTkAgg(fig, master=self.parent)
+        self.bearingDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, columnspan=1)
+
+        # CONTROLS
+        ctrlFrame = ttk.Frame(self.parent)
+        ctrlFrame.grid(row=1, column=0, sticky=NSEW)
+        for x in range(2):
+            ctrlFrame.columnconfigure(x, weight=1)
+        azLabel = ttk.Label(ctrlFrame, text="Enter Azimuth:")
+        azLabel.grid(row=0, column=0, sticky=W)
+        elLabel = ttk.Label(ctrlFrame, text="Enter Elevation:")
+        elLabel.grid(row=0, column=1, sticky=W)
+        azEntry = ttk.Entry(ctrlFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
+        azEntry.grid(row=1, column=0, sticky=NSEW)
+        elEntry = ttk.Entry(ctrlFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
+        elEntry.grid(row=1, column=1, sticky=NSEW)
+
+        # BIND ENTRY WIDGETS
+        azEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=azEntry.get(), axis='az'))
+        elEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=elEntry.get(), axis='el'))
 
         # Arrow demonstration
-        ax1.arrow(0/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
-        ax2.arrow(90/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
-        self.azimuthDisplay.draw()
+        self.drawArrow(azAxis, 0)
+        self.drawArrow(elAxis, 90)
+
+    def drawArrow(self, axis, angle):
+        """Draws arrow on the matplotlib axis from the origin at the angle specified. Intended for polar plots only.
+
+        Args:
+            axis (plt.subplots): Matplotlib axis
+            angle (float): Angle in degrees
+        """
+        axis.arrow(angle/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
+        self.bearingDisplay.draw()
+        return
+    
+    def sendMoveCommand(self, event, value=None, axis=None):
+        """_summary_
+
+        Args:
+            event (event): tkinter event which initiates function call
+            value (float, optional): Value in degrees to send as argument to object of MotorControl. Defaults to None.
+            axis (string, optional): Either 'az' or 'el' to determine which axis to move. Defaults to None.
+        """
+        if self.Motor.port != Front_End.getMotorPort()[:4]: 
+            portName = Front_End.getMotorPort()
+            self.Motor.port = portName[:4]
+            self.Motor.OpenSerial()
+        if axis == 'az':
+            self.Motor.userAzi = value
+            self.Motor.readUserInput()
+        elif axis == 'el':
+            self.Motor.userEle = value
+            self.Motor.readUserInput()
+            
 
 
-# Root tkinter interface (contains DFS_Window and standard output console)
+# Root tkinter interface (contains Front_End and standard output console)
 root = ThemedTk(theme="clearlooks")
 root.title('RF-DFS')
 isNumWrapper = root.register(isNumber)
@@ -1000,9 +1052,9 @@ sys.stderr.write = redirector
 Vi = VisaControl()
 Motor = MotorControl(0, 0)
 
-DFS_Window = FrontEnd(root, Vi, Motor)
-Spec_An = SpecAn(Vi, DFS_Window.spectrumFrame)
-Azi_Ele = AziElePlot(DFS_Window.directionFrame)
+Front_End = FrontEnd(root, Vi, Motor)
+Spec_An = SpecAn(Vi, Front_End.spectrumFrame)
+Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
 # Generate menu bars
 root.option_add('*tearOff', False)
@@ -1020,14 +1072,14 @@ menuFile.add_command(label='Save trace')
 menuFile.add_command(label='Save log')
 menuFile.add_command(label='Save image')
 menuFile.add_separator()
-menuFile.add_command(label='Exit', command=DFS_Window.onExit)
+menuFile.add_command(label='Exit', command=Front_End.onExit)
 
 # Options
-menuOptions.add_command(label='Configure...', command=DFS_Window.openConfig)
+menuOptions.add_command(label='Configure...', command=Front_End.openConfig)
 
 # Limit window size to the minimum size on generation
 root.update()
 root.minsize(root.winfo_width(), root.winfo_height())
 
-root.protocol("WM_DELETE_WINDOW", DFS_Window.onExit)
+root.protocol("WM_DELETE_WINDOW", Front_End.onExit)
 root.mainloop()
