@@ -5,6 +5,7 @@ from timestamp import *
 
 # OTHER MODULES
 import sys
+import os
 from pyvisa import attributes
 import numpy as np
 import logging
@@ -19,6 +20,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import filedialog
 from tkinter import colorchooser
 from tkinter.ttk import *
 from ttkthemes import ThemedTk
@@ -343,6 +345,17 @@ class FrontEnd():
 
         # COLUMN 2 WIDGETS
         self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=NSEW, rowspan=3)
+
+    def openSaveDialog(self, type=None):
+        print(os.getcwd())
+        if type == 'trace':
+            filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('Comma Separated Variables', '*.csv')))
+        elif type == 'log':
+            filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=('Text Files', '*.txt'))
+        elif type == 'image':
+            filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')))
+        else: return
+        print(filename)
 
             
     # TODO: Cleanup boilerplate code below
@@ -1033,16 +1046,77 @@ s.configure("TCombobox",
 dummy.destroy()
 
 # Generate textbox to print standard output/error
-stdoutFrame = tk.Frame(root)
-stdoutFrame.pack(fill=BOTH, side=BOTTOM)
-stdoutFrame.rowconfigure(0, weight=1)
-stdoutFrame.columnconfigure(0, weight=1)
-console = tk.Text(stdoutFrame, height=20)
-console.grid(column=0, row=0, sticky=(N, S, E, W))
+stdioFrame = tk.Frame(root)
+stdioFrame.pack(fill=BOTH, side=BOTTOM)
+stdioFrame.rowconfigure(0, weight=1)
+for x in range(5):
+    stdioFrame.columnconfigure(x, weight=0)
+stdioFrame.columnconfigure(1, weight=1)
+console = tk.Text(stdioFrame, height=20)
+console.grid(column=0, row=0, sticky=(N, S, E, W), columnspan=5)
+console.config(state=DISABLED)
+# Terminal input
+debugLabel = ttk.Label(stdioFrame, text='Debug Terminal >>>')
+debugLabel.grid(row=1, column=0)
+consoleInput = tk.Entry(stdioFrame)
+consoleInput.grid(row=1, column=1, sticky=NSEW)
+consoleInput.bind('<Return>', lambda event: executeHandler(event, consoleInput.get()))
+consoleInput.bind('<Key-Up>', lambda event: commandListHandler(event, direction='up'))
+consoleInput.bind('<Key-Down>', lambda event: commandListHandler(event, direction='down'))
+# Terminal config
+printBool = BooleanVar()
+execBool = BooleanVar()
+printCheckbutton = ttk.Checkbutton(stdioFrame, text='Print Return Value', variable=printBool)
+printCheckbutton.grid(row=1, column=2)
+evalCheckbutton = ttk.Checkbutton(stdioFrame, text='Evaluate', variable=execBool, onvalue=False, offvalue=True)
+evalCheckbutton.grid(row=1, column=3)
+execCheckbutton = ttk.Checkbutton(stdioFrame, text='Execute', variable=execBool)
+execCheckbutton.grid(row=1, column=4)
+
+# Helper functions
+commandList = []
+commandIndex = -1
+
+def commandListHandler(event, direction):
+    global commandIndex
+
+    consoleInput.delete(0, END)
+    if direction == 'up' and commandIndex < len(commandList) - 1:
+        commandIndex += 1
+    elif direction== 'down' and commandIndex > 0:
+        commandIndex -= 1
+    consoleInput.insert(0, commandList[commandIndex])
+        
+
+def executeHandler(event, arg):
+    global commandIndex, commandList
+
+    commandIndex = -1               # Reset index so up/down arrows start at the last issued command
+    consoleInput.delete(0, END)     # Clear the entry widget
+    commandList.insert(0, arg)      # Save the issued command in list at index 0
+    logging.info(f'>>> {arg}')
+    if execBool.get():
+        exec(arg)
+    else:
+        if printBool.get():
+            logging.info(f'{eval(arg)}')
+        else:
+            eval(arg)
 
 def redirector(inputStr):
+    console.config(state=NORMAL)
     console.insert(INSERT, inputStr)
     console.yview(MOVETO, 1)
+    console.config(state=DISABLED)
+
+def checkbuttonStateHandler():
+    if execBool.get():
+        printCheckbutton.configure(state=DISABLED)
+    else:
+        printCheckbutton.configure(state=NORMAL)
+
+evalCheckbutton.configure(command=checkbuttonStateHandler)
+execCheckbutton.configure(command=checkbuttonStateHandler)
 
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
 sys.stdout.write = redirector
@@ -1068,9 +1142,9 @@ menubar.add_cascade(menu=menuOptions, label='Options')
 menubar.add_cascade(menu=menuHelp, label='Help')
 
 # File
-menuFile.add_command(label='Save trace')
-menuFile.add_command(label='Save log')
-menuFile.add_command(label='Save image')
+menuFile.add_command(label='Save trace', command = lambda: Front_End.openSaveDialog(type='trace'))
+menuFile.add_command(label='Save log', command = lambda: Front_End.openSaveDialog(type='log'))
+menuFile.add_command(label='Save image', command = lambda: Front_End.openSaveDialog(type='image'))
 menuFile.add_separator()
 menuFile.add_command(label='Exit', command=Front_End.onExit)
 
