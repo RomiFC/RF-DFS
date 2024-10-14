@@ -45,9 +45,32 @@ visaLock = threading.RLock()
 # LOGGING
 logging.basicConfig(
     level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s: %(message)s",
+    format="[%(asctime)s] %(levelname)-s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+def addLoggingLevel(levelName, levelNum, methodName=None):
+    if not methodName:
+        methodName = levelName.lower()
+
+    if hasattr(logging, levelName):
+        raise AttributeError("{} already defined in logging module".format(levelName))
+    if hasattr(logging, methodName):
+        raise AttributeError("{} already defined in logging module".format(methodName))
+    if hasattr(logging.getLoggerClass(), methodName):
+        raise AttributeError("{} already defined in logger class".format(methodName))
+
+    def logForLevel(self, message, *args, **kwargs):
+        if self.isEnabledFor(levelNum):
+            self._log(levelNum, message, args, **kwargs)
+
+    def logToRoot(message, *args, **kwargs):
+        logging.log(levelNum, message, *args, **kwargs)
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+    setattr(logging.getLoggerClass(), methodName, logForLevel)
+    setattr(logging, methodName, logToRoot)
+addLoggingLevel("TERMINAL", logging.INFO + 1)
 
 
 
@@ -114,8 +137,8 @@ class FrontEnd():
         oFile = DataManagement()
         controlFrame = ttk.Frame(root) 
   
+        self.directionFrame = ttk.LabelFrame(controlFrame, text = "Antenna Position")  # Frame that holds matplotlib azimuth/elevation plot
         self.spectrumFrame = ttk.LabelFrame(controlFrame, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
-        self.directionFrame = ttk.LabelFrame(controlFrame, text = "Placeholder Text")  # Frame that holds matplotlib azimuth/elevation plot
 
         controlFrame.pack(expand = True, fill=BOTH, side=TOP) 
 
@@ -300,14 +323,6 @@ class FrontEnd():
         parent.columnconfigure(0, weight=0)
         parent.columnconfigure(1, weight=1)
         parent.columnconfigure(2, weight=1)
-
-        # TKINTER VARIABLES
-        global tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
-        tkSpanType = StringVar()
-        tkRbwType = BooleanVar()
-        tkVbwType = BooleanVar()
-        tkBwRatioType = BooleanVar()
-        tkAttenType = BooleanVar()
         
         # COLUMN 0 WIDGETS
         antennaPosFrame          = ttk.LabelFrame( parent, text = "Antenna Position" )
@@ -438,6 +453,14 @@ class SpecAn(FrontEnd):
         self.RBW_FILTER_SHAPE_VAL_ARGS = ('GAUS', 'FLAT')
         self.RBW_FILTER_TYPE_VALUES = ("-3 dB (Normal)", "-6 dB", "Impulse", "Noise")
         self.RBW_FILTER_TYPE_VAL_ARGS = ('DB3', 'DB6', 'IMP', 'NOISE')
+        # TKINTER VARIABLES
+        # TODO: Why is this global
+        global tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
+        tkSpanType = StringVar()
+        tkRbwType = BooleanVar()
+        tkVbwType = BooleanVar()
+        tkBwRatioType = BooleanVar()
+        tkAttenType = BooleanVar()
         # VISA OBJECT
         self.Vi = Vi
         # PARENT
@@ -628,6 +651,29 @@ class SpecAn(FrontEnd):
         thread.start()
 
     def setAnalyzerValue(self, **kwargs):
+        """Issues command to spectrum analyzer with the value of kwarg as the argument and queries for widget values. If the value is None or if there are no kwargs, query the spectrum analyzer to set widget values instead.
+        
+        Args:
+            centerfreq (float, optional): Defaults to None.
+            span (float, optional): Defaults to None.
+            startfreq (float, optional): Defaults to None.
+            stopfreq (float, optional): Defaults to None.
+            rbw (float, optional): Defaults to None.
+            vbw (float, optional): Defaults to None.
+            bwratio (float, optional): Defaults to None.
+            ref (float, optional): Reference level in dBm. Defaults to None.
+            numdiv (float, optional): Defaults to None.
+            yscale (float, optional): Scale per division in dB. Defaults to None.
+            atten (float, optional): Mechanical attenuation in dB. Defaults to None.
+            spantype (string, optional): WIP
+            rbwtype (bool, optional): WIP
+            vbwtype (bool, optional): WIP
+            bwratiotype (bool, optional): WIP
+            rbwfiltershape (int, optional): Index of the combobox widget tied to RBW_FILTER_SHAPE_VAL_ARGS. Defaults to None.
+            rbwfiltertype (int, optional): Index of the combobox widget tied to RBW_FILTER_TYPE_VAL_ARGS. Defaults to None.
+            attentype (bool, optional): WIP
+        """
+        # TODO: Make sure all command have full functionality
         global visaLock
         _list = []
 
@@ -768,27 +814,23 @@ class SpecAn(FrontEnd):
             _dict.update({'arg': kwargs.get('bwratiotype')})
         _list.append(_dict)
         # RBW FILTER SHAPE
-        if "rbwfiltershape" in kwargs:
-            _dict = {
-                'command': ':SENS:BAND:SHAP',
-                'widget': self.rbwFilterShapeCombo,
-            }
-            if kwargs.get('rbwfiltershape') is None:
-                _dict.update({'arg': None})
-            else:
-                _dict.update({'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[kwargs.get("rbwfiltershape")]})
-            _list.append(_dict)
+        _dict = {
+            'command': ':SENS:BAND:SHAP',
+            'widget': self.rbwFilterShapeCombo,
+            'arg': None,
+        }
+        if 'rbwfiltershape' in kwargs:
+            _dict.update({'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[kwargs.get("rbwfiltershape")]})
+        _list.append(_dict)
         # RBW FILTER TYPE
-        if "rbwfiltertype" in kwargs:
-            _dict = {
-                'command': ':SENS:BAND:TYPE',
-                'widget': self.rbwFilterTypeCombo,
-            }
-            if kwargs.get('rbwfiltertype') is None:
-                _dict.update({'arg': None})
-            else:
-                _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]})
-            _list.append(_dict)
+        _dict = {
+            'command': ':SENS:BAND:TYPE',
+            'widget': self.rbwFilterTypeCombo,
+            'arg': None,
+        }
+        if 'rbwfiltertype' in kwargs:
+            _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]})
+        _list.append(_dict)
         # ATTENUATION TYPE
         _dict = {
             'command': ':SENS:POWER:ATT:AUTO',
@@ -836,7 +878,7 @@ class SpecAn(FrontEnd):
         while TRUE:
             if self.Vi.isSessionOpen() == FALSE:
                 # Prevent this thread from taking up too much utilization
-                time.sleep(1)
+                time.sleep(3)
                 continue
             else:
                 break
@@ -850,21 +892,7 @@ class SpecAn(FrontEnd):
                 self.Vi.queryPowerUpErrors()
                 self.Vi.testBufferSize()
                 # Set widget values
-                self.setAnalyzerValue(
-                    centerfreq=None,
-                    span=None,
-                    startfreq=None,
-                    stopfreq=None,
-                    rbw=None,
-                    vbw=None,
-                    bwratio=None,
-                    ref=None,
-                    numdiv=None,
-                    yscale=None,
-                    atten=None,
-                    rbwfiltershape=None,
-                    rbwfiltertype=None,
-                )
+                self.setAnalyzerValue()
                 visaLock.release()
                 errorFlag = FALSE
             except Exception as e:
@@ -981,16 +1009,20 @@ class AziElePlot(FrontEnd):
         # CONTROLS
         ctrlFrame = ttk.Frame(self.parent)
         ctrlFrame.grid(row=1, column=0, sticky=NSEW)
-        for x in range(2):
+        for x in range(4):
             ctrlFrame.columnconfigure(x, weight=1)
-        azLabel = ttk.Label(ctrlFrame, text="Enter Azimuth:")
-        azLabel.grid(row=0, column=0, sticky=W)
-        elLabel = ttk.Label(ctrlFrame, text="Enter Elevation:")
-        elLabel.grid(row=0, column=1, sticky=W)
+        enterAzLabel = ttk.Label(ctrlFrame, text="Enter Azimuth:")
+        enterAzLabel.grid(row=0, column=0, sticky=W)
+        enterElLabel = ttk.Label(ctrlFrame, text="Enter Elevation:")
+        enterElLabel.grid(row=0, column=2, sticky=W)
         azEntry = ttk.Entry(ctrlFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        azEntry.grid(row=1, column=0, sticky=NSEW)
+        azEntry.grid(row=1, column=0, sticky=NSEW, columnspan=2)
         elEntry = ttk.Entry(ctrlFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        elEntry.grid(row=1, column=1, sticky=NSEW)
+        elEntry.grid(row=1, column=2, sticky=NSEW, columnspan=2)
+        realAzLabel = ttk.Label(ctrlFrame, text = f'0{u'\N{DEGREE SIGN}'}')
+        realAzLabel.grid(row = 0, column=1, sticky=E)
+        realElLabel = ttk.Label(ctrlFrame, text = f'90{u'\N{DEGREE SIGN}'}')
+        realElLabel.grid(row = 0, column=3, sticky=E)
 
         # BIND ENTRY WIDGETS
         azEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=azEntry.get(), axis='az'))
@@ -1023,10 +1055,10 @@ class AziElePlot(FrontEnd):
             portName = Front_End.getMotorPort()
             self.Motor.port = portName[:4]
             self.Motor.OpenSerial()
-        if axis == 'az':
+        if axis == 'az' and value is not None:
             self.Motor.userAzi = value
             self.Motor.readUserInput()
-        elif axis == 'el':
+        elif axis == 'el' and value is not None:
             self.Motor.userEle = value
             self.Motor.readUserInput()
             
@@ -1049,6 +1081,7 @@ dummy.destroy()
 stdioFrame = tk.Frame(root)
 stdioFrame.pack(fill=BOTH, side=BOTTOM)
 stdioFrame.rowconfigure(0, weight=1)
+font='Courier 11'
 for x in range(5):
     stdioFrame.columnconfigure(x, weight=0)
 stdioFrame.columnconfigure(1, weight=1)
@@ -1056,26 +1089,31 @@ console = tk.Text(stdioFrame, height=20)
 console.grid(column=0, row=0, sticky=(N, S, E, W), columnspan=5)
 console.config(state=DISABLED)
 # Terminal input
-debugLabel = ttk.Label(stdioFrame, text='Debug Terminal >>>')
+debugLabel = tk.Label(stdioFrame, text='>>>', font=(font))
 debugLabel.grid(row=1, column=0)
-consoleInput = tk.Entry(stdioFrame)
+consoleInput = tk.Entry(stdioFrame, font=(font), borderwidth=0, background=debugLabel.cget('background'))
 consoleInput.grid(row=1, column=1, sticky=NSEW)
+console.bind('<Button-1>', lambda event: focusHandler(event, consoleInput))
 consoleInput.bind('<Return>', lambda event: executeHandler(event, consoleInput.get()))
 consoleInput.bind('<Key-Up>', lambda event: commandListHandler(event, direction='up'))
 consoleInput.bind('<Key-Down>', lambda event: commandListHandler(event, direction='down'))
 # Terminal config
 printBool = BooleanVar()
 execBool = BooleanVar()
-printCheckbutton = ttk.Checkbutton(stdioFrame, text='Print Return Value', variable=printBool)
+printCheckbutton = tk.Checkbutton(stdioFrame, font=(font), text='Print Return Value', variable=printBool)
 printCheckbutton.grid(row=1, column=2)
-evalCheckbutton = ttk.Checkbutton(stdioFrame, text='Evaluate', variable=execBool, onvalue=False, offvalue=True)
+evalCheckbutton = tk.Checkbutton(stdioFrame, font=(font), text='Evaluate', variable=execBool, onvalue=False, offvalue=True)
 evalCheckbutton.grid(row=1, column=3)
-execCheckbutton = ttk.Checkbutton(stdioFrame, text='Execute', variable=execBool)
+execCheckbutton = tk.Checkbutton(stdioFrame, font=(font), text='Execute', variable=execBool)
 execCheckbutton.grid(row=1, column=4)
 
 # Helper functions
 commandList = []
 commandIndex = -1
+
+def focusHandler(event, widget):
+    widget.focus()
+    return('break')     # Prevents class binding from firing (executing the normal event callback)
 
 def commandListHandler(event, direction):
     global commandIndex
@@ -1094,16 +1132,16 @@ def executeHandler(event, arg):
     commandIndex = -1               # Reset index so up/down arrows start at the last issued command
     consoleInput.delete(0, END)     # Clear the entry widget
     commandList.insert(0, arg)      # Save the issued command in list at index 0
-    logging.info(f'>>> {arg}')
+    logging.terminal(f'>>> {arg}')
     if execBool.get():
         exec(arg)
     else:
         if printBool.get():
-            logging.info(f'{eval(arg)}')
+            logging.terminal(f'{eval(arg)}')
         else:
             eval(arg)
 
-def redirector(inputStr):
+def redirector(inputStr):           # Redirect print/logging statements to the console textbox
     console.config(state=NORMAL)
     console.insert(INSERT, inputStr)
     console.yview(MOVETO, 1)
