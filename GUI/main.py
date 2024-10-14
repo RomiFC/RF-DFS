@@ -364,20 +364,8 @@ class FrontEnd():
 
         # COLUMN 2 WIDGETS
         self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=NSEW, rowspan=3)
-
-    def openSaveDialog(self, type=None):
-        print(os.getcwd())
-        if type == 'trace':
-            filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('Comma Separated Variables', '*.csv')))
-        elif type == 'log':
-            filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=('Text Files', '*.txt'))
-        elif type == 'image':
-            filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')))
-        else: return
-        print(filename)
-
             
-    # TODO: Cleanup boilerplate code below
+        # TODO: Cleanup boilerplate code below
     def getMotorPort(self):
         return self.motorSelectBox.get()
 
@@ -1120,7 +1108,7 @@ stdioFrame.columnconfigure(1, weight=1)
 consoleFrame = tk.Frame(stdioFrame)
 consoleFrame.grid(column=0, row=0, sticky=NSEW, columnspan=5)
 consoleFrame.columnconfigure(0, weight=1)
-console = tk.Text(consoleFrame, height=20)
+console = tk.Text(consoleFrame, height=15)
 console.grid(column=0, row=0, sticky=(N, S, E, W))
 console.config(state=DISABLED)
 # Scrollbar
@@ -1192,6 +1180,36 @@ def checkbuttonStateHandler():
     else:
         printCheckbutton.configure(state=NORMAL)
 
+def openSaveDialog(type=None):
+    print(os.getcwd())
+    if type == 'trace':
+        specPlotLock.acquire()
+        try:
+            data = Spec_An.ax.lines[0].get_data()
+            xdata = data[0]
+            ydata = data[1]
+            buffer = ''
+            for index in range(len(data[0])):
+                buffer = buffer + str(xdata[index]) + '\t' + str(ydata[index]) + '\n'
+        except Exception as e:
+            specPlotLock.release()
+            logging.error(e)
+            logging.error('Could not retrieve data from spectrum plot.')
+            return
+        specPlotLock.release()
+        file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
+        if file is not None:
+            file.write(buffer)
+            file.close()
+    elif type == 'log':
+        file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
+        if file is not None:
+            file.write(console.get('1.0', END))
+            file.close()
+    elif type == 'image':
+        filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')))
+    else: return
+
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
 
@@ -1219,9 +1237,9 @@ menubar.add_cascade(menu=menuOptions, label='Options')
 menubar.add_cascade(menu=menuHelp, label='Help')
 
 # File
-menuFile.add_command(label='Save trace', command = lambda: Front_End.openSaveDialog(type='trace'))
-menuFile.add_command(label='Save log', command = lambda: Front_End.openSaveDialog(type='log'))
-menuFile.add_command(label='Save image', command = lambda: Front_End.openSaveDialog(type='image'))
+menuFile.add_command(label='Save trace', command = lambda: openSaveDialog(type='trace'))
+menuFile.add_command(label='Save log', command = lambda: openSaveDialog(type='log'))
+menuFile.add_command(label='Save image', command = lambda: openSaveDialog(type='image'))
 menuFile.add_separator()
 menuFile.add_command(label='Exit', command=Front_End.onExit)
 
@@ -1231,7 +1249,7 @@ menuOptions.add_command(label='Change plot color', command=Spec_An.setPlotThread
 
 # Limit window size to the minimum size on generation
 root.update()
-root.minsize(root.winfo_width(), root.winfo_height())
+# root.minsize(root.winfo_width(), root.winfo_height())
 
 root.protocol("WM_DELETE_WINDOW", Front_End.onExit)
 root.mainloop()
