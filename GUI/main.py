@@ -40,7 +40,11 @@ SWEPT = 'swept'
 ZERO = 'zero'
 
 # THREADING EVENTS
-visaLock = threading.RLock()
+visaLock = threading.RLock()        # For VISA resources
+motorLock = threading.RLock()       # For motor controller
+plcLock = threading.RLock()         # For PLC
+specPlotLock = threading.RLock()    # For matplotlib spectrum plot
+bearingPlotLock = threading.RLock() # For matplotlib antenna direction plot
 
 # LOGGING
 logging.basicConfig(
@@ -461,6 +465,12 @@ class SpecAn(FrontEnd):
         tkVbwType = BooleanVar()
         tkBwRatioType = BooleanVar()
         tkAttenType = BooleanVar()
+        # PLOT PARAMETERS
+        self.color = None
+        self.marker = None
+        self.linestyle = None
+        self.linewidth = None
+        self.markersize = None
         # VISA OBJECT
         self.Vi = Vi
         # PARENT
@@ -872,7 +882,7 @@ class SpecAn(FrontEnd):
         return
 
     def loopAnalyzerDisplay(self):
-        global visaLock
+        global visaLock, specPlotLock
 
         # Wait for user to open a session to the spectrum analyzer
         while TRUE:
@@ -921,15 +931,18 @@ class SpecAn(FrontEnd):
                     time.sleep(8)
                     continue
                 try:
+                    specPlotLock.acquire()
                     if 'lines' in locals():     # Remove previous plot if it exists
                         lines.pop(0).remove()
                     buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
                     xAxis = buffer[::2]
                     yAxis = buffer[1::2]
-                    lines = self.ax.plot(xAxis, yAxis)
+                    lines = self.ax.plot(xAxis, yAxis, color=self.color, marker=self.marker, linestyle=self.linestyle, linewidth=self.linewidth, markersize=self.markersize)
                     self.ax.grid(visible=True)
                     self.spectrumDisplay.draw()
+                    specPlotLock.release()
                 except Exception as e:
+                    specPlotLock.release()
                     logging.fatal(e)
                     logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, attempting to reset analyzer state.")
                     self.Vi.queryErrors
@@ -970,6 +983,25 @@ class SpecAn(FrontEnd):
         self.contSweepFlag = False
         self.singleSweepFlag = True
 
+    def setPlotThreadHandler(self, color=None, marker=None, linestyle=None, linewidth=None, markersize=None):
+        thread = threading.Thread(target=self.setPlotParam, daemon=True, args=(color, marker, linestyle, linewidth, markersize))
+        thread.start()
+
+    def setPlotParam(self, color=None, marker=None, linestyle=None, linewidth=None, markersize=None):
+        global specPlotLock
+
+        if color is None:
+            if self.color is not None:
+                color = colorchooser.askcolor(initialcolor=self.color)[1]
+            else:
+                color = colorchooser.askcolor(initialcolor='#1f77b4')[1]
+        specPlotLock.acquire()
+        self.color = color
+        self.marker = marker
+        self.linestyle = linestyle
+        self.linewidth = linewidth
+        self.markersize = markersize
+        specPlotLock.release()
             
 class AziElePlot(FrontEnd):
     """Generates tkinter-embedded matplotlib graph of spectrum analyzer. Requires an instance of FrontEnd to be constructed with the name Front_End.
@@ -1085,9 +1117,16 @@ font='Courier 11'
 for x in range(5):
     stdioFrame.columnconfigure(x, weight=0)
 stdioFrame.columnconfigure(1, weight=1)
-console = tk.Text(stdioFrame, height=20)
-console.grid(column=0, row=0, sticky=(N, S, E, W), columnspan=5)
+consoleFrame = tk.Frame(stdioFrame)
+consoleFrame.grid(column=0, row=0, sticky=NSEW, columnspan=5)
+consoleFrame.columnconfigure(0, weight=1)
+console = tk.Text(consoleFrame, height=20)
+console.grid(column=0, row=0, sticky=(N, S, E, W))
 console.config(state=DISABLED)
+# Scrollbar
+consoleScroll = ttk.Scrollbar(consoleFrame, orient=VERTICAL, command=console.yview)
+console.configure(yscrollcommand=consoleScroll.set)
+consoleScroll.grid(row=0, column=1, sticky=NSEW)
 # Terminal input
 debugLabel = tk.Label(stdioFrame, text='>>>', font=(font))
 debugLabel.grid(row=1, column=0)
@@ -1188,6 +1227,7 @@ menuFile.add_command(label='Exit', command=Front_End.onExit)
 
 # Options
 menuOptions.add_command(label='Configure...', command=Front_End.openConfig)
+menuOptions.add_command(label='Change plot color', command=Spec_An.setPlotThreadHandler)
 
 # Limit window size to the minimum size on generation
 root.update()
