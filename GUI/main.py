@@ -187,10 +187,10 @@ class FrontEnd():
         chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             chainFrame.columnconfigure(i, weight=1, uniform=True)
-        dfsButton = tk.Button(chainFrame, font=FONT, text='DFS1')
-        dfsButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        emsButton = tk.Button(chainFrame, font=FONT, text='EMS1')
-        emsButton.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1')
+        self.dfs1Button.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1')
+        self.ems1Button.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         # Mode
         modeFrame = tk.LabelFrame(controlFrame, text='Mode')
         modeFrame.grid(row=3, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
@@ -236,18 +236,18 @@ class FrontEnd():
 
         root.after(1000, self.update_time )
 
-    def setStatus(self, widget, text, background=None):
+    def setStatus(self, widget, text=None, background=None):
         """Sets the text and background of a widget being used as a status indicator
 
         Args:
             widget (tk.Button): Tkinter widget being used as a status indicator. ttk.Button will NOT work.
-            text (string): Text to replace in the button widget.
+            text (string, optional): Text to replace in the button widget. Defaults to None.
             background (string, optional): Color in any tkinter-compatible format, although ideally hex for compatibility. Defaults to None.
         """
-        if background is not None:
-            widget.configure(text=text, background=background)
-        else:
+        if text is not None:
             widget.configure(text=text)
+        if background is not None:
+            widget.configure(background=background)
 
     
     def onExit( self ):
@@ -313,27 +313,27 @@ class FrontEnd():
         self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event:'')
 
         # VISA CONFIGURATION FRAME
-        self.configFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "VISA Configuration")
-        self.configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=tk.N)
-        self.timeoutLabel = ttk.Label(self.configFrame, text = 'Timeout (ms)')
-        self.timeoutWidget = ttk.Spinbox(self.configFrame, from_=TIMEOUT_MIN, to=TIMEOUT_MAX, increment=100, validate="key", validatecommand=(isNumWrapper, '%P'))
+        configFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "VISA Configuration")
+        configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=tk.N)
+        timeoutLabel = ttk.Label(configFrame, text = 'Timeout (ms)')
+        self.timeoutWidget = ttk.Spinbox(configFrame, from_=TIMEOUT_MIN, to=TIMEOUT_MAX, increment=100, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.timeoutWidget.set(self.timeout)
-        self.chunkSizeLabel = ttk.Label(self.configFrame, text = 'Chunk size (Bytes)')
-        self.chunkSizeWidget = ttk.Spinbox(self.configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240, validate="key", validatecommand=(isNumWrapper, '%P'))
+        chunkSizeLabel = ttk.Label(configFrame, text = 'Chunk size (Bytes)')
+        self.chunkSizeWidget = ttk.Spinbox(configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.chunkSizeWidget.set(self.chunkSize)
-        self.applyButton = ttk.Button(self.configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
+        applyButton = ttk.Button(configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
         # VISA CONFIGURATION GRID
-        self.timeoutLabel.grid(row = 0, column = 0, pady=5)
+        timeoutLabel.grid(row = 0, column = 0, pady=5)
         self.timeoutWidget.grid(row = 1, column = 0, padx=20, pady=5, columnspan=2)
-        self.chunkSizeLabel.grid(row = 2, column = 0, pady=5)
+        chunkSizeLabel.grid(row = 2, column = 0, pady=5)
         self.chunkSizeWidget.grid(row = 3, column = 0, padx=20, pady=5, columnspan=2)
-        self.applyButton.grid(row = 7, column = 0, columnspan=2, pady=10)
+        applyButton.grid(row = 7, column = 0, columnspan=2, pady=10)
         # VISA TERMINATION FRAME
-        self.termFrame = ttk.LabelFrame(parent, borderwidth=2, text = 'Termination Methods')
-        self.termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=tk.N+tk.W, ipadx=5, ipady=5)
-        self.sendEndWidget = ttk.Checkbutton(self.termFrame, text = 'Send \'End or Identify\' on write', variable=self.sendEnd)
-        self.selectTermWidget = ttk.Combobox(self.termFrame, text='Termination Character', values=self.SELECT_TERM_VALUES, state='disabled')
-        self.enableTermWidget = ttk.Checkbutton(self.termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
+        termFrame = ttk.LabelFrame(parent, borderwidth=2, text = 'Termination Methods')
+        termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=tk.N+tk.W, ipadx=5, ipady=5)
+        self.sendEndWidget = ttk.Checkbutton(termFrame, text = 'Send \'End or Identify\' on write', variable=self.sendEnd)
+        self.selectTermWidget = ttk.Combobox(termFrame, text='Termination Character', values=self.SELECT_TERM_VALUES, state='disabled')
+        self.enableTermWidget = ttk.Checkbutton(termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
         # VISA TERMINATION GRID
         self.sendEndWidget.grid(row = 0, column = 0, pady = 5)
         self.enableTermWidget.grid(row = 1, column = 0, pady = 5)
