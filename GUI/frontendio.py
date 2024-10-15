@@ -27,7 +27,7 @@ from pyvisa import constants
 RETURN_ERROR = 1
 RETURN_SUCCESS = 0
 
-class MotorControl: 
+class MotorIO: 
     def __init__(self, Azimuth, Elevation, userAzi = 0, userEle = 0, Azi_bound = [0,360], Ele_bound = [-90,10] ): 
         self.Azimuth    = Azimuth
         self.Elevation  = Elevation
@@ -226,7 +226,7 @@ class MotorControl:
         freeWriting.after(1000, update_text)
         freeWriting.mainloop()
         
-class VisaControl():
+class VisaIO():
     def openRsrcManager(self):
         """Opens the VISA resource manager on the default backend (NI-VISA). If the VISA library cannot be found, a path must be passed to pyvisa.highlevel.ResourceManager() constructor
 

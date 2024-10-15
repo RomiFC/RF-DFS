@@ -22,6 +22,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
 from tkinter import colorchooser
+from tkinter import font
 from tkinter.ttk import *
 from ttkthemes import ThemedTk
  
@@ -38,6 +39,8 @@ AUTO = 1
 MANUAL = 0
 SWEPT = 'swept'
 ZERO = 'zero'
+ROOT_PADX = 5
+ROOT_PADY = 5
 
 # THREADING EVENTS
 visaLock = threading.RLock()        # For VISA resources
@@ -121,6 +124,11 @@ def clearAndSetWidget(widget, arg):
 class FrontEnd():
     def __init__(self, root, Vi, Motor):
         """Initializes the top level tkinter interface
+
+        Args:
+            root (Tk or ThemedTk): Root tkinter window.
+            Vi (VisaIO): Object of VisaIO that contains methods for VISA communication and an opened resource manager.
+            Motor (MotorIO): Object of MotorIO that contains methods for serial motor communication.
         """
         # CONSTANTS
         self.SELECT_TERM_VALUES = ('Line Feed - \\n', 'Carriage Return - \\r')
@@ -133,23 +141,114 @@ class FrontEnd():
         self.sendEnd.set(TRUE)
         self.enableTerm = BooleanVar()
         self.enableTerm.set(FALSE)
-
+        # OBJECTS
         self.Vi = Vi
-        self.Vi.openRsrcManager()
         self.motor = Motor
+        # STYLING
+        CLOCK_FONT = ('Arial', 15)
+        FONT = ('Arial', 12)
+        SELECT_BACKGROUND = '#00ff00'
+        DEFAULT_BACKGROUND = root.cget('bg')
+        FRAME_PADX = 5
+        FRAME_PADY = 5
+        BUTTON_PADX = 5
+        BUTTON_PADY = 5
 
-        oFile = DataManagement()
-        controlFrame = ttk.Frame(root) 
-  
-        self.directionFrame = ttk.LabelFrame(controlFrame, text = "Antenna Position")  # Frame that holds matplotlib azimuth/elevation plot
-        self.spectrumFrame = ttk.LabelFrame(controlFrame, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
+        # Root frames
+        plotFrame = ttk.Frame(root)
+        plotFrame.grid(row=0, column=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY) 
+        controlFrame = tk.Frame(root)
+        controlFrame.grid(row=0, column=0, rowspan=2, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY) 
+        for i in range(5):
+            controlFrame.rowconfigure(i, weight=0)
+        for j in range(2):
+            controlFrame.columnconfigure(j, uniform=True)
+        # Frames for other objects
+        self.directionFrame = tk.LabelFrame(plotFrame, text = "Antenna Position")  # Frame that holds matplotlib azimuth/elevation plot
+        self.spectrumFrame = tk.LabelFrame(plotFrame, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
+        self.directionFrame.grid(row = 0, column = 0, sticky = NSEW)
+        self.spectrumFrame.grid(row = 0, column = 1, sticky=NSEW)
+        # Clock
+        self.clockLabel = tk.Label(controlFrame, font=CLOCK_FONT)
+        self.clockLabel.grid(row=0, column=0, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        # Drive Status
+        elStatusFrame = tk.LabelFrame(controlFrame, text='Elevation Drive')
+        elStatusFrame.grid(row=1, column=0, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
+        elStatusFrame.columnconfigure(0, weight=1)
+        self.elStatus = tk.Button(elStatusFrame, text='STOPPED', font=FONT, state=DISABLED)
+        self.elStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        azStatusFrame = tk.LabelFrame(controlFrame, text='Azimuth Drive')
+        azStatusFrame.grid(row=1, column=1, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
+        azStatusFrame.columnconfigure(0, weight=1)
+        self.azStatus = tk.Button(azStatusFrame, text='STOPPED', font=FONT, state=DISABLED)
+        self.azStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        # Chain Select
+        chainFrame = tk.LabelFrame(controlFrame, text='Chain Select')
+        chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        for i in range(2):
+            chainFrame.columnconfigure(i, weight=1, uniform=True)
+        dfsButton = tk.Button(chainFrame, font=FONT, text='DFS1')
+        dfsButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        emsButton = tk.Button(chainFrame, font=FONT, text='EMS1')
+        emsButton.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        # Mode
+        modeFrame = tk.LabelFrame(controlFrame, text='Mode')
+        modeFrame.grid(row=3, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        modeFrame.columnconfigure(0, weight=1)
+        standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=SELECT_BACKGROUND)
+        standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=DEFAULT_BACKGROUND)
+        manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=DEFAULT_BACKGROUND)
+        autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        # Connection Status
+        connectionsFrame = tk.LabelFrame(controlFrame, text='Connection Status')
+        connectionsFrame.grid(row=4, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        for i in range(2):
+            connectionsFrame.columnconfigure(i, weight=1)
+        visaLabel = tk.Label(connectionsFrame, text='VISA:', font=FONT)
+        visaLabel.grid(row=0, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        plcLabel = tk.Label(connectionsFrame, text='PLC:', font=FONT)
+        plcLabel.grid(row=1, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        motorLabel = tk.Label(connectionsFrame, text='MOTOR:', font=FONT)
+        motorLabel.grid(row=2, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.visaStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
+        self.visaStatus.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.plcStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
+        self.plcStatus.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.motorStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
+        self.motorStatus.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        
 
-        controlFrame.pack(expand = True, fill=BOTH, side=TOP) 
+        # TODO: deprecate
+        self.quickButton        = tk.LabelFrame(controlFrame, text='Control')
+        self.quickButton.grid(row = 5, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        self.quickButton.columnconfigure(0, weight=0)
+        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = FONT, bg = 'red', fg = 'white', command= self.Estop)
+        self.Park               = tk.Button(self.quickButton, text = "Park", font = FONT, bg = 'blue', fg = 'white', command = self.park)
+        self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = FONT, command= self.freewriting)
+       
+        self.EmargencyStop.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.Park.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.openFreeWriting.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
 
-        self.controlInterface(controlFrame)
-        # self.updateOutput( oFile, root )
+        # self.updateOutput( oFile, root )      # deprecate maybe
 
         root.after(1000, self.update_time )
+
+    def setStatus(self, widget, text, background=None):
+        """Sets the text and background of a widget being used as a status indicator
+
+        Args:
+            widget (tk.Button): Tkinter widget being used as a status indicator. ttk.Button will NOT work.
+            text (string): Text to replace in the button widget.
+            background (string, optional): Color in any tkinter-compatible format, although ideally hex for compatibility. Defaults to None.
+        """
+        if background is not None:
+            widget.configure(text=text, background=background)
+        else:
+            widget.configure(text=text)
+
     
     def onExit( self ):
         """ Ask to close serial communication when 'X' button is pressed """
@@ -173,6 +272,7 @@ class FrontEnd():
             if self.Vi.connectToRsrc(self.instrSelectBox.get()) == RETURN_SUCCESS:
                 self.instrument = self.instrSelectBox.get()
                 self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get())
+                self.setStatus(self.visaStatus, 'Connected')
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
             """
@@ -315,63 +415,60 @@ class FrontEnd():
         else:
             return RETURN_ERROR
     
-    def controlInterface(self, parentWidget):
+    def plotInterface(self, parentWidget):
         """Generates the main control interface the root level. Also generates frames to contain objects for SpecAn and AziElePlot
         """
+        # TODO: Deprecate with the new control interface
 
-        parent = parentWidget
-        parent.rowconfigure(0, weight=1)
-        parent.rowconfigure(1, weight=1)
-        parent.rowconfigure(2, weight=1)
-        parent.rowconfigure(3, weight=1)
-        parent.columnconfigure(0, weight=0)
-        parent.columnconfigure(1, weight=1)
-        parent.columnconfigure(2, weight=1)
+        # parent = parentWidget
+
+        # styling
+        # parent.rowconfigure(0, weight=1)
+        # parent.rowconfigure(1, weight=1)
+        # parent.rowconfigure(2, weight=1)
+        # parent.rowconfigure(3, weight=1)
+        # parent.columnconfigure(0, weight=0)
+        # parent.columnconfigure(1, weight=1)
+        # parent.columnconfigure(2, weight=1)
         
         # COLUMN 0 WIDGETS
-        antennaPosFrame          = ttk.LabelFrame( parent, text = "Antenna Position" )
-        antennaPosFrame.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
+        # antennaPosFrame          = ttk.LabelFrame( parent, text = "Antenna Position" )
+        # antennaPosFrame.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
 
-        self.azimuth_label      = ttk.Label(antennaPosFrame, text = "Azimuth:")
-        self.elevation_label    = ttk.Label(antennaPosFrame, text = "Elevation:")
-        self.inputAzimuth       = ttk.Entry(antennaPosFrame)
-        self.inputElevation     = ttk.Entry(antennaPosFrame)
+        # self.azimuth_label      = ttk.Label(antennaPosFrame, text = "Azimuth:")
+        # self.elevation_label    = ttk.Label(antennaPosFrame, text = "Elevation:")
+        # self.inputAzimuth       = ttk.Entry(antennaPosFrame)
+        # self.inputElevation     = ttk.Entry(antennaPosFrame)
 
-        self.azimuth_label.grid( row = 0, column = 0, padx = 10, pady=5)
-        self.elevation_label.grid( row = 1, column = 0, padx = 10, pady=5)
-        self.inputAzimuth.grid( row = 0, column = 1, padx = 10)
-        self.inputElevation.grid( row = 1, column = 1, padx = 10)
+        # self.azimuth_label.grid( row = 0, column = 0, padx = 10, pady=5)
+        # self.elevation_label.grid( row = 1, column = 0, padx = 10, pady=5)
+        # self.inputAzimuth.grid( row = 0, column = 1, padx = 10)
+        # self.inputElevation.grid( row = 1, column = 1, padx = 10)
 
-        self.printbutton        = tk.Button( antennaPosFrame, text = "Enter", command = self.input )
-        self.printbutton.grid(row = 2, column = 1, padx = 20, pady = 5, sticky=E)
+        # self.printbutton        = tk.Button( antennaPosFrame, text = "Enter", command = self.input )
+        # self.printbutton.grid(row = 2, column = 1, padx = 20, pady = 5, sticky=E)
 
-        clockFrame              = ttk.Frame(parent)
-        clockFrame.grid(row=0,column=0)
-        self.clock_label        = ttk.Label(clockFrame, font= ('Arial', 14))
-        self.clock_label.pack()
-        self.quickButton        = ttk.Frame( parent )
-        self.quickButton.grid(row = 2, column = 0, padx = 20, pady = 10, sticky=(S))
-        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = ('Arial', 16 ), bg = 'red', fg = 'white', command= self.Estop, width=15)
-        self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
-        self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = ('Arial', 16 ), command= self.freewriting, width=15)
+        # clockFrame              = ttk.Frame(parent)
+        # clockFrame.grid(row=0,column=0)
+        # self.clock_label        = ttk.Label(clockFrame, font= ('Arial', 14))
+        # self.clock_label.pack()
+        # self.quickButton        = ttk.Frame( parent )
+        # self.quickButton.grid(row = 2, column = 0, padx = 20, pady = 10, sticky=(S))
+        # self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = ('Arial', 16 ), bg = 'red', fg = 'white', command= self.Estop, width=15)
+        # self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
+        # self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = ('Arial', 16 ), command= self.freewriting, width=15)
        
-        self.EmargencyStop.pack( pady = 5 )
-        self.Park.pack( pady = 5 )
-        self.openFreeWriting.pack( pady = 5 )
-
-        # COLUMN 1 WIDGETS
-        self.directionFrame.grid(row=0, column=1, padx = 20, pady = 10, sticky = NSEW, rowspan = 3)
-
-        # COLUMN 2 WIDGETS
-        self.spectrumFrame.grid(row = 0, column = 2, padx = 20, pady = 10, sticky=NSEW, rowspan=3)
+        # self.EmargencyStop.pack( pady = 5 )
+        # self.Park.pack( pady = 5 )
+        # self.openFreeWriting.pack( pady = 5 )
             
         # TODO: Cleanup boilerplate code below
     def getMotorPort(self):
         return self.motorSelectBox.get()
 
-    def update_time( self ):
+    def update_time(self):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-        self.clock_label.config(text=current_time)
+        self.clockLabel.config(text=current_time)
         root.after(1000, self.update_time)
 
     def freewriting(self):
@@ -429,11 +526,14 @@ class FrontEnd():
         get_logfile = tk.Button( buttonFrame, text = "Get Log File", font = ('Arial', 10),width=10, command = oFile.printData )
         get_logfile.pack()
 
+    def printArg(arg):
+        print(arg)
+
 class SpecAn(FrontEnd):
     """Generates tkinter-embedded matplotlib graph of spectrum analyzer.
 
     Args:
-        Vi (class): Instance of VisaControl that contains methods for communicating with SCPI instruments.
+        Vi (class): Instance of VisaIO that contains methods for communicating with SCPI instruments.
         parentWidget (tk::LabelFrame, tk::Frame): Parent widget which will contain graph and control widgets.
     """
     def __init__(self, Vi, parentWidget):
@@ -995,7 +1095,7 @@ class AziElePlot(FrontEnd):
     """Generates tkinter-embedded matplotlib graph of spectrum analyzer. Requires an instance of FrontEnd to be constructed with the name Front_End.
 
     Args:
-        Motor (class): Instance of MotorControl that contains methods for communicating with the Parker Hannifin Motor Controller.
+        Motor (class): Instance of MotorIO that contains methods for communicating with the Parker Hannifin Motor Controller.
         parentWidget (tk::LabelFrame, tk::Frame): Parent widget which will contain graph and control widgets.
     """
     def __init__(self, Motor, parentWidget):
@@ -1007,8 +1107,14 @@ class AziElePlot(FrontEnd):
         self.parent.rowconfigure(0, weight=1)
         self.parent.columnconfigure(0, weight=1)
 
+        # STYLE
+        font = 'Courier 14'
+        padx = 2
+        pady = 2
+
         # PLOT
         fig, (azAxis, elAxis) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
+        fig.set_size_inches(fig.get_size_inches()[0], fig.get_size_inches()[1] * 0.8)      # Sets to minimum height since two plots can appear large in the root window
         azAxis.set_title("Azimuth", va='bottom')
         elAxis.set_title("Elevation", va='bottom')
         azAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
@@ -1024,25 +1130,46 @@ class AziElePlot(FrontEnd):
         elAxis.grid(color='#316931')
 
         self.bearingDisplay = FigureCanvasTkAgg(fig, master=self.parent)
-        self.bearingDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, columnspan=1)
+        self.bearingDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, columnspan=2)
 
-        # CONTROLS
+
+        # CONTROL FRAME
         ctrlFrame = ttk.Frame(self.parent)
-        ctrlFrame.grid(row=1, column=0, sticky=NSEW)
+        ctrlFrame.grid(row=2, column=0, sticky=NSEW, columnspan=1)
         for x in range(4):
             ctrlFrame.columnconfigure(x, weight=1)
-        enterAzLabel = ttk.Label(ctrlFrame, text="Enter Azimuth:")
-        enterAzLabel.grid(row=0, column=0, sticky=W)
-        enterElLabel = ttk.Label(ctrlFrame, text="Enter Elevation:")
-        enterElLabel.grid(row=0, column=2, sticky=W)
-        azEntry = ttk.Entry(ctrlFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        azEntry.grid(row=1, column=0, sticky=NSEW, columnspan=2)
-        elEntry = ttk.Entry(ctrlFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        elEntry.grid(row=1, column=2, sticky=NSEW, columnspan=2)
-        realAzLabel = ttk.Label(ctrlFrame, text = f'0{u'\N{DEGREE SIGN}'}')
-        realAzLabel.grid(row = 0, column=1, sticky=E)
-        realElLabel = ttk.Label(ctrlFrame, text = f'90{u'\N{DEGREE SIGN}'}')
-        realElLabel.grid(row = 0, column=3, sticky=E)
+        # FEEDBACK
+        azFrame = ttk.Labelframe(ctrlFrame, text='Azimuth Angle')
+        azFrame.grid(row=0, column=0, sticky=NSEW, padx=padx, pady=pady)
+        azCmdFrame = ttk.Labelframe(ctrlFrame, text='Command Angle')
+        azCmdFrame.grid(row=0, column=1, sticky=NSEW, padx=padx, pady=pady)
+        elFrame = ttk.Labelframe(ctrlFrame, text='Elevation Angle')
+        elFrame.grid(row=0, column=2, sticky=NSEW, padx=padx, pady=pady)
+        elCmdFrame = ttk.Labelframe(ctrlFrame, text='Command Angle')
+        elCmdFrame.grid(row=0, column=3, sticky=NSEW, padx=padx, pady=pady)
+        azLabel = ttk.Label(azFrame, font=font, text=f'0{u'\N{DEGREE SIGN}'}')
+        azLabel.grid(row=0, column=0, sticky=NSEW)
+        elLabel = ttk.Label(elFrame, font=font, text=f'90{u'\N{DEGREE SIGN}'}')
+        elLabel.grid(row=0, column=0, sticky=NSEW)
+        azCmdLabel = ttk.Label(azCmdFrame, font=font, text=f'0{u'\N{DEGREE SIGN}'}')
+        azCmdLabel.grid(row=0, column=0, sticky=NSEW)
+        elCmdLabel = ttk.Label(elCmdFrame, font=font, text=f'90{u'\N{DEGREE SIGN}'}')
+        elCmdLabel.grid(row=0, column=0, sticky=NSEW)
+        # CONTROLS
+        azEntryFrame = ttk.Frame(ctrlFrame)
+        azEntryFrame.grid(row=1, column=0, columnspan=2, sticky=NSEW)
+        azEntryFrame.columnconfigure(1, weight=1)
+        elEntryFrame = ttk.Frame(ctrlFrame)
+        elEntryFrame.grid(row=1, column=2, columnspan=2, sticky=NSEW)
+        elEntryFrame.columnconfigure(1, weight=1)
+        azArrows = tk.Label(azEntryFrame, text='>>>')
+        azArrows.grid(row=0, column=0)
+        azEntry = tk.Entry(azEntryFrame, font=font, background=azArrows.cget('background'), borderwidth=0, validate="key", validatecommand=(isNumWrapper, '%P'))
+        azEntry.grid(row=0, column=1, sticky=NSEW)
+        elArrows = tk.Label(elEntryFrame, text='>>>')
+        elArrows.grid(row=0, column=0)
+        elEntry = tk.Entry(elEntryFrame, font=font, background=elArrows.cget('background'), borderwidth=0, validate="key", validatecommand=(isNumWrapper, '%P'))
+        elEntry.grid(row=0, column=1, sticky=NSEW)
 
         # BIND ENTRY WIDGETS
         azEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=azEntry.get(), axis='az'))
@@ -1068,7 +1195,7 @@ class AziElePlot(FrontEnd):
 
         Args:
             event (event): tkinter event which initiates function call
-            value (float, optional): Value in degrees to send as argument to object of MotorControl. Defaults to None.
+            value (float, optional): Value in degrees to send as argument to object of MotorIO. Defaults to None.
             axis (string, optional): Either 'az' or 'el' to determine which axis to move. Defaults to None.
         """
         if self.Motor.port != Front_End.getMotorPort()[:4]: 
@@ -1088,6 +1215,7 @@ class AziElePlot(FrontEnd):
 root = ThemedTk(theme="clearlooks")
 root.title('RF-DFS')
 isNumWrapper = root.register(isNumber)
+
 # Change combobox highlight colors to match entry
 dummy = ttk.Entry()
 s = ttk.Style()
@@ -1098,14 +1226,14 @@ s.configure("TCombobox",
 dummy.destroy()
 
 # Generate textbox to print standard output/error
-stdioFrame = tk.Frame(root)
-stdioFrame.pack(fill=BOTH, side=BOTTOM)
+stdioFrame = ttk.Frame(root)
+stdioFrame.grid(row=1, column=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
 stdioFrame.rowconfigure(0, weight=1)
 font='Courier 11'
 for x in range(5):
     stdioFrame.columnconfigure(x, weight=0)
 stdioFrame.columnconfigure(1, weight=1)
-consoleFrame = tk.Frame(stdioFrame)
+consoleFrame = ttk.Frame(stdioFrame)    # So the scrollbar isn't stretched to the width of the rightmost widget in stdioFrame
 consoleFrame.grid(column=0, row=0, sticky=NSEW, columnspan=5)
 consoleFrame.columnconfigure(0, weight=1)
 console = tk.Text(consoleFrame, height=15)
@@ -1117,7 +1245,7 @@ console.configure(yscrollcommand=consoleScroll.set)
 consoleScroll.grid(row=0, column=1, sticky=NSEW)
 # Terminal input
 debugLabel = tk.Label(stdioFrame, text='>>>', font=(font))
-debugLabel.grid(row=1, column=0)
+debugLabel.grid(row=1, column=0, sticky=NSEW)
 consoleInput = tk.Entry(stdioFrame, font=(font), borderwidth=0, background=debugLabel.cget('background'))
 consoleInput.grid(row=1, column=1, sticky=NSEW)
 console.bind('<Button-1>', lambda event: focusHandler(event, consoleInput))
@@ -1181,7 +1309,6 @@ def checkbuttonStateHandler():
         printCheckbutton.configure(state=NORMAL)
 
 def openSaveDialog(type=None):
-    print(os.getcwd())
     if type == 'trace':
         specPlotLock.acquire()
         try:
@@ -1208,7 +1335,6 @@ def openSaveDialog(type=None):
             file.close()
     elif type == 'image':
         filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')))
-    else: return
 
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
@@ -1218,8 +1344,9 @@ sys.stdout.write = redirector
 sys.stderr.write = redirector
 
 # Generate objects within root window
-Vi = VisaControl()
-Motor = MotorControl(0, 0)
+Vi = VisaIO()
+Vi.openRsrcManager()
+Motor = MotorIO(0, 0)
 
 Front_End = FrontEnd(root, Vi, Motor)
 Spec_An = SpecAn(Vi, Front_End.spectrumFrame)
@@ -1249,7 +1376,7 @@ menuOptions.add_command(label='Change plot color', command=Spec_An.setPlotThread
 
 # Limit window size to the minimum size on generation
 root.update()
-# root.minsize(root.winfo_width(), root.winfo_height())
+root.minsize(root.winfo_width(), root.winfo_height())
 
 root.protocol("WM_DELETE_WINDOW", Front_End.onExit)
 root.mainloop()
