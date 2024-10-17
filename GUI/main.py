@@ -2,6 +2,7 @@
 import threading
 from frontendio import *
 from timestamp import *
+import opcodes
 
 # OTHER MODULES
 import sys
@@ -78,6 +79,8 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 addLoggingLevel("TERMINAL", logging.INFO + 1)
+addLoggingLevel("SERIAL", logging.INFO + 2)
+addLoggingLevel("TIMEOUT", logging.INFO + 3)
 
 
 
@@ -122,13 +125,14 @@ def clearAndSetWidget(widget, arg):
 
 
 class FrontEnd():
-    def __init__(self, root, Vi, Motor):
+    def __init__(self, root, Vi, Motor, PLC):
         """Initializes the top level tkinter interface
 
         Args:
             root (Tk or ThemedTk): Root tkinter window.
             Vi (VisaIO): Object of VisaIO that contains methods for VISA communication and an opened resource manager.
             Motor (MotorIO): Object of MotorIO that contains methods for serial motor communication.
+            PLC (PLCIO): Object of PLCIO that contains methods for serial PLC communication.
         """
         # CONSTANTS
         self.SELECT_TERM_VALUES = ('Line Feed - \\n', 'Carriage Return - \\r')
@@ -136,6 +140,8 @@ class FrontEnd():
         self.timeout = TIMEOUT_DEF           # VISA timeout value
         self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
         self.instrument = ''                 # ID of the currently open instrument. Used only in resetConfigWidgets method
+        self.motorPort = ''
+        self.plcPort = ''
         # TKINTER VARIABLES
         self.sendEnd = BooleanVar()
         self.sendEnd.set(TRUE)
@@ -144,6 +150,7 @@ class FrontEnd():
         # OBJECTS
         self.Vi = Vi
         self.motor = Motor
+        self.PLC = PLC
         # STYLING
         CLOCK_FONT = ('Arial', 15)
         FONT = ('Arial', 12)
@@ -208,16 +215,16 @@ class FrontEnd():
             connectionsFrame.columnconfigure(i, weight=1)
         visaLabel = tk.Label(connectionsFrame, text='VISA:', font=FONT)
         visaLabel.grid(row=0, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        plcLabel = tk.Label(connectionsFrame, text='PLC:', font=FONT)
-        plcLabel.grid(row=1, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
         motorLabel = tk.Label(connectionsFrame, text='MOTOR:', font=FONT)
-        motorLabel.grid(row=2, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        motorLabel.grid(row=1, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        plcLabel = tk.Label(connectionsFrame, text='PLC:', font=FONT)
+        plcLabel.grid(row=2, column=0, sticky=W, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.visaStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
         self.visaStatus.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.plcStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
-        self.plcStatus.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.motorStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
-        self.motorStatus.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.motorStatus.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.plcStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
+        self.plcStatus.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         
 
         # TODO: deprecate
@@ -266,13 +273,25 @@ class FrontEnd():
         """
         parent = Toplevel()
 
-        def onConnectPress(*args):
-            """Connect to the VISA resource and update the string in self.instrument
+        def onConnectPress(event, type, port):
+            """Connects to the respective resource and updates the attribute which stores the resource name.
+
+            Args:
+                event (event): Event passed by tkinter
+                type (string): Can be 'visa', 'motor', or 'plc'.
+                port (string): Name of the VISA ID or COM port to connect to.
             """
-            if self.Vi.connectToRsrc(self.instrSelectBox.get()) == RETURN_SUCCESS:
-                self.instrument = self.instrSelectBox.get()
+            if type == 'visa' and self.Vi.connectToRsrc(port) == RETURN_SUCCESS:
+                self.instrument = port
                 self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get())
                 self.setStatus(self.visaStatus, 'Connected')
+            elif type == 'motor':
+                self.motorPort = self.motorSelectBox.get()[:4]
+                self.setStatus(self.motorStatus, 'Connected')
+            elif type == 'plc':
+                self.PLC.openSerial(port)
+                self.plcPort = port
+                self.setStatus(self.plcStatus, 'Connected')
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
             """
@@ -300,17 +319,19 @@ class FrontEnd():
             column = 0, row = 2, padx = 5, sticky=W) 
         self.instrSelectBox = ttk.Combobox(connectFrame, values = self.Vi.rm.list_resources(), width=40)
         self.instrSelectBox.grid(row = 0, column = 1, padx = 10 , pady = 5)
-        self.instrSelectBox.set(self.instrument)
         self.motorSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
         self.motorSelectBox.grid(row = 1, column = 1, padx = 10, pady = 5)
         self.plcSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
         self.plcSelectBox.grid(row = 2, column = 1, padx = 10, pady = 5)
         self.refreshButton = ttk.Button(connectFrame, text = "Refresh All", command = lambda:onRefreshPress())
         self.refreshButton.grid(row = 2, column = 2, padx=5)
+        self.instrSelectBox.set(self.instrument)
+        self.motorSelectBox.set(self.motorPort)
+        self.plcSelectBox.set(self.plcPort)
 
-        self.instrSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event))
-        self.motorSelectBox.bind("<<ComboboxSelected>>", lambda event:'')
-        self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event:'')
+        self.instrSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event, type='visa', port=self.instrSelectBox.get()))
+        self.motorSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event, type='motor', port=self.motorSelectBox.get()[:4]))
+        self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event, type='plc', port=self.plcSelectBox.get()[:4]))
 
         # VISA CONFIGURATION FRAME
         configFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "VISA Configuration")
@@ -1345,10 +1366,10 @@ sys.stderr.write = redirector
 
 # Generate objects within root window
 Vi = VisaIO()
-Vi.openRsrcManager()
 Motor = MotorIO(0, 0)
+Relay = PLCIO()
 
-Front_End = FrontEnd(root, Vi, Motor)
+Front_End = FrontEnd(root, Vi, Motor, Relay)
 Spec_An = SpecAn(Vi, Front_End.spectrumFrame)
 Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 

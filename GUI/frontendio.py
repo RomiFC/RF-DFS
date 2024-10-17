@@ -5,6 +5,8 @@
 import sys
 import logging
 from data import *
+import opcodes
+import threading
 
 # TKINTER
 import tkinter as tk
@@ -225,21 +227,121 @@ class MotorIO:
     
         freeWriting.after(1000, update_text)
         freeWriting.mainloop()
-        
-class VisaIO():
-    def openRsrcManager(self):
-        """Opens the VISA resource manager on the default backend (NI-VISA). If the VISA library cannot be found, a path must be passed to pyvisa.highlevel.ResourceManager() constructor
 
-        Returns:
-            Literal (int): 0 on success, 1 on error.
+class PLCIO:
+    def __init__(self):
+        """Contains methods for serial communication with the PLC. The attribute 'serial' can be used to directly manipulate the instance of serial.Serial().
+        """
+        self.serial = serial.Serial()
+        self.serialLock = threading.RLock()
+        self.DELAY = 1.5                        # Default delay between read and write commands in query call.
+
+    def threadHandler(self, target, args=(), kwargs={}):
+        """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
+
+        Args:
+            target (method): Callable object to be invoked by the run() method.
+            args (tuple, optional): List or tuple for target invocation. Defaults to ().
+            kwargs (dict, optional): Dictionary of keyword arguments for target invocation. Defaults to {}.
+        """
+        if not hasattr(PLCIO, target.__name__):
+            logging.error(f'Class PLCIO does not contain a method with identifier {target.__name__}')
+            return
+        thread = threading.Thread(target = target, args = args, kwargs = kwargs)
+        thread.start()
+
+    def openSerial(self, port, baud=115200, timeout=1):
+        """Open serial communications with the object 'serial' at the port and baud rate specified.  If a port is already open, close it and open a new session.
+
+        Args:
+            port (string): Serial port (COM#).
+            baud (int, optional): Baud rate. Defaults to 115200.
+            timeout (int, optional): Timeout in seconds. Defaults to 1.
+        """
+        with self.serialLock:
+            if self.serial.is_open:
+                self.serial.close()
+            self.serial = serial.Serial(port, baud, timeout=timeout)
+
+    def close(self):
+        """Closes serial communications.
+        """
+        self.serial.close()
+
+    def query(self, msg, converter='bin', delay=None):
+        """Writes message to the serial object at self.serial and logs the response after 'delay' seconds at level SERIAL. Due to the delay this should only be called by the thread handler to prevent blocking.
+
+        Args:
+            msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
+            converter (str, optional): Format to convert the message to if it is an integer. Can be 'bin' or 'int'. Defaults to 'bin'.
+            delay (float, optional): Delay between read and write commands. Defaults to self.DELAY.
+        """
+        if delay is None:
+            delay = self.DELAY
+        self.write(msg, converter=converter)
+        time.sleep(delay)
+        self.read()
+
+    def write(self, msg, converter='bin'):
+        """Writes message to the serial object at self.serial.
+
+        Args:
+            msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
+            converter (str, optional): Format to convert the message to if it is an integer. Can be 'bin' or 'int'. Defaults to 'bin'.
+        """
+        with self.serialLock:
+            if type(msg) == str:
+                self.serial.write(msg.encode('utf-8'))
+            elif type(msg) == int and converter == 'bin':
+                msg = bin(msg)[2:]
+                self.serial.write(msg.encode('utf-8'))
+            elif type(msg) == int and converter == 'int':
+                msg = str(msg)
+                self.serial.write(msg.encode('utf-8'))
+
+    def readLine(self):
+        """Reads the serial buffer up to a newline character and logs it at level SERIAL.
+        """
+        with self.serialLock:
+            logging.serial(self.serial.readline().decode('utf-8'))
+
+    def read(self):
+        """Reads the amount of bytes in the input buffer and logs it at level SERIAL. If a timeout is reached, log the remaining bytes in the serial buffer.
+        """
+        with self.serialLock:
+            buffer = self.serial.read(self.serial.in_waiting).decode('utf-8')
+            lines = buffer.splitlines()
+            for i in lines:
+                logging.serial(i)
+            remainder = self.serial.in_waiting
+            if remainder:
+                logging.timeout(f'{remainder} bytes remaining in the serial buffer.')
+
+    def flushInput(self):
+        """Flush the input buffer, discarding all its contents.
+        """
+        with self.serialLock:
+            self.serial.reset_input_buffer()
+
+    def flushOutput(self):
+        """Clear output buffer, aborting the current output and discarding all that is in the buffer.
+        Note, for some USB serial adapters, this may only flush the buffer of the OS and not all the data that may be present in the USB part.
+        """
+        with self.serialLock:
+            self.serial.reset_output_buffer()
+
+
+class VisaIO():
+    def __init__(self):
+        """Opens the VISA resource manager on the default backend (NI-VISA). If the VISA library cannot be found, a path must be passed to pyvisa.highlevel.ResourceManager() constructor
         """
         logging.info('Initializing VISA Resource Manager...')
         self.rm = visa.ResourceManager()
         if self.isError():
             logging.error(f'Could not open a session to the resource manager, error code: {hex(self.rm.last_status)}')
-            return RETURN_ERROR     
+            return    
         logging.info(f'Success code {hex(self.rm.last_status)}')
-        return RETURN_SUCCESS
+        return
     
     def connectToRsrc(self, inputString):
         """Opens a session to the resource ID passed from inputString if it is not already connected
