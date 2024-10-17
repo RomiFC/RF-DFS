@@ -42,6 +42,7 @@ SWEPT = 'swept'
 ZERO = 'zero'
 ROOT_PADX = 5
 ROOT_PADY = 5
+COLOR_GREEN = '#00ff00'
 
 # THREADING EVENTS
 visaLock = threading.RLock()        # For VISA resources
@@ -152,10 +153,10 @@ class FrontEnd():
         self.motor = Motor
         self.PLC = PLC
         # STYLING
+        self.SELECT_BACKGROUND = '#00ff00'
+        self.DEFAULT_BACKGROUND = root.cget('bg')
         CLOCK_FONT = ('Arial', 15)
         FONT = ('Arial', 12)
-        SELECT_BACKGROUND = '#00ff00'
-        DEFAULT_BACKGROUND = root.cget('bg')
         FRAME_PADX = 5
         FRAME_PADY = 5
         BUTTON_PADX = 5
@@ -167,7 +168,7 @@ class FrontEnd():
         controlFrame = tk.Frame(root)
         controlFrame.grid(row=0, column=0, rowspan=2, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY) 
         for i in range(5):
-            controlFrame.rowconfigure(i, weight=0)
+            controlFrame.rowconfigure(i, weight=1)
         for j in range(2):
             controlFrame.columnconfigure(j, uniform=True)
         # Frames for other objects
@@ -189,24 +190,33 @@ class FrontEnd():
         azStatusFrame.columnconfigure(0, weight=1)
         self.azStatus = tk.Button(azStatusFrame, text='STOPPED', font=FONT, state=DISABLED)
         self.azStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        # Chain Select
-        chainFrame = tk.LabelFrame(controlFrame, text='Chain Select')
+        # PLC Operations
+        chainFrame = tk.LabelFrame(controlFrame, text='PLC Operations')
         chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             chainFrame.columnconfigure(i, weight=1, uniform=True)
-        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1')
-        self.dfs1Button.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1')
-        self.ems1Button.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.initP1Button = tk.Button(chainFrame, font=FONT, text='INIT', command=lambda:self.plcOperationStateMachine('init'))
+        self.initP1Button.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.killP1Button = tk.Button(chainFrame, font=FONT, text='DISABLE', command=lambda:self.plcOperationStateMachine('disable'))
+        self.killP1Button.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.sleepP1Button = tk.Button(chainFrame, font=FONT, text='SLEEP', command=lambda:self.plcOperationStateMachine('sleep'))
+        self.sleepP1Button.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.returnP1Button = tk.Button(chainFrame, font=FONT, text='RETURN', command=lambda:self.plcOperationStateMachine('return'))
+        self.returnP1Button.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1', command=lambda:self.plcOperationStateMachine('dfs1'))
+        self.dfs1Button.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1', command=lambda:self.plcOperationStateMachine('ems1'))
+        self.ems1Button.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.PLC_OUTPUTS_LIST = (self.sleepP1Button, self.dfs1Button, self.ems1Button)              # Mutually exclusive buttons for which only one should be selected
         # Mode
         modeFrame = tk.LabelFrame(controlFrame, text='Mode')
         modeFrame.grid(row=3, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         modeFrame.columnconfigure(0, weight=1)
-        standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=SELECT_BACKGROUND)
+        standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=self.SELECT_BACKGROUND)
         standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=DEFAULT_BACKGROUND)
+        manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
         manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=DEFAULT_BACKGROUND)
+        autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND)
         autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         # Connection Status
         connectionsFrame = tk.LabelFrame(controlFrame, text='Connection Status')
@@ -242,6 +252,42 @@ class FrontEnd():
         # self.updateOutput( oFile, root )      # deprecate maybe
 
         root.after(1000, self.update_time )
+
+    def plcOperationStateMachine(self, action=None):
+        """Handles front panel IO and hardware IO for PLC operation button panel. This includes changing button text/color and sending IO requests to the instance of PLCIO.
+
+        Args:
+            action (string, optional): Can be 'init', 'disable', 'sleep', 'return', 'dfs#', 'ems#', or any of the other strings in the match-case sequence. Defaults to None.
+        """
+        # TODO: setStatus needs to check for response first (This might require lots of rewriting)
+        match action:
+            case 'init':
+                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT,))
+                # self.setStatus(self.initP1Button, background=self.SELECT_BACKGROUND)
+            case 'disable':
+                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_DISABLE,))
+                self.setStatus(self.initP1Button, background=self.DEFAULT_BACKGROUND)
+            case 'sleep':
+                self.PLC.threadHandler(self.PLC.query, (opcodes.SLEEP,))
+                for button in self.PLC_OUTPUTS_LIST:
+                    self.setStatus(button, background=self.DEFAULT_BACKGROUND)
+                # self.setStatus(self.sleepP1Button, background=self.SELECT_BACKGROUND)
+            case 'return':
+                # TODO: Make this selected/deselected
+                self.PLC.threadHandler(self.PLC.query, (opcodes.RETURN_OPCODES,))
+            case 'dfs1':
+                self.PLC.threadHandler(self.PLC.query, (opcodes.DFS_CHAIN1,))
+                for button in self.PLC_OUTPUTS_LIST:
+                    self.setStatus(button, background=self.DEFAULT_BACKGROUND)
+                # self.setStatus(self.dfs1Button, background=self.SELECT_BACKGROUND)
+            case 'ems1':
+                self.PLC.threadHandler(self.PLC.query, (opcodes.EMS_CHAIN1,))
+                for button in self.PLC_OUTPUTS_LIST:
+                    self.setStatus(button, background=self.DEFAULT_BACKGROUND)
+                # self.setStatus(self.ems1Button, background=self.SELECT_BACKGROUND)
+
+
+
 
     def setStatus(self, widget, text=None, background=None):
         """Sets the text and background of a widget being used as a status indicator

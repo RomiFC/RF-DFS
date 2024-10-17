@@ -234,7 +234,7 @@ class PLCIO:
         """
         self.serial = serial.Serial()
         self.serialLock = threading.RLock()
-        self.DELAY = 1.5                        # Default delay between read and write commands in query call.
+        self.TIMEOUT = 2.0                        # Default timeout between read and write commands in query call.
 
     def threadHandler(self, target, args=(), kwargs={}):
         """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
@@ -274,13 +274,14 @@ class PLCIO:
         Args:
             msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
             converter (str, optional): Format to convert the message to if it is an integer. Can be 'bin' or 'int'. Defaults to 'bin'.
-            delay (float, optional): Delay between read and write commands. Defaults to self.DELAY.
+            delay (float, optional): Delay between read and write commands. Defaults to self.TIMEOUT.
         """
         if delay is None:
-            delay = self.DELAY
+            delay = self.TIMEOUT
         self.write(msg, converter=converter)
-        time.sleep(delay)
-        self.read()
+        timer = time.time()
+        while time.time() - timer < self.TIMEOUT:
+            self.read()
 
     def write(self, msg, converter='bin'):
         """Writes message to the serial object at self.serial.
@@ -298,6 +299,7 @@ class PLCIO:
             elif type(msg) == int and converter == 'int':
                 msg = str(msg)
                 self.serial.write(msg.encode('utf-8'))
+        logging.serial(f'>>> {msg}')
 
     def readLine(self):
         """Reads the serial buffer up to a newline character and logs it at level SERIAL.
@@ -312,10 +314,12 @@ class PLCIO:
             buffer = self.serial.read(self.serial.in_waiting).decode('utf-8')
             lines = buffer.splitlines()
             for i in lines:
-                logging.serial(i)
-            remainder = self.serial.in_waiting
-            if remainder:
-                logging.timeout(f'{remainder} bytes remaining in the serial buffer.')
+                if i:   # Check if the string is empty
+                    logging.serial(i)
+            # TODO: Fix this
+            # remainder = self.serial.in_waiting
+            # if remainder:
+            #     logging.timeout(f'{remainder} bytes remaining in the serial buffer.')
 
     def flushInput(self):
         """Flush the input buffer, discarding all its contents.
