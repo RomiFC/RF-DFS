@@ -14,6 +14,8 @@
  * - Leading 1
  * - 0 for config or sleep operation
  * - 6-bit config opcode
+ *
+ * Due to the way the PLC is written to parse inputs, each opcode MUST be terminated by a newline (\n) character.
  * 
  * @date Last Modified: 2024-08-07
  * 

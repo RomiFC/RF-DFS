@@ -247,7 +247,7 @@ class PLCIO:
         if not hasattr(PLCIO, target.__name__):
             logging.error(f'Class PLCIO does not contain a method with identifier {target.__name__}')
             return
-        thread = threading.Thread(target = target, args = args, kwargs = kwargs)
+        thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
         thread.start()
 
     def openSerial(self, port, baud=115200, timeout=1):
@@ -284,7 +284,7 @@ class PLCIO:
             self.read()
 
     def write(self, msg, converter='bin'):
-        """Writes message to the serial object at self.serial.
+        """Writes message to the serial object at self.serial appended with a newline character.
 
         Args:
             msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
@@ -292,14 +292,17 @@ class PLCIO:
         """
         with self.serialLock:
             if type(msg) == str:
+                if msg[-1] != '\n':
+                    msg = msg + '\n'
                 self.serial.write(msg.encode('utf-8'))
             elif type(msg) == int and converter == 'bin':
-                msg = bin(msg)[2:]
+                msg = bin(msg)[2:] + '\n'
                 self.serial.write(msg.encode('utf-8'))
             elif type(msg) == int and converter == 'int':
-                msg = str(msg)
+                msg = str(msg) + '\n'
                 self.serial.write(msg.encode('utf-8'))
-        logging.serial(f'>>> {msg}')
+        logging.serial(f'>>> {repr(msg)}')
+
 
     def readLine(self):
         """Reads the serial buffer up to a newline character and logs it at level SERIAL.
