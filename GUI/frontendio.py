@@ -280,7 +280,7 @@ class PLCIO:
             delay = self.TIMEOUT
         self.write(msg, converter=converter)
         timer = time.time()
-        while time.time() - timer < self.TIMEOUT:
+        while time.time() - timer < delay:
             self.read()
 
     def write(self, msg, converter='bin'):

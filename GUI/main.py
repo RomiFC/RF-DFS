@@ -263,10 +263,10 @@ class FrontEnd():
         # Maybe another thread that constantly checks status from plc/other resources?
         match action:
             case 'init':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT,))
+                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT,), {'delay': 15.0})
                 # self.setStatus(self.initP1Button, background=self.SELECT_BACKGROUND)
             case 'disable':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_DISABLE,))
+                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_DISABLE,), {'delay': 10.0})
                 self.setStatus(self.initP1Button, background=self.DEFAULT_BACKGROUND)
             case 'sleep':
                 self.PLC.threadHandler(self.PLC.query, (opcodes.SLEEP,))
@@ -1092,16 +1092,15 @@ class SpecAn(FrontEnd):
                     time.sleep(8)
                     continue
                 try:
-                    specPlotLock.acquire()
-                    if 'lines' in locals():     # Remove previous plot if it exists
-                        lines.pop(0).remove()
-                    buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
-                    xAxis = buffer[::2]
-                    yAxis = buffer[1::2]
-                    lines = self.ax.plot(xAxis, yAxis, color=self.color, marker=self.marker, linestyle=self.linestyle, linewidth=self.linewidth, markersize=self.markersize)
-                    self.ax.grid(visible=True)
-                    self.spectrumDisplay.draw()
-                    specPlotLock.release()
+                    with specPlotLock:
+                        if 'lines' in locals():     # Remove previous plot if it exists
+                            lines.pop(0).remove()
+                        buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
+                        xAxis = buffer[::2]
+                        yAxis = buffer[1::2]
+                        lines = self.ax.plot(xAxis, yAxis, color=self.color, marker=self.marker, linestyle=self.linestyle, linewidth=self.linewidth, markersize=self.markersize)
+                        self.ax.grid(visible=True)
+                        self.spectrumDisplay.draw()
                 except Exception as e:
                     specPlotLock.release()
                     logging.fatal(e)
