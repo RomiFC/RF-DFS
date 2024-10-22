@@ -11,6 +11,7 @@ from pyvisa import attributes
 import numpy as np
 import logging
 import decimal
+import traceback
 
 # MATPLOTLIB
 import matplotlib.pyplot as plt
@@ -195,17 +196,17 @@ class FrontEnd():
         chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             chainFrame.columnconfigure(i, weight=1, uniform=True)
-        self.initP1Button = tk.Button(chainFrame, font=FONT, text='INIT', command=lambda:self.plcOperationStateMachine('init'))
+        self.initP1Button = tk.Button(chainFrame, font=FONT, text='INIT', command=lambda:self.plcOperationStateMachine(opcodes.P1_INIT))
         self.initP1Button.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.killP1Button = tk.Button(chainFrame, font=FONT, text='DISABLE', command=lambda:self.plcOperationStateMachine('disable'))
+        self.killP1Button = tk.Button(chainFrame, font=FONT, text='DISABLE', command=lambda:self.plcOperationStateMachine(opcodes.P1_DISABLE))
         self.killP1Button.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.sleepP1Button = tk.Button(chainFrame, font=FONT, text='SLEEP', command=lambda:self.plcOperationStateMachine('sleep'))
+        self.sleepP1Button = tk.Button(chainFrame, font=FONT, text='SLEEP', command=lambda:self.plcOperationStateMachine(opcodes.SLEEP))
         self.sleepP1Button.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.returnP1Button = tk.Button(chainFrame, font=FONT, text='RETURN', command=lambda:self.plcOperationStateMachine('return'))
+        self.returnP1Button = tk.Button(chainFrame, font=FONT, text='RETURN', command=lambda:self.plcOperationStateMachine(opcodes.RETURN_OPCODES))
         self.returnP1Button.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1', command=lambda:self.plcOperationStateMachine('dfs1'))
+        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1', command=lambda:self.plcOperationStateMachine(opcodes.DFS_CHAIN1))
         self.dfs1Button.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1', command=lambda:self.plcOperationStateMachine('ems1'))
+        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1', command=lambda:self.plcOperationStateMachine(opcodes.EMS_CHAIN1))
         self.ems1Button.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.PLC_OUTPUTS_LIST = (self.sleepP1Button, self.dfs1Button, self.ems1Button)              # Mutually exclusive buttons for which only one should be selected
         # Mode
@@ -257,32 +258,32 @@ class FrontEnd():
         """Handles front panel IO and hardware IO for PLC operation button panel. This includes changing button text/color and sending IO requests to the instance of PLCIO.
 
         Args:
-            action (string, optional): Can be 'init', 'disable', 'sleep', 'return', 'dfs#', 'ems#', or any of the other strings in the match-case sequence. Defaults to None.
+            action (string, optional): Can be any opcode that has been implemented in the following match-case statement. Defaults to None.
         """
         # TODO: setStatus needs to check for response first (This might require lots of rewriting)
         # Maybe another thread that constantly checks status from plc/other resources?
         match action:
-            case 'init':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT,), {'delay': 15.0})
+            case opcodes.P1_INIT:
+                self.PLC.threadHandler(self.PLC.query, (action,), {'delay': 15.0})
                 # self.setStatus(self.initP1Button, background=self.SELECT_BACKGROUND)
-            case 'disable':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.P1_DISABLE,), {'delay': 10.0})
+            case opcodes.P1_DISABLE:
+                self.PLC.threadHandler(self.PLC.query, (action,), {'delay': 10.0})
                 self.setStatus(self.initP1Button, background=self.DEFAULT_BACKGROUND)
-            case 'sleep':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.SLEEP,))
+            case opcodes.SLEEP:
+                self.PLC.threadHandler(self.PLC.query, (action,))
                 for button in self.PLC_OUTPUTS_LIST:
                     self.setStatus(button, background=self.DEFAULT_BACKGROUND)
                 # self.setStatus(self.sleepP1Button, background=self.SELECT_BACKGROUND)
-            case 'return':
+            case opcodes.RETURN_OPCODES:
                 # TODO: Make this selected/deselected
-                self.PLC.threadHandler(self.PLC.query, (opcodes.RETURN_OPCODES,))
-            case 'dfs1':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.DFS_CHAIN1,))
+                self.PLC.threadHandler(self.PLC.query, (action,))
+            case opcodes.DFS_CHAIN1:
+                self.PLC.threadHandler(self.PLC.query, (action,))
                 for button in self.PLC_OUTPUTS_LIST:
                     self.setStatus(button, background=self.DEFAULT_BACKGROUND)
                 # self.setStatus(self.dfs1Button, background=self.SELECT_BACKGROUND)
-            case 'ems1':
-                self.PLC.threadHandler(self.PLC.query, (opcodes.EMS_CHAIN1,))
+            case opcodes.EMS_CHAIN1:
+                self.PLC.threadHandler(self.PLC.query, (action,))
                 for button in self.PLC_OUTPUTS_LIST:
                     self.setStatus(button, background=self.DEFAULT_BACKGROUND)
                 # self.setStatus(self.ems1Button, background=self.SELECT_BACKGROUND)
@@ -847,9 +848,9 @@ class SpecAn(FrontEnd):
         global visaLock
         _list = []
 
-        if self.Vi.isSessionOpen() == FALSE:
-            logging.error("Session to the Analyzer is not open.")
-            return
+        # if self.Vi.isSessionOpen() == FALSE:
+        #     logging.error("Session to the Analyzer is not open.")
+        #     return
 
         # Center Frequency
         _dict = {
@@ -1013,14 +1014,11 @@ class SpecAn(FrontEnd):
             if _list[index]['arg'] is not None:
                 _list.insert(0, _list.pop(index))
 
-        # Acquire thread lock
-        # Wait for the analyzer display loop to complete so that visa commands from the loop do not interfere with ones sent in this method
-        visaLock.acquire()
 
         # EXECUTE COMMANDS
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
-        for x in _list:
-            try:
+        with visaLock:
+            for x in _list:
                 # Issue command with argument
                 if x['arg'] is not None:
                     self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
@@ -1031,15 +1029,9 @@ class SpecAn(FrontEnd):
                     buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
                 logging.debug(f"Command {x['command']}? returned {buffer}")
                 clearAndSetWidget(x['widget'], buffer)
-            except Exception as e:
-                logging.fatal(e)
-                logging.fatal(f"VISA ERROR {hex(self.Vi.openRsrc.last_status)} IN SETANALYZERVALUE: ATTEMPTING TO RESET ANALYZER STATE")
-                self.Vi.queryErrors()
-                self.Vi.resetAnalyzerState()
         # Set plot limits
-        self.setAnalyzerPlotLimits()
-        # Release thread lock
-        visaLock.release()
+        with visaLock:
+            self.setAnalyzerPlotLimits()
         return
 
     def loopAnalyzerDisplay(self):
@@ -1068,12 +1060,13 @@ class SpecAn(FrontEnd):
                 errorFlag = FALSE
             except Exception as e:
                 logging.error(e)
-                logging.error(f"VISA error with status code {hex(self.Vi.openRsrc.last_status)}. Could not initialize analyzer state, retrying...")
+                logging.error(f"Could not initialize analyzer state, retrying...")
                 try:
                     self.Vi.queryErrors()
                 except Exception as e:
-                    logging.warning(e)
-                    logging.warning(f'Could not query errors from device.')
+                    pass
+                    # logging.warning(e)
+                    # logging.warning(f'Could not query errors from device.')
                 visaLock.release()
                 time.sleep(8)
 
