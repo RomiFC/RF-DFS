@@ -260,6 +260,7 @@ class FrontEnd():
             action (string, optional): Can be 'init', 'disable', 'sleep', 'return', 'dfs#', 'ems#', or any of the other strings in the match-case sequence. Defaults to None.
         """
         # TODO: setStatus needs to check for response first (This might require lots of rewriting)
+        # Maybe another thread that constantly checks status from plc/other resources?
         match action:
             case 'init':
                 self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT,))
@@ -593,8 +594,6 @@ class FrontEnd():
         get_logfile = tk.Button( buttonFrame, text = "Get Log File", font = ('Arial', 10),width=10, command = oFile.printData )
         get_logfile.pack()
 
-    def printArg(arg):
-        print(arg)
 
 class SpecAn(FrontEnd):
     """Generates tkinter-embedded matplotlib graph of spectrum analyzer.
@@ -791,7 +790,13 @@ class SpecAn(FrontEnd):
         self.attenManButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=MANUAL))
 
     def setAnalyzerPlotLimits(self, **kwargs):
-        """Sets self.ax limits to parameters passed in **kwargs if they exist. If not, gets relevant widget values to set limits
+        """Sets self.ax limits to parameters passed in **kwargs if they exist. If not, gets relevant widget values to set limits.
+
+        Args:
+            xmin (float, optional): Minimum X value
+            xmax (float, optional): Maximum X value
+            ymin (float, optional): Minimum Y value
+            ymax (float, optional): Maximum Y value
         """
         if 'xmin' in kwargs and 'xmax' in kwargs:
             self.ax.set_xlim(kwargs["xmin"], kwargs["xmax"])
@@ -838,7 +843,7 @@ class SpecAn(FrontEnd):
             rbwfiltertype (int, optional): Index of the combobox widget tied to RBW_FILTER_TYPE_VAL_ARGS. Defaults to None.
             attentype (bool, optional): WIP
         """
-        # TODO: Make sure all command have full functionality
+        # TODO: Make sure all commands have full functionality
         global visaLock
         _list = []
 
@@ -846,9 +851,6 @@ class SpecAn(FrontEnd):
             logging.error("Session to the Analyzer is not open.")
             return
 
-        # Acquire thread lock
-        # Wait for the analyzer display loop to complete so that visa commands from the loop do not interfere with ones sent in this method
-        visaLock.acquire()
         # Center Frequency
         _dict = {
             'command': ':SENS:FREQ:CENTER',
@@ -1011,6 +1013,10 @@ class SpecAn(FrontEnd):
             if _list[index]['arg'] is not None:
                 _list.insert(0, _list.pop(index))
 
+        # Acquire thread lock
+        # Wait for the analyzer display loop to complete so that visa commands from the loop do not interfere with ones sent in this method
+        visaLock.acquire()
+
         # EXECUTE COMMANDS
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
         for x in _list:
@@ -1109,7 +1115,6 @@ class SpecAn(FrontEnd):
             else:
                 # Prevent this thread from taking up too much utilization
                 time.sleep(1)
-                
         return
 
     def toggleAnalyzerDisplay(self):
@@ -1150,13 +1155,12 @@ class SpecAn(FrontEnd):
                 color = colorchooser.askcolor(initialcolor=self.color)[1]
             else:
                 color = colorchooser.askcolor(initialcolor='#1f77b4')[1]
-        specPlotLock.acquire()
-        self.color = color
-        self.marker = marker
-        self.linestyle = linestyle
-        self.linewidth = linewidth
-        self.markersize = markersize
-        specPlotLock.release()
+        with specPlotLock:
+            self.color = color
+            self.marker = marker
+            self.linestyle = linestyle
+            self.linewidth = linewidth
+            self.markersize = markersize
             
 class AziElePlot(FrontEnd):
     """Generates tkinter-embedded matplotlib graph of spectrum analyzer. Requires an instance of FrontEnd to be constructed with the name Front_End.
@@ -1377,20 +1381,13 @@ def checkbuttonStateHandler():
 
 def openSaveDialog(type=None):
     if type == 'trace':
-        specPlotLock.acquire()
-        try:
+        with specPlotLock:
             data = Spec_An.ax.lines[0].get_data()
             xdata = data[0]
             ydata = data[1]
             buffer = ''
             for index in range(len(data[0])):
                 buffer = buffer + str(xdata[index]) + '\t' + str(ydata[index]) + '\n'
-        except Exception as e:
-            specPlotLock.release()
-            logging.error(e)
-            logging.error('Could not retrieve data from spectrum plot.')
-            return
-        specPlotLock.release()
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
         if file is not None:
             file.write(buffer)
