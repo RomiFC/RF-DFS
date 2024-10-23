@@ -47,16 +47,17 @@ graph BT
 ## 🚀 Deployment Requirements
 
 - [NI-VISA](https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html) or other suitable PyVISA backend.
-- [NI-488.2](https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html#484357)
 - Ethernet, GPIB, serial, or other SCPI instrument connection.
+  - [NI-488.2](https://www.ni.com/en/support/downloads/drivers/download.ni-488-2.html#484357) if using GPIB.
 
 ## 🛠️ Development Requirements
 
 - All above requirements.
-- [Python 3.6+](https://www.python.org/)
+- [Python 3.10+](https://www.python.org/) and an understanding of the following:
   - [tkinter](https://docs.python.org/3/library/tkinter.html#module-tkinter)
   - [pySerial](https://pypi.org/project/pyserial/)
   - [PyVisa](https://pyvisa.readthedocs.io/en/latest/)
+  - [matplotlib](https://matplotlib.org/)
 - Suitable Python IDE (Recommended [VSCode](https://code.visualstudio.com/))
 - Python packager (Recommended [PyInstaller](https://pyinstaller.org/en/stable/))
 - [PlatformIO](https://platformio.org/) for updating PLC firmware.
@@ -72,6 +73,18 @@ pip install pyserial
 
 ```bash
 pip install pyvisa
+```
+
+```bash
+pip install matplotlib
+```
+
+```bash
+pip install ttkthemes
+```
+
+```bash
+pip install numpy
 ```
 
 ## :mailbox: Authors
