@@ -234,7 +234,7 @@ class PLCIO:
         """
         self.serial = serial.Serial()
         self.serialLock = threading.RLock()
-        self.TIMEOUT = 2.0                        # Default timeout between read and write commands in query call.
+        self.TIMEOUT = 5.0                        # Default timeout between read and write commands in query call.
 
     def threadHandler(self, target, args=(), kwargs={}):
         """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
@@ -319,10 +319,6 @@ class PLCIO:
             for i in lines:
                 if i:   # Check if the string is empty
                     logging.serial(i)
-            # TODO: Fix this
-            # remainder = self.serial.in_waiting
-            # if remainder:
-            #     logging.timeout(f'{remainder} bytes remaining in the serial buffer.')
 
     def flushInput(self):
         """Flush the input buffer, discarding all its contents.

@@ -113,7 +113,7 @@ class FrontEnd():
         # VARIABLES
         self.timeout = TIMEOUT_DEF           # VISA timeout value
         self.chunkSize = CHUNK_SIZE_DEF      # Bytes to read from buffer
-        self.instrument = ''                 # ID of the currently open instrument. Used only in resetConfigWidgets method
+        self.instrument = ''                 # ID of the currently open instrument.
         self.motorPort = ''
         self.plcPort = ''
         # TKINTER VARIABLES
@@ -214,9 +214,9 @@ class FrontEnd():
         self.quickButton        = tk.LabelFrame(controlFrame, text='Control')
         self.quickButton.grid(row = 5, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         self.quickButton.columnconfigure(0, weight=0)
-        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = FONT, bg = 'red', fg = 'white', command= self.Estop)
+        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = FONT, bg = 'red', fg = 'white', command = self.Estop)
         self.Park               = tk.Button(self.quickButton, text = "Park", font = FONT, bg = 'blue', fg = 'white', command = self.park)
-        self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = FONT, command= self.freewriting)
+        self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = FONT, command = self.freewriting)
        
         self.EmargencyStop.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.Park.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
@@ -275,12 +275,13 @@ class FrontEnd():
                 self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get())
                 try:
                     idn = self.Vi.identify()
-                    shortidn = str(idn[0]) + ', ' + str(idn[1])
+                    shortidn = str(idn[0]) + ', ' + str(idn[1]) + ', ' + str(idn[2])
                     self.spectrumFrame.configure(text=shortidn)
                 except Exception as e:
                     logging.warning(f'Could not identify device: {e}')
                     return
-                self.setStatus(self.visaStatus, "Connected")
+                finally:
+                    self.setStatus(self.visaStatus, "Connected")
         elif device == 'motor':
             self.motorPort = self.motorSelectBox.get()[:4]
             self.setStatus(self.motorStatus, 'Connected')
@@ -497,7 +498,7 @@ class FrontEnd():
 
         # clockFrame              = ttk.Frame(parent)
         # clockFrame.grid(row=0,column=0)
-        # self.clock_label        = ttk.Label(clockFrame, font= ('Arial', 14))
+        # self.clock_label        = ttk.Label(clockFrame, font = ('Arial', 14))
         # self.clock_label.pack()
         # self.quickButton        = ttk.Frame( parent )
         # self.quickButton.grid(row = 2, column = 0, padx = 20, pady = 10, sticky=(S))

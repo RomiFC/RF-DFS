@@ -43,7 +43,7 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging, methodName, logToRoot)
 
 def loggingLevelHandler(level):
-    """Changes logging level of 'logger' to debug, verbose, or info, depending on argument. This is convoluted but it's because some modules like PyVISA use the root logger, whereas
+    """Changes logging level of 'logger' to debug, verbose, or info, depending on argument.
 
     Args:
         verbose (int): 1 for INFO, 2 for VERBOSE, 3 for DEBUG.
