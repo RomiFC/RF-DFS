@@ -377,6 +377,19 @@ class VisaIO():
             return RETURN_ERROR
         return RETURN_SUCCESS
     
+    def identify(self):
+        """Issues *IDN? to the open resource and returns a list of its response, split at each comma.
+
+        Returns:
+            list: List of strings of the device's response. Typically of the format ["Manufacturer", "Model", "Serial No.", "Software Revision"].
+        """
+        buffer = self.openRsrc.query_ascii_values("*IDN?", converter='s')
+        try:    # N9040b returns string wrapped in brackets which python interprets as a list
+            buffer = buffer.split(',')
+        except:
+            pass
+        return buffer
+    
     def resetAnalyzerState(self):
         """Issues *RST, *WAI, and :INIT CONT OFF to the open resource.
         """

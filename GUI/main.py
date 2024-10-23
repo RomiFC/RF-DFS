@@ -3,6 +3,7 @@ import threading
 from frontendio import *
 from timestamp import *
 import opcodes
+from loggingsetup import *
 
 # OTHER MODULES
 import sys
@@ -52,39 +53,6 @@ plcLock = threading.RLock()         # For PLC
 specPlotLock = threading.RLock()    # For matplotlib spectrum plot
 bearingPlotLock = threading.RLock() # For matplotlib antenna direction plot
 
-# LOGGING
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)-s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-def addLoggingLevel(levelName, levelNum, methodName=None):
-    if not methodName:
-        methodName = levelName.lower()
-
-    if hasattr(logging, levelName):
-        raise AttributeError("{} already defined in logging module".format(levelName))
-    if hasattr(logging, methodName):
-        raise AttributeError("{} already defined in logging module".format(methodName))
-    if hasattr(logging.getLoggerClass(), methodName):
-        raise AttributeError("{} already defined in logger class".format(methodName))
-
-    def logForLevel(self, message, *args, **kwargs):
-        if self.isEnabledFor(levelNum):
-            self._log(levelNum, message, args, **kwargs)
-
-    def logToRoot(message, *args, **kwargs):
-        logging.log(levelNum, message, *args, **kwargs)
-
-    logging.addLevelName(levelNum, levelName)
-    setattr(logging, levelName, levelNum)
-    setattr(logging.getLoggerClass(), methodName, logForLevel)
-    setattr(logging, methodName, logToRoot)
-addLoggingLevel("TERMINAL", logging.INFO + 1)
-addLoggingLevel("SERIAL", logging.INFO + 2)
-addLoggingLevel("TIMEOUT", logging.INFO + 3)
-
-
 
 def isNumber(input):
     try:
@@ -101,7 +69,11 @@ def clearAndSetWidget(widget, arg):
         widget (ttk.Widget or Tkinter_variable): Widget to clear/set.
         arg (list, str): Value in 'arg[0]' will be taken to set the widget in engineering notation. If that fails, attempt to set the widget to 'arg'.
     """
-    logging.debug(f"clearAndSetWidget received widget {widget} and argument {arg}")
+    try:
+        id = widget.winfo_id()
+    except:
+        id = widget
+    logging.debug(f"clearAndSetWidget received widget {id} and argument {arg}")
     # Set radiobutton widgets
     if isinstance(widget, (BooleanVar, IntVar, StringVar)):
         try:
@@ -110,7 +82,7 @@ def clearAndSetWidget(widget, arg):
         except:
             widget.set(arg)
         finally:
-            logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {widget} ({type(widget)})")
+            logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {id} ({type(widget)})")
     # Set entry/combobox widgets
     if isinstance(widget, (tk.Entry, ttk.Entry, ttk.Combobox)):
         widget.delete(0, END)
@@ -120,10 +92,10 @@ def clearAndSetWidget(widget, arg):
             x = decimal.Decimal(arg)
             x = x.normalize().to_eng_string()
             widget.insert(0, x)
-            logging.debug(f"clearAndSetWidget passed argument {x} ({type(x)}) to {widget} ({type(widget)}).")
+            logging.debug(f"clearAndSetWidget passed argument {x} ({type(x)}) to {id} ({type(widget)}).")
         except:
             widget.insert(0, arg)
-            logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {widget} ({type(widget)}).")
+            logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {id} ({type(widget)}).")
 
 
 class FrontEnd():
@@ -174,7 +146,7 @@ class FrontEnd():
             controlFrame.columnconfigure(j, uniform=True)
         # Frames for other objects
         self.directionFrame = tk.LabelFrame(plotFrame, text = "Antenna Position")  # Frame that holds matplotlib azimuth/elevation plot
-        self.spectrumFrame = tk.LabelFrame(plotFrame, text = "Placeholder Text")   # Frame that holds matplotlib spectrum plot
+        self.spectrumFrame = tk.LabelFrame(plotFrame, text = "Spectrum")   # Frame that holds matplotlib spectrum plot
         self.directionFrame.grid(row = 0, column = 0, sticky = NSEW)
         self.spectrumFrame.grid(row = 0, column = 1, sticky=NSEW)
         # Clock
@@ -288,8 +260,34 @@ class FrontEnd():
                     self.setStatus(button, background=self.DEFAULT_BACKGROUND)
                 # self.setStatus(self.ems1Button, background=self.SELECT_BACKGROUND)
 
+    def initDevice(self, event, device, port):
+        """Connects to the respective resource and updates the attribute which stores the resource name.
 
-
+        Args:
+            event (event): Event passed by tkinter
+            device (string): Can be 'visa', 'motor', or 'plc'.
+            port (string): Name of the VISA ID or COM port to connect to.
+        """
+        if device == 'visa':
+            with visaLock:
+                self.Vi.connectToRsrc(port)
+                self.instrument = port
+                self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get())
+                try:
+                    idn = self.Vi.identify()
+                    shortidn = str(idn[0]) + ', ' + str(idn[1])
+                    self.spectrumFrame.configure(text=shortidn)
+                except Exception as e:
+                    logging.warning(f'Could not identify device: {e}')
+                    return
+                self.setStatus(self.visaStatus, "Connected")
+        elif device == 'motor':
+            self.motorPort = self.motorSelectBox.get()[:4]
+            self.setStatus(self.motorStatus, 'Connected')
+        elif device == 'plc':
+            self.PLC.openSerial(port)
+            self.plcPort = port
+            self.setStatus(self.plcStatus, 'Connected')
 
     def setStatus(self, widget, text=None, background=None):
         """Sets the text and background of a widget being used as a status indicator
@@ -321,31 +319,13 @@ class FrontEnd():
         """
         parent = Toplevel()
 
-        def onConnectPress(event, type, port):
-            """Connects to the respective resource and updates the attribute which stores the resource name.
-
-            Args:
-                event (event): Event passed by tkinter
-                type (string): Can be 'visa', 'motor', or 'plc'.
-                port (string): Name of the VISA ID or COM port to connect to.
-            """
-            if type == 'visa' and self.Vi.connectToRsrc(port) == RETURN_SUCCESS:
-                self.instrument = port
-                self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get())
-                self.setStatus(self.visaStatus, 'Connected')
-            elif type == 'motor':
-                self.motorPort = self.motorSelectBox.get()[:4]
-                self.setStatus(self.motorStatus, 'Connected')
-            elif type == 'plc':
-                self.PLC.openSerial(port)
-                self.plcPort = port
-                self.setStatus(self.plcStatus, 'Connected')
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
             """
             logging.info('Searching for resources...')
             self.instrSelectBox['values'] = self.Vi.rm.list_resources()
             self.motorSelectBox['values'] = list(serial.tools.list_ports.comports())
+            self.plcSelectBox['values'] = list(serial.tools.list_ports.comports())
         def onEnableTermPress():
             if self.enableTerm.get():
                 self.selectTermWidget.config(state='readonly')
@@ -377,36 +357,34 @@ class FrontEnd():
         self.motorSelectBox.set(self.motorPort)
         self.plcSelectBox.set(self.plcPort)
 
-        self.instrSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event, type='visa', port=self.instrSelectBox.get()))
-        self.motorSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event, type='motor', port=self.motorSelectBox.get()[:4]))
-        self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event: onConnectPress(event, type='plc', port=self.plcSelectBox.get()[:4]))
+        self.instrSelectBox.bind("<<ComboboxSelected>>", lambda event: self.initDevice(event, device='visa', port=self.instrSelectBox.get()))
+        self.motorSelectBox.bind("<<ComboboxSelected>>", lambda event: self.initDevice(event, device='motor', port=self.motorSelectBox.get()[:4]))
+        self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event: self.initDevice(event, device='plc', port=self.plcSelectBox.get()[:4]))
 
         # VISA CONFIGURATION FRAME
         configFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "VISA Configuration")
-        configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=tk.N)
+        configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=NSEW, rowspan=2)
         timeoutLabel = ttk.Label(configFrame, text = 'Timeout (ms)')
+        timeoutLabel.grid(row = 0, column = 0, pady=5)
         self.timeoutWidget = ttk.Spinbox(configFrame, from_=TIMEOUT_MIN, to=TIMEOUT_MAX, increment=100, validate="key", validatecommand=(isNumWrapper, '%P'))
+        self.timeoutWidget.grid(row = 1, column = 0, padx=20, pady=5, columnspan=2)
         self.timeoutWidget.set(self.timeout)
         chunkSizeLabel = ttk.Label(configFrame, text = 'Chunk size (Bytes)')
+        chunkSizeLabel.grid(row = 2, column = 0, pady=5)
         self.chunkSizeWidget = ttk.Spinbox(configFrame, from_=CHUNK_SIZE_MIN, to=CHUNK_SIZE_MAX, increment=10240, validate="key", validatecommand=(isNumWrapper, '%P'))
+        self.chunkSizeWidget.grid(row = 3, column = 0, padx=20, pady=5, columnspan=2)
         self.chunkSizeWidget.set(self.chunkSize)
         applyButton = ttk.Button(configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
-        # VISA CONFIGURATION GRID
-        timeoutLabel.grid(row = 0, column = 0, pady=5)
-        self.timeoutWidget.grid(row = 1, column = 0, padx=20, pady=5, columnspan=2)
-        chunkSizeLabel.grid(row = 2, column = 0, pady=5)
-        self.chunkSizeWidget.grid(row = 3, column = 0, padx=20, pady=5, columnspan=2)
         applyButton.grid(row = 7, column = 0, columnspan=2, pady=10)
         # VISA TERMINATION FRAME
         termFrame = ttk.LabelFrame(parent, borderwidth=2, text = 'Termination Methods')
-        termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=tk.N+tk.W, ipadx=5, ipady=5)
+        termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=(N, E, W), ipadx=5, ipady=5)
         self.sendEndWidget = ttk.Checkbutton(termFrame, text = 'Send \'End or Identify\' on write', variable=self.sendEnd)
-        self.selectTermWidget = ttk.Combobox(termFrame, text='Termination Character', values=self.SELECT_TERM_VALUES, state='disabled')
-        self.enableTermWidget = ttk.Checkbutton(termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
-        # VISA TERMINATION GRID
         self.sendEndWidget.grid(row = 0, column = 0, pady = 5)
-        self.enableTermWidget.grid(row = 1, column = 0, pady = 5)
+        self.selectTermWidget = ttk.Combobox(termFrame, text='Termination Character', values=self.SELECT_TERM_VALUES, state='disabled')
         self.selectTermWidget.grid(row = 2, column = 0, pady = 5)
+        self.enableTermWidget = ttk.Checkbutton(termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
+        self.enableTermWidget.grid(row = 1, column = 0, pady = 5)
     
 
     def resetConfigWidgets(self, *event):
@@ -1027,7 +1005,7 @@ class SpecAn(FrontEnd):
                     buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
                 except:
                     buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
-                logging.debug(f"Command {x['command']}? returned {buffer}")
+                logging.verbose(f"Command {x['command']}? returned {buffer}")
                 clearAndSetWidget(x['widget'], buffer)
         # Set plot limits
         with visaLock:
@@ -1341,8 +1319,7 @@ def commandListHandler(event, direction):
         commandIndex += 1
     elif direction== 'down' and commandIndex > 0:
         commandIndex -= 1
-    consoleInput.insert(0, commandList[commandIndex])
-        
+    consoleInput.insert(0, commandList[commandIndex])    
 
 def executeHandler(event, arg):
     global commandIndex, commandList
@@ -1427,8 +1404,14 @@ menuFile.add_separator()
 menuFile.add_command(label='Exit', command=Front_End.onExit)
 
 # Options
-menuOptions.add_command(label='Configure...', command=Front_End.openConfig)
-menuOptions.add_command(label='Change plot color', command=Spec_An.setPlotThreadHandler)
+tkLoggingLevel = IntVar()
+tkLoggingLevel.set(1)
+menuOptions.add_command(label='Configure...', command = Front_End.openConfig)
+menuOptions.add_command(label='Change plot color', command = Spec_An.setPlotThreadHandler)
+menuOptions.add_separator()
+menuOptions.add_radiobutton(label='Logging: Debug', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 3)
+menuOptions.add_radiobutton(label='Logging: Verbose', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 2)
+menuOptions.add_radiobutton(label='Logging: Standard', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 1)
 
 # Limit window size to the minimum size on generation
 root.update()
