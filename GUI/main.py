@@ -616,8 +616,8 @@ class SpecAn(FrontEnd):
         spectrumFrame.columnconfigure(1, weight=0)  # Prevent this column from resizing
 
         # MATPLOTLIB GRAPH
-        fig = plt.figure(linewidth=0, edgecolor="#04253a")
-        self.ax = fig.add_subplot()
+        self.fig = plt.figure(linewidth=0, edgecolor="#04253a")
+        self.ax = self.fig.add_subplot()
         self.ax.set_title("Spectrum Plot")
         self.ax.set_xlabel("Frequency (Hz)")
         self.ax.set_ylabel("Power Spectral Density (dBm/RBW)")
@@ -625,7 +625,7 @@ class SpecAn(FrontEnd):
         self.ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         self.ax.xaxis.set_major_formatter(ticker.EngFormatter(unit=''))
-        self.spectrumDisplay = FigureCanvasTkAgg(fig, master=spectrumFrame)
+        self.spectrumDisplay = FigureCanvasTkAgg(self.fig, master=spectrumFrame)
         self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, rowspan=3)
 
         # MEASUREMENT COMMANDS
@@ -1368,7 +1368,10 @@ def openSaveDialog(type=None):
             file.write(console.get('1.0', END))
             file.close()
     elif type == 'image':
-        filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')))
+        filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')), defaultextension='.jpg')
+        logging.info(filename)
+        with specPlotLock:
+            Spec_An.fig.savefig(filename)
 
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
