@@ -106,7 +106,7 @@ class FrontEnd():
             root (Tk or ThemedTk): Root tkinter window.
             Vi (VisaIO): Object of VisaIO that contains methods for VISA communication and an opened resource manager.
             Motor (MotorIO): Object of MotorIO that contains methods for serial motor communication.
-            PLC (PLCIO): Object of PLCIO that contains methods for serial PLC communication.
+            PLC (SerialIO): Object of SerialIO that contains methods for serial PLC communication.
         """
         # CONSTANTS
         self.SELECT_TERM_VALUES = ('Line Feed - \\n', 'Carriage Return - \\r')
@@ -227,7 +227,7 @@ class FrontEnd():
         root.after(1000, self.update_time )
 
     def plcOperationStateMachine(self, action=None):
-        """Handles front panel IO and hardware IO for PLC operation button panel. This includes changing button text/color and sending IO requests to the instance of PLCIO.
+        """Handles front panel IO and hardware IO for PLC operation button panel. This includes changing button text/color and sending IO requests to the instance of SerialIO.
 
         Args:
             action (string, optional): Can be any opcode that has been implemented in the following match-case statement. Defaults to None.
@@ -1380,7 +1380,7 @@ sys.stderr.write = redirector
 # Generate objects within root window
 Vi = VisaIO()
 Motor = MotorIO(0, 0)
-Relay = PLCIO()
+Relay = SerialIO()
 
 Front_End = FrontEnd(root, Vi, Motor, Relay)
 Spec_An = SpecAn(Vi, Front_End.spectrumFrame)

@@ -46,7 +46,7 @@ def loggingLevelHandler(level):
     """Changes logging level of 'logger' to debug, verbose, or info, depending on argument.
 
     Args:
-        verbose (int): 1 for INFO, 2 for VERBOSE, 3 for DEBUG.
+        level (int): 1 for INFO, 2 for VERBOSE, 3 for DEBUG.
     """
     if level == 1:
         logging.getLogger().setLevel(logging.INFO)

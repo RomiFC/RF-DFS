@@ -228,7 +228,7 @@ class MotorIO:
         freeWriting.after(1000, update_text)
         freeWriting.mainloop()
 
-class PLCIO:
+class SerialIO:
     def __init__(self):
         """Contains methods for serial communication with the PLC. The attribute 'serial' can be used to directly manipulate the instance of serial.Serial().
         """
@@ -244,8 +244,8 @@ class PLCIO:
             args (tuple, optional): List or tuple for target invocation. Defaults to ().
             kwargs (dict, optional): Dictionary of keyword arguments for target invocation. Defaults to {}.
         """
-        if not hasattr(PLCIO, target.__name__):
-            logging.error(f'Class PLCIO does not contain a method with identifier {target.__name__}')
+        if not hasattr(SerialIO, target.__name__):
+            logging.error(f'Class SerialIO does not contain a method with identifier {target.__name__}')
             return
         thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
         thread.start()
