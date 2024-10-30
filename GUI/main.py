@@ -1349,16 +1349,20 @@ def checkbuttonStateHandler():
     else:
         printCheckbutton.configure(state=NORMAL)
 
-def openSaveDialog(type=None):
+def openSaveDialog(type):
     if type == 'trace':
         with specPlotLock:
             data = Spec_An.ax.lines[0].get_data()
             xdata = data[0]
             ydata = data[1]
             buffer = ''
-            for index in range(len(data[0])):
-                buffer = buffer + str(xdata[index]) + '\t' + str(ydata[index]) + '\n'
-        file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
+        file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('Comma separated variables', '*.csv'), ('All Files', '*.*')), defaultextension='.txt')
+        if '.csv' in file.name:
+            delimiter = ','
+        else:
+            delimiter = '\t'
+        for index in range(len(data[0])):
+            buffer = buffer + str(xdata[index]) + delimiter + str(ydata[index]) + '\n'
         if file is not None:
             file.write(buffer)
             file.close()
@@ -1369,8 +1373,9 @@ def openSaveDialog(type=None):
             file.close()
     elif type == 'image':
         filename = filedialog.asksaveasfilename(initialdir = os.getcwd(), filetypes=(('JPEG', '*.jpg'), ('PNG', '*.png')), defaultextension='.jpg')
-        with specPlotLock:
-            Spec_An.fig.savefig(filename)
+        if filename != '':
+            with specPlotLock:
+                Spec_An.fig.savefig(filename)
 
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)

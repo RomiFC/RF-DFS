@@ -230,7 +230,7 @@ class MotorIO:
 
 class SerialIO:
     def __init__(self):
-        """Contains methods for serial communication with the PLC. The attribute 'serial' can be used to directly manipulate the instance of serial.Serial().
+        """Contains methods for serial communication, this class contains its own threading lock on IO methods. The attribute 'serial' can be used to directly manipulate the instance of serial.Serial().
         """
         self.serial = serial.Serial()
         self.serialLock = threading.RLock()
@@ -250,14 +250,16 @@ class SerialIO:
         thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
         thread.start()
 
-    def openSerial(self, port, baud=115200, timeout=1):
+    def openSerial(self, port, baud=115200, timeout=None):
         """Open serial communications with the object 'serial' at the port and baud rate specified.  If a port is already open, close it and open a new session.
 
         Args:
             port (string): Serial port (COM#).
             baud (int, optional): Baud rate. Defaults to 115200.
-            timeout (int, optional): Timeout in seconds. Defaults to 1.
+            timeout (int, optional): Timeout in seconds. Defaults to self.TIMEOUT.
         """
+        if timeout is None:
+            timeout = self.TIMEOUT
         with self.serialLock:
             if self.serial.is_open:
                 self.serial.close()
