@@ -35,6 +35,7 @@
 
 // GLOBAL VARIABLES
 bool returnOpCodes = false;               // Determines whether or not to Serial.print parsed opcodes
+int status;
 
 
 /**
@@ -126,6 +127,7 @@ void loop() {
         case SLEEP:
             Serial.println("Sleep issued: all outputs disabled.");
             P1.writeDiscrete(0, SLOT_DISCRETE_OUT_15, 0);
+            status = opCode;
             break;
         case RETURN_OPCODES:
             returnOpCodes = !returnOpCodes;
@@ -137,6 +139,9 @@ void loop() {
                 Serial.println(P1.getFwVersion());
             }
             break;
+        case IS_BASE_ACTIVE:
+            Serial.println(P1.isBaseActive());
+            break;
         case PRINT_MODULES:
             if (P1.isBaseActive()) {
                 P1.printModules();
@@ -145,10 +150,15 @@ void loop() {
         case P1_INIT:
             Serial.println("Initializing...");
             while (!P1.init()){}
+            status = SLEEP;
             break;
         case P1_DISABLE:
             Serial.println("Disabling P1AM-100 Module");
             P1.enableBaseController(false);
+            status = opCode;
+            break;
+        case QUERY_STATUS:
+            Serial.println(status);
             break;
         case EMS_CHAIN1:
             sprintf(outputStringBuffer, "EMS Chain 1 selected: writing to channels %d and %d.", CH_EMS_RF1, CH_EMS_SELECT);
@@ -156,6 +166,7 @@ void loop() {
             P1.writeDiscrete(LOW, SLOT_DISCRETE_OUT_15, ALL_CHANNELS);
             P1.writeDiscrete(HIGH, SLOT_DISCRETE_OUT_15, CH_EMS_RF1);
             P1.writeDiscrete(HIGH, SLOT_DISCRETE_OUT_15, CH_EMS_SELECT);
+            status = opCode;
             break;
         case EMS_CHAIN2:
             sprintf(outputStringBuffer, "EMS Chain 2 selected: writing to channels %d and %d.", CH_EMS_RF2, CH_EMS_SELECT);
@@ -163,6 +174,7 @@ void loop() {
             P1.writeDiscrete(LOW, SLOT_DISCRETE_OUT_15, ALL_CHANNELS);
             P1.writeDiscrete(HIGH, SLOT_DISCRETE_OUT_15, CH_EMS_RF2);
             P1.writeDiscrete(HIGH, SLOT_DISCRETE_OUT_15, CH_EMS_SELECT);
+            status = opCode;
             break;
         case DFS_CHAIN1:
             sprintf(outputStringBuffer, "DFS Chain 1 selected: writing to channels %d and %d.", CH_DFS_RF1, CH_DFS_SELECT);
@@ -170,6 +182,7 @@ void loop() {
             P1.writeDiscrete(LOW, SLOT_DISCRETE_OUT_15, ALL_CHANNELS);
             P1.writeDiscrete(HIGH, SLOT_DISCRETE_OUT_15, CH_DFS_RF1);
             P1.writeDiscrete(HIGH, SLOT_DISCRETE_OUT_15, CH_DFS_SELECT);
+            status = opCode;
             break;
         default:
             Serial.println("Unrecognized OpCode.");

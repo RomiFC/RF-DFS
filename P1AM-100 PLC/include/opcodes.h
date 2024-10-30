@@ -29,6 +29,7 @@
 #define IS_BASE_ACTIVE          (0b10000100)
 #define P1_INIT                 (0b10000101)
 #define P1_DISABLE              (0b10000110)
+#define QUERY_STATUS            (0b10000111)
 #define CHECK_24V_SL1           (0b10001001)
 #define CHECK_24V_SL2           (0b10001010)
 #define CHECK_24V_SL3           (0b10001011)
