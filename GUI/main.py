@@ -2,7 +2,7 @@
 import threading
 from frontendio import *
 from timestamp import *
-import opcodes
+from opcodes import *
 from loggingsetup import *
 
 # OTHER MODULES
@@ -168,17 +168,17 @@ class FrontEnd():
         chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             chainFrame.columnconfigure(i, weight=1, uniform=True)
-        self.initP1Button = tk.Button(chainFrame, font=FONT, text='INIT', command=lambda:self.plcOperationStateMachine(opcodes.P1_INIT))
+        self.initP1Button = tk.Button(chainFrame, font=FONT, text='INIT', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT.value,), {'delay': 15.0}))
         self.initP1Button.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.killP1Button = tk.Button(chainFrame, font=FONT, text='DISABLE', command=lambda:self.plcOperationStateMachine(opcodes.P1_DISABLE))
+        self.killP1Button = tk.Button(chainFrame, font=FONT, text='DISABLE', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.P1_DISABLE.value,), {'delay': 10.0}))
         self.killP1Button.grid(row=0, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.sleepP1Button = tk.Button(chainFrame, font=FONT, text='SLEEP', command=lambda:self.plcOperationStateMachine(opcodes.SLEEP))
+        self.sleepP1Button = tk.Button(chainFrame, font=FONT, text='SLEEP', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.SLEEP.value,)))
         self.sleepP1Button.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.returnP1Button = tk.Button(chainFrame, font=FONT, text='RETURN', command=lambda:self.plcOperationStateMachine(opcodes.RETURN_OPCODES))
+        self.returnP1Button = tk.Button(chainFrame, font=FONT, text='RETURN', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.RETURN_OPCODES.value,)))
         self.returnP1Button.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1', command=lambda:self.plcOperationStateMachine(opcodes.DFS_CHAIN1))
+        self.dfs1Button = tk.Button(chainFrame, font=FONT, text='DFS1', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.DFS_CHAIN1.value,)))
         self.dfs1Button.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1', command=lambda:self.plcOperationStateMachine(opcodes.EMS_CHAIN1))
+        self.ems1Button = tk.Button(chainFrame, font=FONT, text='EMS1', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.EMS_CHAIN1.value,)))
         self.ems1Button.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.PLC_OUTPUTS_LIST = (self.sleepP1Button, self.dfs1Button, self.ems1Button)              # Mutually exclusive buttons for which only one should be selected
         # Mode
@@ -226,39 +226,6 @@ class FrontEnd():
 
         root.after(1000, self.update_time )
 
-    def plcOperationStateMachine(self, action=None):
-        """Handles front panel IO and hardware IO for PLC operation button panel. This includes changing button text/color and sending IO requests to the instance of SerialIO.
-
-        Args:
-            action (string, optional): Can be any opcode that has been implemented in the following match-case statement. Defaults to None.
-        """
-        # TODO: setStatus needs to check for response first (This might require lots of rewriting)
-        # Maybe another thread that constantly checks status from plc/other resources?
-        match action:
-            case opcodes.P1_INIT:
-                self.PLC.threadHandler(self.PLC.query, (action,), {'delay': 15.0})
-                # self.setStatus(self.initP1Button, background=self.SELECT_BACKGROUND)
-            case opcodes.P1_DISABLE:
-                self.PLC.threadHandler(self.PLC.query, (action,), {'delay': 10.0})
-                self.setStatus(self.initP1Button, background=self.DEFAULT_BACKGROUND)
-            case opcodes.SLEEP:
-                self.PLC.threadHandler(self.PLC.query, (action,))
-                for button in self.PLC_OUTPUTS_LIST:
-                    self.setStatus(button, background=self.DEFAULT_BACKGROUND)
-                # self.setStatus(self.sleepP1Button, background=self.SELECT_BACKGROUND)
-            case opcodes.RETURN_OPCODES:
-                # TODO: Make this selected/deselected
-                self.PLC.threadHandler(self.PLC.query, (action,))
-            case opcodes.DFS_CHAIN1:
-                self.PLC.threadHandler(self.PLC.query, (action,))
-                for button in self.PLC_OUTPUTS_LIST:
-                    self.setStatus(button, background=self.DEFAULT_BACKGROUND)
-                # self.setStatus(self.dfs1Button, background=self.SELECT_BACKGROUND)
-            case opcodes.EMS_CHAIN1:
-                self.PLC.threadHandler(self.PLC.query, (action,))
-                for button in self.PLC_OUTPUTS_LIST:
-                    self.setStatus(button, background=self.DEFAULT_BACKGROUND)
-                # self.setStatus(self.ems1Button, background=self.SELECT_BACKGROUND)
 
     def initDevice(self, event, device, port):
         """Connects to the respective resource and updates the attribute which stores the resource name.
@@ -737,7 +704,7 @@ class SpecAn(FrontEnd):
         self.bindWidgets() 
 
         # Generate thread to handle live data plot in background
-        analyzerLoop = threading.Thread(target=self.loopAnalyzerDisplay, daemon=TRUE)
+        analyzerLoop = threading.Thread(target=self.loopAnalyzerDisplay, daemon=True)
         analyzerLoop.start()
 
     def bindWidgets(self):
@@ -1252,6 +1219,29 @@ class AziElePlot(FrontEnd):
             self.Motor.readUserInput()
             
 
+# Thread target to monitor PLC status messages
+def statusMonitorPLC(FrontEnd, PLC):
+    while True:
+        match PLC.status:
+            case opcodes.SLEEP.value:
+                for button in FrontEnd.PLC_OUTPUTS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.sleepP1Button, background=FrontEnd.SELECT_BACKGROUND)
+            case opcodes.P1_INIT.value:
+                FrontEnd.setStatus(FrontEnd.initP1Button, background=FrontEnd.SELECT_BACKGROUND)
+            case opcodes.P1_DISABLE.value:
+                for button in FrontEnd.PLC_OUTPUTS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.initP1Button, background=FrontEnd.DEFAULT_BACKGROUND)
+            case opcodes.DFS_CHAIN1.value:
+                for button in FrontEnd.PLC_OUTPUTS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.dfs1Button, background=FrontEnd.SELECT_BACKGROUND)
+            case opcodes.EMS_CHAIN1.value:
+                for button in FrontEnd.PLC_OUTPUTS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.ems1Button, background=FrontEnd.SELECT_BACKGROUND)
+        time.sleep(0.2)
 
 # Root tkinter interface (contains Front_End and standard output console)
 root = ThemedTk(theme="clearlooks")
@@ -1392,6 +1382,9 @@ Relay = SerialIO()
 Front_End = FrontEnd(root, Vi, Motor, Relay)
 Spec_An = SpecAn(Vi, Front_End.spectrumFrame)
 Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
+
+statusMonitorThread = threading.Thread(target=statusMonitorPLC, args = (Front_End, Relay), daemon=True)
+statusMonitorThread.start()
 
 # Generate menu bars
 root.option_add('*tearOff', False)

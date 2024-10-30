@@ -5,7 +5,7 @@
 import sys
 import logging
 from data import *
-import opcodes
+from opcodes import *
 import threading
 
 # TKINTER
@@ -235,6 +235,7 @@ class SerialIO:
         self.serial = serial.Serial()
         self.serialLock = threading.RLock()
         self.TIMEOUT = 5.0                        # Default timeout between read and write commands in query call.
+        self.status = 0                           # Status message returned from the PLC which is used to synchronize front end buttons
 
     def threadHandler(self, target, args=(), kwargs={}):
         """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
@@ -270,7 +271,7 @@ class SerialIO:
         """
         self.serial.close()
 
-    def query(self, msg, converter='bin', delay=None):
+    def query(self, msg, converter='bin', delay=None, queryStatus=True):
         """Writes message to the serial object at self.serial and logs the response after 'delay' seconds at level SERIAL. Due to the delay this should only be called by the thread handler to prevent blocking.
 
         Args:
@@ -281,17 +282,25 @@ class SerialIO:
         if delay is None:
             delay = self.TIMEOUT
         self.write(msg, converter=converter)
+
+        timer = time.time()
+        while time.time() - timer < 1.2:
+            self.read()
+        if queryStatus:     # Delay is required between writes or the PLC will not parse it correctly
+            self.write(opcodes.QUERY_STATUS.value, log=False)
+
         timer = time.time()
         while time.time() - timer < delay:
             self.read()
 
-    def write(self, msg, converter='bin'):
+    def write(self, msg, converter='bin', log=True):
         """Writes message to the serial object at self.serial appended with a newline character.
 
         Args:
             msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
             converter (str, optional): Format to convert the message to if it is an integer. Can be 'bin' or 'int'. Defaults to 'bin'.
         """
+        originalmsg = msg
         with self.serialLock:
             if type(msg) == str:
                 if msg[-1] != '\n':
@@ -303,7 +312,12 @@ class SerialIO:
             elif type(msg) == int and converter == 'int':
                 msg = str(msg) + '\n'
                 self.serial.write(msg.encode('utf-8'))
-        logging.serial(f'>>> {repr(msg)}')
+        if log:
+            try:
+                msg = opcodes(originalmsg).name
+                logging.serial(f'>>> {msg}')
+            except:
+                logging.serial(f'>>> {repr(msg)}')
 
 
     def readLine(self):
@@ -320,7 +334,10 @@ class SerialIO:
             lines = buffer.splitlines()
             for i in lines:
                 if i:   # Check if the string is empty
-                    logging.serial(i)
+                    try:
+                        self.status = int(i)
+                    except:
+                        logging.serial(i)
 
     def flushInput(self):
         """Flush the input buffer, discarding all its contents.
