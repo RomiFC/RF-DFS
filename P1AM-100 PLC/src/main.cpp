@@ -117,7 +117,7 @@ void loop() {
         return;
     }
     // Print the received opCode
-    if (returnOpCodes) {
+    if (returnOpCodes && opCode != QUERY_STATUS) {
         sprintf(outputStringBuffer, "OpCode: 0x%02X (%d)", opCode, opCode);
         Serial.println(outputStringBuffer);
     }
