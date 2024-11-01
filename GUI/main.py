@@ -146,7 +146,7 @@ class FrontEnd():
             controlFrame.columnconfigure(j, uniform=True)
         # Frames for other objects
         self.directionFrame = tk.LabelFrame(plotFrame, text = "Antenna Position")  # Frame that holds matplotlib azimuth/elevation plot
-        self.spectrumFrame = tk.LabelFrame(plotFrame, text = "Spectrum")   # Frame that holds matplotlib spectrum plot
+        self.spectrumFrame = tk.LabelFrame(plotFrame, text = "Spectrum Analyzer")   # Frame that holds matplotlib spectrum plot
         self.directionFrame.grid(row = 0, column = 0, sticky = NSEW)
         self.spectrumFrame.grid(row = 0, column = 1, sticky=NSEW)
         # Clock
@@ -254,6 +254,7 @@ class FrontEnd():
             self.setStatus(self.motorStatus, 'Connected')
         elif device == 'plc':
             self.PLC.openSerial(port)
+            self.PLC.threadHandler(self.PLC.queryStatus)
             self.plcPort = port
             self.setStatus(self.plcStatus, 'Connected')
 

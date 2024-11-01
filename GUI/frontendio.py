@@ -278,6 +278,7 @@ class SerialIO:
             msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
             converter (str, optional): Format to convert the message to if it is an integer. Can be 'bin' or 'int'. Defaults to 'bin'.
             delay (float, optional): Delay between read and write commands. Defaults to self.TIMEOUT.
+            queryStatus(bool, optional): Determines whether or not to sent an opcodes.QUERY_STATUS message after the initial message. Used only for PLC, defaults to True.
         """
         if delay is None:
             delay = self.TIMEOUT
@@ -287,11 +288,24 @@ class SerialIO:
         while time.time() - timer < 1.2:
             self.read()
         if queryStatus:     # Delay is required between writes or the PLC will not parse it correctly
-            self.write(opcodes.QUERY_STATUS.value, log=False)
-
+            self.threadHandler(self.queryStatus)
         timer = time.time()
         while time.time() - timer < delay:
             self.read()
+
+    def queryStatus(self, delay=None):
+        """Writes opcodes.QUERY_STATUS to the serial object at self.serial and logs the response after 'delay' seconds at level SERIAL. Due to the delay this should only be called by the thread handler to prevent blocking.
+
+        Args:
+            delay (float, optional): Delay between read and write commands. Defaults to self.TIMEOUT.
+        """
+        if delay is None:
+            delay = self.TIMEOUT
+        self.write(opcodes.QUERY_STATUS.value, log=False)
+        timer = time.time()
+        while time.time() - timer < delay:
+            self.read()
+
 
     def write(self, msg, converter='bin', log=True):
         """Writes message to the serial object at self.serial appended with a newline character.
@@ -299,6 +313,7 @@ class SerialIO:
         Args:
             msg (string or int): Message to send. If msg is passed as an integer, it will be converted to a string in the format defined by 'converter'.
             converter (str, optional): Format to convert the message to if it is an integer. Can be 'bin' or 'int'. Defaults to 'bin'.
+            log (bool, optional): Determines whether or not to log the message sent at level SERIAL in the format '>>> [Message]'. Defaults to True.
         """
         originalmsg = msg
         with self.serialLock:
@@ -314,8 +329,7 @@ class SerialIO:
                 self.serial.write(msg.encode('utf-8'))
         if log:
             try:
-                msg = opcodes(originalmsg).name
-                logging.serial(f'>>> {msg}')
+                logging.serial(f'>>> {opcodes(originalmsg).name}')
             except:
                 logging.serial(f'>>> {repr(msg)}')
 
