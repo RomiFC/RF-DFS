@@ -394,18 +394,26 @@ class VisaIO():
             pass                                            # If not open --> continue
         else:
             if self.openRsrc.resource_name == inputString:  # Is the open resource's ID the same as inputString?
-                logging.info('Device is already connected')
+                logging.info('Device is already connected.')
                 return RETURN_SUCCESS                       # If yes --> return
         
         # If a session is not open or the open resource does not match inputString, attempt connection to inputString
         logging.info(f'Connecting to resource: {inputString}')
         self.openRsrc = self.rm.open_resource(inputString)
         if self.isError():
-            logging.error(f'Could not open a session to {inputString}')
-            logging.error(f'Error Code: {self.rm.last_status}')
+            logging.error(f'Could not open a session to {inputString}.')
+            logging.error(f'Error Code: {self.rm.last_status}.')
             return RETURN_ERROR
         return RETURN_SUCCESS
     
+    def closeSession(self):
+        try:
+            sessionOpen = self.openRsrc.session
+        except:
+            logging.info('Session is not open.')
+        if sessionOpen:
+            self.openRsrc.close()
+
     def identify(self):
         """Issues *IDN? to the open resource and returns a list of its response, split at each comma.
 
@@ -482,9 +490,9 @@ class VisaIO():
         try:
             self.openRsrc.session                           # Is a session open? (Will throw error if not open)
         except:
-            return FALSE
+            return False
         else:
-            return TRUE
+            return True
         
     def isError(self):
         """Checks the last status code returned from an operation at the opened resource manager (self.rm)
@@ -498,8 +506,14 @@ class VisaIO():
             # logging.info(f'Success code: {hex(self.rm.last_status)}')
             return RETURN_SUCCESS
         
-    def queryErrors(self):
+    def queryErrors(self, log=True):
         """Issues ':SYST:ERR?' to the open resource and logs response at level INFO
+
+        Args:
+            log (bool, optional): Determines whether or not to log the response. Defaults to True.
+
+        Returns:
+            buffer (list, string): Depending on how the resource returns the :SYST:ERR? query, python may interpret it as a list or string. The N9040B returns characters wrapped in brackets which python interprets as a list.
         """
         buffer = self.openRsrc.query_ascii_values(":SYST:ERR?", converter='s')
         # Conversion because this device returns string wrapped in brackets. Python interprets this as a list with a single string
@@ -508,10 +522,18 @@ class VisaIO():
         #         buffer = buffer[0].strip("[]")
         #     except:
         #         pass
-        logging.info(f'{buffer}')
+        if log:
+            logging.info(f'{buffer}')
+        return buffer
         
-    def queryPowerUpErrors(self):
+    def queryPowerUpErrors(self, log=True):
         """Issues ':SYST:ERR:PUP?' to the open resource and logs response at level INFO
+
+        Args:
+            log (bool, optional): Determines whether or not to log the response. Defaults to True.
+
+        Returns:
+            buffer (string): Power up errors returned from the device. The function will attempt to strip brackets and leading/trailing whitespace to prevent python from interpreting the response as a list.
         """
         buffer = self.openRsrc.query_ascii_values(":SYST:ERR:PUP?", converter='s')
         if len(buffer[0]) > 1:
@@ -519,7 +541,11 @@ class VisaIO():
                 buffer = buffer[0].strip("[]")
             except:
                 pass
-        logging.info(f'{buffer.strip("[]").strip()}')   # Remove brackets, leading and trailing whitespace, and newline characters
+            finally:
+                buffer = buffer.strip("[]").strip()
+        if log:
+            logging.info(f'{buffer}')   # Remove brackets, leading and trailing whitespace, and newline characters
+        return buffer
 
     def getEventRegister(self):
         """Issues '*ESR?' to the open resource and returns integer response

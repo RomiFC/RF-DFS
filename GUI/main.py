@@ -247,16 +247,12 @@ class FrontEnd():
                 except Exception as e:
                     logging.warning(f'Could not identify device: {e}')
                     return
-                finally:
-                    self.setStatus(self.visaStatus, "Connected")
         elif device == 'motor':
             self.motorPort = self.motorSelectBox.get()[:4]
-            self.setStatus(self.motorStatus, 'Connected')
         elif device == 'plc':
             self.PLC.openSerial(port)
             self.PLC.threadHandler(self.PLC.queryStatus)
             self.plcPort = port
-            self.setStatus(self.plcStatus, 'Connected')
 
     def setStatus(self, widget, text=None, background=None):
         """Sets the text and background of a widget being used as a status indicator
@@ -300,6 +296,21 @@ class FrontEnd():
                 self.selectTermWidget.config(state='readonly')
             else:
                 self.selectTermWidget.config(state='disabled')  
+        def onDisconnectPress(device):
+            match device:
+                case 'visa':
+                    self.Vi.closeSession()
+                    self.instrument = ''
+                    self.instrSelectBox.set('')
+                case 'motor':
+                    # TODO: Make this do something
+                    self.motorPort = ''
+                    self.motorSelectBox.set('')
+                case 'plc':
+                    self.PLC.close()
+                    self.plcPort = ''
+                    self.plcSelectBox.set('')
+
 
 
         # INSTRUMENT SELECTION FRAME & GRID
@@ -320,8 +331,12 @@ class FrontEnd():
         self.motorSelectBox.grid(row = 1, column = 1, padx = 10, pady = 5)
         self.plcSelectBox = ttk.Combobox(connectFrame, values = list(serial.tools.list_ports.comports()), width=40)
         self.plcSelectBox.grid(row = 2, column = 1, padx = 10, pady = 5)
-        self.refreshButton = ttk.Button(connectFrame, text = "Refresh All", command = lambda:onRefreshPress())
-        self.refreshButton.grid(row = 2, column = 2, padx=5)
+        instrCloseButton = ttk.Button(connectFrame, text = 'Disconnect', command=lambda: onDisconnectPress(device='visa'))
+        instrCloseButton.grid(row = 0, column = 2, padx=5)
+        motorCloseButton = ttk.Button(connectFrame, text = 'Disconnect', command=lambda: onDisconnectPress(device='motor'))
+        motorCloseButton.grid(row = 1, column = 2, padx=5)
+        plcCloseButton = ttk.Button(connectFrame, text = 'Disconnect', command=lambda: onDisconnectPress(device='plc'))
+        plcCloseButton.grid(row = 2, column = 2, padx=5)
         self.instrSelectBox.set(self.instrument)
         self.motorSelectBox.set(self.motorPort)
         self.plcSelectBox.set(self.plcPort)
@@ -354,6 +369,9 @@ class FrontEnd():
         self.selectTermWidget.grid(row = 2, column = 0, pady = 5)
         self.enableTermWidget = ttk.Checkbutton(termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
         self.enableTermWidget.grid(row = 1, column = 0, pady = 5)
+        # REFRESH BUTTON
+        self.refreshButton = ttk.Button(parent, text = "Refresh All", command = lambda:onRefreshPress())
+        self.refreshButton.grid(row = 2, column = 1, padx=5)
     
 
     def resetConfigWidgets(self, *event):
@@ -1006,8 +1024,8 @@ class SpecAn(FrontEnd):
                 visaLock.release()
                 errorFlag = FALSE
             except Exception as e:
-                logging.error(e)
                 logging.error(f"Could not initialize analyzer state, retrying...")
+                logging.error(e)
                 try:
                     self.Vi.queryErrors()
                 except Exception as e:
@@ -1026,9 +1044,10 @@ class SpecAn(FrontEnd):
                     if self.Vi.getOperationRegister() & 0b00011011:
                         continue 
                 except Exception as e:
+                    logging.fatal("Could not retrieve information from Operation Status Register.")
                     logging.fatal(e)
-                    logging.fatal("Could not retrieve information from Operation Status Register. Retrying...")
                     visaLock.release()
+                    self.contSweepFlag = False
                     time.sleep(8)
                     continue
                 try:
@@ -1043,10 +1062,9 @@ class SpecAn(FrontEnd):
                         self.spectrumDisplay.draw()
                 except Exception as e:
                     specPlotLock.release()
+                    logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, recommend calling Vi.queryErrors() and/or Vi.resetAnalyzerState()")
                     logging.fatal(e)
-                    logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, attempting to reset analyzer state.")
-                    self.Vi.queryErrors
-                    self.Vi.resetAnalyzerState()
+                    self.contSweepFlag = False
                     time.sleep(5)
                 visaLock.release()
                 self.singleSweepFlag = False
@@ -1220,9 +1238,24 @@ class AziElePlot(FrontEnd):
             self.Motor.readUserInput()
             
 
-# Thread target to monitor PLC status messages
-def statusMonitorPLC(FrontEnd, PLC):
+# Thread target to monitor IO connection status
+def statusMonitor(FrontEnd, Vi, Motor, PLC):
     while True:
+        try:
+            Vi.openRsrc.session
+            FrontEnd.setStatus(FrontEnd.visaStatus, text='Connected')
+        except:
+            FrontEnd.setStatus(FrontEnd.visaStatus, text='NC')
+
+        if Motor.ser.is_open:
+            FrontEnd.setStatus(FrontEnd.motorStatus, text='Connected')
+        else: 
+            FrontEnd.setStatus(FrontEnd.motorStatus, text='NC')
+
+        if PLC.serial.is_open:
+            FrontEnd.setStatus(FrontEnd.plcStatus, text='Connected')
+        else: 
+            FrontEnd.setStatus(FrontEnd.plcStatus, text='NC')
         match PLC.status:
             case opcodes.SLEEP.value:
                 for button in FrontEnd.PLC_OUTPUTS_LIST:
@@ -1384,7 +1417,7 @@ Front_End = FrontEnd(root, Vi, Motor, Relay)
 Spec_An = SpecAn(Vi, Front_End.spectrumFrame)
 Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
-statusMonitorThread = threading.Thread(target=statusMonitorPLC, args = (Front_End, Relay), daemon=True)
+statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay), daemon=True)
 statusMonitorThread.start()
 
 # Generate menu bars
