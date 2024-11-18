@@ -806,28 +806,29 @@ class SpecAn(FrontEnd):
         thread = threading.Thread(target=self.setAnalyzerValue, kwargs=_dict)
         thread.start()
 
-    def setAnalyzerValue(self, **kwargs):
+    def setAnalyzerValue(self, centerfreq=None, span=None, startfreq=None, stopfreq=None, sweeptime=None, rbw=None, vbw=None, bwratio=None, ref=None, numdiv=None, yscale=None, atten=None, spantype=None, sweeptype=None, rbwtype=None, vbwtype=None, bwratiotype=None, rbwfiltershape=None, rbwfiltertype=None, attentype=None):
         """Issues command to spectrum analyzer with the value of kwarg as the argument and queries for widget values. If the value is None or if there are no kwargs, query the spectrum analyzer to set widget values instead.
         
         Args:
-            centerfreq (float, optional): Defaults to None.
-            span (float, optional): Defaults to None.
-            startfreq (float, optional): Defaults to None.
-            stopfreq (float, optional): Defaults to None.
-            rbw (float, optional): Defaults to None.
-            vbw (float, optional): Defaults to None.
-            bwratio (float, optional): Defaults to None.
+            centerfreq (float, optional): Center frequency in hertz. Defaults to None.
+            span (float, optional): Frequency span in hertz. Defaults to None.
+            startfreq (float, optional): Start frequency in hertz. Defaults to None.
+            stopfreq (float, optional): Stop frequency in hertz. Defaults to None.
+            sweeptime (float, optional): Estimated sweep time in seconds. Defaults to None.
+            rbw (float, optional): Resolution bandwidth. Defaults to None.
+            vbw (float, optional): Video bandwidth. Defaults to None.
+            bwratio (float, optional): RBW:VBW ratio. Defaults to None.
             ref (float, optional): Reference level in dBm. Defaults to None.
-            numdiv (float, optional): Defaults to None.
+            numdiv (float, optional): Number of yscale divisions. Defaults to None.
             yscale (float, optional): Scale per division in dB. Defaults to None.
             atten (float, optional): Mechanical attenuation in dB. Defaults to None.
-            spantype (string, optional): WIP
-            rbwtype (bool, optional): WIP
-            vbwtype (bool, optional): WIP
-            bwratiotype (bool, optional): WIP
+            spantype (bool, optional): 1 for swept span, 0 for zero span (time domain). Defaults to None.
+            rbwtype (bool, optional): 1 for auto, 0 for manual. Defaults to None.
+            vbwtype (bool, optional): 1 for auto, 0 for manual. Defaults to None.
+            bwratiotype (bool, optional): 1 for auto, 0 for manual. Defaults to None.
             rbwfiltershape (int, optional): Index of the combobox widget tied to RBW_FILTER_SHAPE_VAL_ARGS. Defaults to None.
             rbwfiltertype (int, optional): Index of the combobox widget tied to RBW_FILTER_TYPE_VAL_ARGS. Defaults to None.
-            attentype (bool, optional): WIP
+            attentype (bool, optional): 1 for auto, 0 for manual. Defaults to None.
         """
         # TODO: Make sure all commands have full functionality
         global visaLock
@@ -840,156 +841,121 @@ class SpecAn(FrontEnd):
         # Center Frequency
         _dict = {
             'command': ':SENS:FREQ:CENTER',
-            'arg': None,
+            'arg': centerfreq,
             'widget': self.centerFreqEntry
         }
-        if "centerfreq" in kwargs:
-            _dict.update({'arg': kwargs.get("centerfreq")})
         _list.append(_dict)
         # Span
         _dict = {
             'command': ':SENS:FREQ:SPAN',
-            'arg': None,
+            'arg': span,
             'widget': self.spanEntry
         }
-        if "span" in kwargs:
-            _dict.update({'arg': kwargs.get("span")})
         _list.append(_dict)
         # Start Frequency
         _dict = {
             'command': ':SENS:FREQ:START',
-            'arg': None,
+            'arg': startfreq,
             'widget': self.startFreqEntry
         }
-        if "startfreq" in kwargs:
-            _dict.update({'arg': kwargs.get("startfreq")})
         _list.append(_dict)
         # Stop Frequency
         _dict = {
             'command': ':SENS:FREQ:STOP',
-            'arg': None,
+            'arg': stopfreq,
             'widget': self.stopFreqEntry
         }
-        if "stopfreq" in kwargs:
-            _dict.update({'arg': kwargs.get("stopfreq")})
         _list.append(_dict)
         # Sweep Time
         _dict = {
             'command': ':SWE:TIME',
-            'arg': None,
+            'arg': sweeptime,
             'widget': self.sweepTimeEntry
         }
-        if "sweeptime" in kwargs:
-            _dict.update({'arg': kwargs.get("sweeptime")})
         _list.append(_dict)
         # Resolution Bandwidth
         _dict = {
             'command': ':SENS:BANDWIDTH:RESOLUTION',
-            'arg': None,
+            'arg': rbw,
             'widget': self.rbwEntry
         }
-        if "rbw" in kwargs:
-            _dict.update({'arg': kwargs.get("rbw")}),
         _list.append(_dict)
         # Video Bandwidth
         _dict = {
             'command': ':SENS:BANDWIDTH:VIDEO',
-            'arg': None,
+            'arg': vbw,
             'widget': self.vbwEntry
         }
-        if "vbw" in kwargs:
-            _dict.update({'arg': kwargs.get("vbw")})
         _list.append(_dict)
         # VBW: 3 dB RBW
         _dict = {
             'command': ':SENS:BANDWIDTH:VIDEO:RATIO',
-            'arg': None,
+            'arg': bwratio,
             'widget': self.bwRatioEntry
         }
-        if "bwratio" in kwargs:
-            _dict.update({'arg': kwargs.get("bwratio")})
         _list.append(_dict)
         # Reference Level
         _dict = {
             'command': ':DISP:WINDOW:TRACE:Y:RLEVEL',
-            'arg': None,
+            'arg': ref,
             'widget': self.refLevelEntry
         }
-        if "ref" in kwargs:
-            _dict.update({'arg': kwargs.get("ref")})
         _list.append(_dict)
         # Number of divisions
         _dict = {
             'command': ':DISP:WINDOW:TRACE:Y:NDIV',
-            'arg': None,
+            'arg': numdiv,
             'widget': self.numDivEntry
         }
-        if "numdiv" in kwargs:
-            _dict.update({'arg': kwargs.get("numdiv")})
         _list.append(_dict)
         # Scale per division
         _dict = {
             'command': ':DISP:WINDOW:TRACE:Y:PDIV',
-            'arg': None,
+            'arg': yscale,
             'widget': self.yScaleEntry
         }
-        if "yscale" in kwargs:
-            _dict.update({'arg': kwargs.get("yscale")})
         _list.append(_dict)
         # Mechanical attenuation
         _dict = {
             'command': ':SENS:POWER:RF:ATTENUATION',
-            'arg': None,
+            'arg': atten,
             'widget': self.attenEntry
         }
-        if "atten" in kwargs:
-            _dict.update({'arg': kwargs.get("atten")})
         _list.append(_dict)
-        # TODO: make spantype do something
         # SPAN TYPE
         _dict = {
             'command': ':SENS:FREQ:SPAN',
-            'arg': None,
+            'arg': spantype,
             'widget': tkSpanType
         }
-        if 'spantype' in kwargs:
-            _dict.update({'arg': kwargs.get('spantype')})
         _list.append(_dict)
         # SWEEP TYPE
         _dict = {
             'command': ':SWE:TIME:AUTO',
-            'arg': None,
+            'arg': sweeptype,
             'widget': tkSweepType
         }
-        if 'sweeptype' in kwargs:
-            _dict.update({'arg': kwargs.get('sweeptype')})
         _list.append(_dict)
         # RBW TYPE
         _dict = {
             'command': ':SENS:BAND:RES:AUTO',
-            'arg': None,
+            'arg': rbwtype,
             'widget': tkRbwType
         }
-        if 'rbwtype' in kwargs:
-            _dict.update({'arg': kwargs.get('rbwtype')})
         _list.append(_dict)
         # VBW TYPE
         _dict = {
             'command': ':SENS:BAND:VID:AUTO',
-            'arg': None,
+            'arg': vbwtype,
             'widget': tkVbwType
         }
-        if 'vbwtype' in kwargs:
-            _dict.update({'arg': kwargs.get('vbwtype')})
         _list.append(_dict)
         # BW RATIO TYPE
         _dict = {
             'command': ':SENS:BAND:VID:RATIO',
-            'arg': None,
+            'arg': bwratiotype,
             'widget': tkBwRatioType
         }
-        if 'bwratiotype' in kwargs:
-            _dict.update({'arg': kwargs.get('bwratiotype')})
         _list.append(_dict)
         # RBW FILTER SHAPE
         _dict = {
@@ -997,8 +963,8 @@ class SpecAn(FrontEnd):
             'widget': self.rbwFilterShapeCombo,
             'arg': None,
         }
-        if 'rbwfiltershape' in kwargs:
-            _dict.update({'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[kwargs.get("rbwfiltershape")]})
+        if rbwfiltershape is not None:
+            _dict.update({'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[rbwfiltershape]})
         _list.append(_dict)
         # RBW FILTER TYPE
         _dict = {
@@ -1006,17 +972,15 @@ class SpecAn(FrontEnd):
             'widget': self.rbwFilterTypeCombo,
             'arg': None,
         }
-        if 'rbwfiltertype' in kwargs:
-            _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[kwargs.get("rbwfiltertype")]})
+        if rbwfiltertype is not None:
+            _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[rbwfiltertype]})
         _list.append(_dict)
         # ATTENUATION TYPE
         _dict = {
             'command': ':SENS:POWER:ATT:AUTO',
-            'arg': None,
+            'arg': attentype,
             'widget': tkAttenType
         }
-        if 'attentype' in kwargs:
-            _dict.update({'arg': kwargs.get('attentype')})
         _list.append(_dict)
 
         # Sort the list so dictionaries with 'arg': None are placed (and executed) after write commands
