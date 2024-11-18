@@ -578,9 +578,9 @@ class SpecAn(FrontEnd):
         self.RBW_FILTER_TYPE_VALUES = ("-3 dB (Normal)", "-6 dB", "Impulse", "Noise")
         self.RBW_FILTER_TYPE_VAL_ARGS = ('DB3', 'DB6', 'IMP', 'NOISE')
         # TKINTER VARIABLES
-        # TODO: Why is this global
-        global tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
-        tkSpanType = StringVar()
+        global tkSweepType, tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
+        tkSweepType = BooleanVar()
+        tkSpanType = BooleanVar()
         tkRbwType = BooleanVar()
         tkVbwType = BooleanVar()
         tkBwRatioType = BooleanVar()
@@ -634,9 +634,9 @@ class SpecAn(FrontEnd):
         spanFrame.grid(row=1, column=0, sticky=E)
         self.spanEntry = ttk.Entry(spanFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.spanEntry.pack()
-        self.spanSweptButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Swept Span", value='swept')
+        self.spanSweptButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Swept Span", value=1)
         self.spanSweptButton.pack(anchor=W)
-        self.spanZeroButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Zero Span", value='zero')
+        self.spanZeroButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Zero Span", value=0)
         self.spanZeroButton.pack(anchor=W)
         self.spanFullButton = ttk.Button(spanFrame, text = "Full Span")
         self.spanFullButton.pack(anchor=S, fill=BOTH)
@@ -650,6 +650,17 @@ class SpecAn(FrontEnd):
         stopFreqFrame.grid(row=3, column=0)
         self.stopFreqEntry = ttk.Entry(stopFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.stopFreqEntry.pack()
+
+        sweepTimeFrame = ttk.LabelFrame(tab1, text="Sweep Time")
+        sweepTimeFrame.grid(row=4, column=0)
+        self.sweepTimeEntry = ttk.Entry(sweepTimeFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
+        self.sweepTimeEntry.pack()
+        self.sweepAutoButton = ttk.Radiobutton(sweepTimeFrame, variable=tkSweepType, text="Auto", value=AUTO)
+        self.sweepAutoButton.pack(anchor=W)
+        self.sweepManButton = ttk.Radiobutton(sweepTimeFrame, variable=tkSweepType, text="Manual", value=MANUAL)
+        self.sweepManButton.pack(anchor=W)
+        
+
 
         # MEASUREMENT TAB 2 (BANDWIDTH)
         rbwFrame = ttk.LabelFrame(tab2, text="Res BW")
@@ -733,6 +744,7 @@ class SpecAn(FrontEnd):
         self.spanEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, span = self.spanEntry.get()))
         self.startFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, startfreq = self.startFreqEntry.get()))
         self.stopFreqEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, stopfreq = self.stopFreqEntry.get()))
+        self.sweepTimeEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, sweeptime = self.sweepTimeEntry.get()))
         self.rbwEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, rbw = self.rbwEntry.get()))
         self.vbwEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, vbw = self.vbwEntry.get()))
         self.bwRatioEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, bwratio = self.bwRatioEntry.get()))
@@ -741,8 +753,10 @@ class SpecAn(FrontEnd):
         self.numDivEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, numdiv = self.numDivEntry.get()))
         self.attenEntry.bind('<Return>', lambda event: self.setAnalyzerThreadHandler(event, atten = self.attenEntry.get()))
 
-        self.spanSweptButton.configure(command = lambda: self.setAnalyzerThreadHandler())
-        self.spanZeroButton.configure(command = lambda: self.setAnalyzerThreadHandler())
+        self.sweepAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(sweeptype=AUTO))
+        self.sweepManButton.configure(command = lambda: self.setAnalyzerThreadHandler(sweeptype=MANUAL))
+        self.spanSweptButton.configure(command = lambda: self.setAnalyzerThreadHandler(spantype=10e9))
+        self.spanZeroButton.configure(command = lambda: self.setAnalyzerThreadHandler(spantype=0))
         self.spanFullButton.bind("<Button-1>", lambda event: self.setAnalyzerThreadHandler(event, startfreq=0, stopfreq=50e9))
         self.rbwAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(rbwtype=AUTO))
         self.rbwManButton.configure(command = lambda: self.setAnalyzerThreadHandler(rbwtype=MANUAL))
@@ -767,8 +781,14 @@ class SpecAn(FrontEnd):
         if 'xmin' in kwargs and 'xmax' in kwargs:
             self.ax.set_xlim(kwargs["xmin"], kwargs["xmax"])
         else:
-            xmin = float(self.startFreqEntry.get())
-            xmax = float(self.stopFreqEntry.get())
+            if tkSpanType.get() == 0:
+                xmin = 0
+                xmax = round(float(self.sweepTimeEntry.get()), 5)
+                self.ax.set_xlabel("Time (s)")
+            else:
+                xmin = float(self.startFreqEntry.get())
+                xmax = float(self.stopFreqEntry.get())
+                self.ax.set_xlabel("Frequency (Hz)")
             self.ax.set_xlim(xmin, xmax)
         if 'ymin' in kwargs and 'ymax' in kwargs:
             self.ax.set_ylim(kwargs["ymin"], kwargs["ymax"])
@@ -853,6 +873,15 @@ class SpecAn(FrontEnd):
         if "stopfreq" in kwargs:
             _dict.update({'arg': kwargs.get("stopfreq")})
         _list.append(_dict)
+        # Sweep Time
+        _dict = {
+            'command': ':SWE:TIME',
+            'arg': None,
+            'widget': self.sweepTimeEntry
+        }
+        if "sweeptime" in kwargs:
+            _dict.update({'arg': kwargs.get("sweeptime")})
+        _list.append(_dict)
         # Resolution Bandwidth
         _dict = {
             'command': ':SENS:BANDWIDTH:RESOLUTION',
@@ -918,7 +947,23 @@ class SpecAn(FrontEnd):
         _list.append(_dict)
         # TODO: make spantype do something
         # SPAN TYPE
-
+        _dict = {
+            'command': ':SENS:FREQ:SPAN',
+            'arg': None,
+            'widget': tkSpanType
+        }
+        if 'spantype' in kwargs:
+            _dict.update({'arg': kwargs.get('spantype')})
+        _list.append(_dict)
+        # SWEEP TYPE
+        _dict = {
+            'command': ':SWE:TIME:AUTO',
+            'arg': None,
+            'widget': tkSweepType
+        }
+        if 'sweeptype' in kwargs:
+            _dict.update({'arg': kwargs.get('sweeptype')})
+        _list.append(_dict)
         # RBW TYPE
         _dict = {
             'command': ':SENS:BAND:RES:AUTO',
@@ -995,7 +1040,7 @@ class SpecAn(FrontEnd):
                 logging.verbose(f"Command {x['command']}? returned {buffer}")
                 clearAndSetWidget(x['widget'], buffer)
         # Set plot limits
-        with visaLock:
+        with specPlotLock:
             self.setAnalyzerPlotLimits()
         return
 
@@ -1048,7 +1093,6 @@ class SpecAn(FrontEnd):
                     logging.fatal(e)
                     visaLock.release()
                     self.contSweepFlag = False
-                    time.sleep(8)
                     continue
                 try:
                     with specPlotLock:
@@ -1061,11 +1105,9 @@ class SpecAn(FrontEnd):
                         self.ax.grid(visible=True)
                         self.spectrumDisplay.draw()
                 except Exception as e:
-                    specPlotLock.release()
                     logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, recommend calling Vi.queryErrors() and/or Vi.resetAnalyzerState()")
                     logging.fatal(e)
                     self.contSweepFlag = False
-                    time.sleep(5)
                 visaLock.release()
                 self.singleSweepFlag = False
                 time.sleep(0.5)
