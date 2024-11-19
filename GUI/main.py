@@ -85,6 +85,9 @@ def clearAndSetWidget(widget, arg):
             logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {id} ({type(widget)})")
     # Set entry/combobox widgets
     if isinstance(widget, (tk.Entry, ttk.Entry, ttk.Combobox)):
+        state = widget.cget("state")
+        if state != NORMAL:
+            widget.configure(state=NORMAL)
         widget.delete(0, END)
         # Try to convert string in list to engineering notation
         try:
@@ -96,6 +99,7 @@ def clearAndSetWidget(widget, arg):
         except:
             widget.insert(0, arg)
             logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {id} ({type(widget)}).")
+        widget.configure(state=state)
 
 
 class FrontEnd():
@@ -279,8 +283,14 @@ class FrontEnd():
         else:
             pass
 
+    def openHelp(self):
+        """Opens help menu on a new toplevel window.
+        """
+        parent = Toplevel()
+        
+
     def openConfig(self):
-        """Opens configuration menu on a new toplevel window
+        """Opens configuration menu on a new toplevel window.
         """
         parent = Toplevel()
 
@@ -725,6 +735,11 @@ class SpecAn(FrontEnd):
         self.attenManButton = ttk.Radiobutton(attenFrame, variable=tkAttenType, text="Manual", value=MANUAL)
         self.attenManButton.pack(anchor=W)
 
+        unitPowerFrame = ttk.LabelFrame(tab3, text="Unit (Power)")
+        unitPowerFrame.grid(row=4, column=0)
+        self.unitPowerEntry = ttk.Entry(unitPowerFrame, state="disabled")
+        self.unitPowerEntry.pack()
+
         # SWEEP BUTTONS
         singleSweepButton = ttk.Button(spectrumFrame, text="Single Sweep", command=lambda:self.singleSweep())
         singleSweepButton.grid(row=1, column=1, sticky=NSEW)
@@ -980,6 +995,13 @@ class SpecAn(FrontEnd):
             'command': ':SENS:POWER:ATT:AUTO',
             'arg': attentype,
             'widget': tkAttenType
+        }
+        _list.append(_dict)
+        # UNIT OF POWER
+        _dict = {
+            'command': ':UNIT:POW',
+            'arg': None,
+            'widget': self.unitPowerEntry
         }
         _list.append(_dict)
 
@@ -1435,7 +1457,7 @@ menuOptions = Menu(menubar)
 menuHelp = Menu(menubar)
 menubar.add_cascade(menu=menuFile, label='File')
 menubar.add_cascade(menu=menuOptions, label='Options')
-menubar.add_cascade(menu=menuHelp, label='Help')
+menubar.add_cascade(menu=menuHelp, label='Help', command=Front_End.openHelp)
 
 # File
 menuFile.add_command(label='Save trace', command = lambda: openSaveDialog(type='trace'))
