@@ -13,6 +13,7 @@ import numpy as np
 import logging
 import decimal
 import traceback
+import webbrowser
 
 # MATPLOTLIB
 import matplotlib.pyplot as plt
@@ -286,7 +287,9 @@ class FrontEnd():
     def openHelp(self):
         """Opens help menu on a new toplevel window.
         """
-        parent = Toplevel()
+        continueCheck = messagebox.askokcancel(title='Open wiki', message='This will open a new web browser page. Continue?')
+        if continueCheck:
+            webbrowser.open('https://github.com/RomiFC/RF-DFS/wiki')
         
 
     def openConfig(self):
@@ -1457,7 +1460,7 @@ menuOptions = Menu(menubar)
 menuHelp = Menu(menubar)
 menubar.add_cascade(menu=menuFile, label='File')
 menubar.add_cascade(menu=menuOptions, label='Options')
-menubar.add_cascade(menu=menuHelp, label='Help', command=Front_End.openHelp)
+menubar.add_cascade(menu=menuHelp, label='Help')
 
 # File
 menuFile.add_command(label='Save trace', command = lambda: openSaveDialog(type='trace'))
@@ -1472,9 +1475,12 @@ tkLoggingLevel.set(1)
 menuOptions.add_command(label='Configure...', command = Front_End.openConfig)
 menuOptions.add_command(label='Change plot color', command = Spec_An.setPlotThreadHandler)
 menuOptions.add_separator()
-menuOptions.add_radiobutton(label='Logging: Debug', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 3)
-menuOptions.add_radiobutton(label='Logging: Verbose', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 2)
 menuOptions.add_radiobutton(label='Logging: Standard', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 1)
+menuOptions.add_radiobutton(label='Logging: Verbose', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 2)
+menuOptions.add_radiobutton(label='Logging: Debug', variable = tkLoggingLevel, command = lambda: loggingLevelHandler(tkLoggingLevel.get()), value = 3)
+
+# Help
+menuHelp.add_command(label='Open wiki...', command=Front_End.openHelp)
 
 # Limit window size to the minimum size on generation
 root.update()
