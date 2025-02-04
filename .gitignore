@@ -1,3 +1,6 @@
+# Codebase specific ignores
+config.toml
+
 # KiCad
 *.000
 *.bak

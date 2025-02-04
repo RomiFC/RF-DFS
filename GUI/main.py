@@ -1,5 +1,6 @@
 # PRIVATE LIBRARIES
 import threading
+import defaultconfig
 from frontendio import *
 from timestamp import *
 from opcodes import *
@@ -14,6 +15,8 @@ import logging
 import decimal
 import traceback
 import webbrowser
+import tomllib
+from pathlib import Path
 
 # MATPLOTLIB
 import matplotlib.pyplot as plt
@@ -46,6 +49,26 @@ ZERO = 'zero'
 ROOT_PADX = 5
 ROOT_PADY = 5
 COLOR_GREEN = '#00ff00'
+
+# TOML CONFIGURATION
+try:
+    missingHeaders = []
+    missingKeys = []
+    file = open(Path(__file__).parent.absolute() / 'config.toml', "rb")
+    cfg = tomllib.load(file)
+
+    for header in defaultconfig.cfg:
+        if str(header) not in cfg:
+            missingHeaders.append(header)
+            continue
+        for key in defaultconfig.cfg[header]:
+            if str(key) not in cfg[header]:
+                missingKeys.append(header + '.' + key)
+except Exception as e:
+    cfg_error = e
+finally:
+    if missingHeaders or missingKeys or 'cfg_error' in locals():
+        cfg = defaultconfig.cfg
 
 # THREADING EVENTS
 visaLock = threading.RLock()        # For VISA resources
@@ -131,10 +154,10 @@ class FrontEnd():
         self.motor = Motor
         self.PLC = PLC
         # STYLING
-        self.SELECT_BACKGROUND = '#00ff00'
+        self.SELECT_BACKGROUND = cfg['theme']['select_background']
         self.DEFAULT_BACKGROUND = root.cget('bg')
-        CLOCK_FONT = ('Arial', 15)
-        FONT = ('Arial', 12)
+        CLOCK_FONT = cfg['theme']['clock_font']
+        FONT = cfg['theme']['font']
         FRAME_PADX = 5
         FRAME_PADY = 5
         BUTTON_PADX = 5
@@ -1309,7 +1332,7 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC):
         time.sleep(0.2)
 
 # Root tkinter interface (contains Front_End and standard output console)
-root = ThemedTk(theme="clearlooks")
+root = ThemedTk(theme=cfg['theme']['ttk'])
 root.title('RF-DFS')
 isNumWrapper = root.register(isNumber)
 
@@ -1326,7 +1349,7 @@ dummy.destroy()
 stdioFrame = ttk.Frame(root)
 stdioFrame.grid(row=1, column=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
 stdioFrame.rowconfigure(0, weight=1)
-font='Courier 11'
+font=cfg['theme']['terminal_font']
 for x in range(5):
     stdioFrame.columnconfigure(x, weight=0)
 stdioFrame.columnconfigure(1, weight=1)
@@ -1432,12 +1455,33 @@ def openSaveDialog(type):
             with specPlotLock:
                 Spec_An.fig.savefig(filename)
 
+def generateConfigDialog():
+    if messagebox.askokcancel(
+        message="Would you like to generate the default configuration file loaded with this software version? This will overwrite any preexisting config.toml if present.",
+        icon='question',
+        title="Are you sure?"
+        ):
+        defaultconfig.generateConfig()
+
+
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
 
 # When sys.std***.write is called (such as on print), call redirector to print in textbox
 sys.stdout.write = redirector
 sys.stderr.write = redirector
+
+# Check for initialization errors and print in the newly generated terminal window
+if 'cfg_error' in globals():
+    logging.warning(f'{cfg_error}')
+if missingHeaders:
+    for header in missingHeaders:
+        logging.error(f'Missing header [{header}] in config.toml')
+if missingKeys:
+    for key in missingKeys:
+        logging.error(f'Missing key [{key}] in config.toml')
+if missingHeaders or missingKeys or 'cfg_error' in globals():
+    logging.warning(f'Error loading config.toml, loading default configuration.')
 
 # Generate objects within root window
 Vi = VisaIO()
@@ -1466,6 +1510,8 @@ menubar.add_cascade(menu=menuHelp, label='Help')
 menuFile.add_command(label='Save trace', command = lambda: openSaveDialog(type='trace'))
 menuFile.add_command(label='Save log', command = lambda: openSaveDialog(type='log'))
 menuFile.add_command(label='Save image', command = lambda: openSaveDialog(type='image'))
+menuFile.add_separator()
+menuFile.add_command(label='Generate config.toml', command = generateConfigDialog)
 menuFile.add_separator()
 menuFile.add_command(label='Exit', command=Front_End.onExit)
 
