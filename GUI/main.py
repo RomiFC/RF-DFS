@@ -660,6 +660,7 @@ class SpecAn(FrontEnd):
         spectrumFrame.rowconfigure(0, weight=1)     # Allow this row to resize
         spectrumFrame.rowconfigure(1, weight=0)     # Prevent this row from resizing
         spectrumFrame.rowconfigure(2, weight=0)     # Prevent this row from resizing
+        spectrumFrame.rowconfigure(3, weight=0)     # Prevent this row from resizing
         spectrumFrame.columnconfigure(0, weight=1)  # Allow this column to resize
         spectrumFrame.columnconfigure(1, weight=0)  # Prevent this column from resizing
 
@@ -674,7 +675,7 @@ class SpecAn(FrontEnd):
         self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         self.ax.xaxis.set_major_formatter(ticker.EngFormatter(unit=''))
         self.spectrumDisplay = FigureCanvasTkAgg(self.fig, master=spectrumFrame)
-        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, rowspan=3)
+        self.spectrumDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, rowspan=4)
 
         # MEASUREMENT COMMANDS
         measurementTab = ttk.Notebook(spectrumFrame)
