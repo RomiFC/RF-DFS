@@ -36,6 +36,8 @@ from ttkthemes import ThemedTk
 # CONSTANTS
 RETURN_ERROR = 1
 RETURN_SUCCESS = 0
+ENABLE = 1
+DISABLE = 0
 CHUNK_SIZE_DEF = 20480     # Default byte count to read when issuing viRead
 CHUNK_SIZE_MIN = 1024
 CHUNK_SIZE_MAX = 1048576  # Max chunk size allowed
@@ -49,6 +51,12 @@ ZERO = 'zero'
 ROOT_PADX = 5
 ROOT_PADY = 5
 COLOR_GREEN = '#00ff00'
+
+# STATE CONSTANTS
+class state:
+    IDLE = 0
+    INIT = 1
+    LOOP = 2
 
 # TOML CONFIGURATION
 try:
@@ -124,6 +132,22 @@ def clearAndSetWidget(widget, arg):
             widget.insert(0, arg)
             logging.debug(f"clearAndSetWidget passed argument {arg} ({type(arg)}) to {id} ({type(widget)}).")
         widget.configure(state=state)
+
+def disableChildren(parent):
+    for child in parent.winfo_children():
+        wtype = child.winfo_class()
+        if wtype not in ('Frame', 'LabelFrame', 'TFrame', 'TLabelframe'):
+            child.configure(state='disable')
+        else:
+            disableChildren(child)
+
+def enableChildren(parent):
+    for child in parent.winfo_children():
+        wtype = child.winfo_class()
+        if wtype not in ('Frame', 'LabelFrame', 'TFrame', 'TLabelframe'):
+            child.configure(state='enable')
+        else:
+            enableChildren(child)
 
 
 class FrontEnd():
@@ -608,6 +632,8 @@ class SpecAn(FrontEnd):
         # FLAGS
         self.contSweepFlag = False
         self.singleSweepFlag = False
+        # STATE VARIABLES
+        self.analyzerState = state.IDLE
         # CONSTANTS
         self.RBW_FILTER_SHAPE_VALUES = ('Gaussian', 'Flattop')
         self.RBW_FILTER_SHAPE_VAL_ARGS = ('GAUS', 'FLAT')
@@ -652,21 +678,21 @@ class SpecAn(FrontEnd):
 
         # MEASUREMENT COMMANDS
         measurementTab = ttk.Notebook(spectrumFrame)
-        tab1 = ttk.Frame(measurementTab)
-        tab2 = ttk.Frame(measurementTab)
-        tab3 = ttk.Frame(measurementTab)
-        measurementTab.add(tab1, text="Freq")
-        measurementTab.add(tab2, text="BW")
-        measurementTab.add(tab3, text="Amp")
+        self.tab1 = ttk.Frame(measurementTab)
+        self.tab2 = ttk.Frame(measurementTab)
+        self.tab3 = ttk.Frame(measurementTab)
+        measurementTab.add(self.tab1, text="Freq")
+        measurementTab.add(self.tab2, text="BW")
+        measurementTab.add(self.tab3, text="Amp")
         measurementTab.grid(row=0, column=1, sticky=NSEW)
 
         # MEASUREMENT TAB 1 (FREQUENCY)
-        centerFreqFrame = ttk.LabelFrame(tab1, text="Center Frequency")
+        centerFreqFrame = ttk.LabelFrame(self.tab1, text="Center Frequency")
         centerFreqFrame.grid(row=0, column=0, sticky=E)
         self.centerFreqEntry = ttk.Entry(centerFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.centerFreqEntry.pack()
 
-        spanFrame = ttk.LabelFrame(tab1, text="Span")
+        spanFrame = ttk.LabelFrame(self.tab1, text="Span")
         spanFrame.grid(row=1, column=0, sticky=E)
         self.spanEntry = ttk.Entry(spanFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.spanEntry.pack()
@@ -677,17 +703,17 @@ class SpecAn(FrontEnd):
         self.spanFullButton = ttk.Button(spanFrame, text = "Full Span")
         self.spanFullButton.pack(anchor=S, fill=BOTH)
 
-        startFreqFrame = ttk.LabelFrame(tab1, text="Start Frequency")
+        startFreqFrame = ttk.LabelFrame(self.tab1, text="Start Frequency")
         startFreqFrame.grid(row=2, column=0)
         self.startFreqEntry = ttk.Entry(startFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.startFreqEntry.pack()
 
-        stopFreqFrame = ttk.LabelFrame(tab1, text="Stop Frequency")
+        stopFreqFrame = ttk.LabelFrame(self.tab1, text="Stop Frequency")
         stopFreqFrame.grid(row=3, column=0)
         self.stopFreqEntry = ttk.Entry(stopFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.stopFreqEntry.pack()
 
-        sweepTimeFrame = ttk.LabelFrame(tab1, text="Sweep Time")
+        sweepTimeFrame = ttk.LabelFrame(self.tab1, text="Sweep Time")
         sweepTimeFrame.grid(row=4, column=0)
         self.sweepTimeEntry = ttk.Entry(sweepTimeFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.sweepTimeEntry.pack()
@@ -699,7 +725,7 @@ class SpecAn(FrontEnd):
 
 
         # MEASUREMENT TAB 2 (BANDWIDTH)
-        rbwFrame = ttk.LabelFrame(tab2, text="Res BW")
+        rbwFrame = ttk.LabelFrame(self.tab2, text="Res BW")
         rbwFrame.grid(row=0, column=0)
         self.rbwEntry = ttk.Entry(rbwFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.rbwEntry.pack()
@@ -708,7 +734,7 @@ class SpecAn(FrontEnd):
         self.rbwManButton = ttk.Radiobutton(rbwFrame, variable=tkRbwType, text="Manual", value=MANUAL)
         self.rbwManButton.pack(anchor=W)
         
-        vbwFrame = ttk.LabelFrame(tab2, text="Video BW")
+        vbwFrame = ttk.LabelFrame(self.tab2, text="Video BW")
         vbwFrame.grid(row=1, column=0)
         self.vbwEntry = ttk.Entry(vbwFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.vbwEntry.pack()
@@ -717,7 +743,7 @@ class SpecAn(FrontEnd):
         self.vbwManButton = ttk.Radiobutton(vbwFrame, variable=tkVbwType, text="Manual", value=MANUAL)
         self.vbwManButton.pack(anchor=W)
 
-        bwRatioFrame = ttk.LabelFrame(tab2, text="VBW:RBW")
+        bwRatioFrame = ttk.LabelFrame(self.tab2, text="VBW:RBW")
         bwRatioFrame.grid(row=2, column=0)
         self.bwRatioEntry = ttk.Entry(bwRatioFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.bwRatioEntry.pack()
@@ -726,33 +752,33 @@ class SpecAn(FrontEnd):
         self.bwRatioManButton = ttk.Radiobutton(bwRatioFrame, variable=tkBwRatioType, text="Manual", value=MANUAL)
         self.bwRatioManButton.pack(anchor=W)
 
-        rbwFilterShapeFrame = ttk.LabelFrame(tab2, text="RBW Filter Shape")
+        rbwFilterShapeFrame = ttk.LabelFrame(self.tab2, text="RBW Filter Shape")
         rbwFilterShapeFrame.grid(row=3, column=0)
         self.rbwFilterShapeCombo = ttk.Combobox(rbwFilterShapeFrame, values = self.RBW_FILTER_SHAPE_VALUES)
         self.rbwFilterShapeCombo.pack(anchor=W)
 
-        rbwFilterTypeFrame = ttk.LabelFrame(tab2, text="RBW Filter Type")
+        rbwFilterTypeFrame = ttk.LabelFrame(self.tab2, text="RBW Filter Type")
         rbwFilterTypeFrame.grid(row=4, column=0)
         self.rbwFilterTypeCombo = ttk.Combobox(rbwFilterTypeFrame, values = self.RBW_FILTER_TYPE_VALUES)
         self.rbwFilterTypeCombo.pack(anchor=W)
 
         # MEASUREMENT TAB 3 (AMPLITUDE)
-        refLevelFrame = ttk.LabelFrame(tab3, text="Ref Level")
+        refLevelFrame = ttk.LabelFrame(self.tab3, text="Ref Level")
         refLevelFrame.grid(row=0, column=0)
         self.refLevelEntry = ttk.Entry(refLevelFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.refLevelEntry.pack()
 
-        yScaleFrame = ttk.LabelFrame(tab3, text="Scale/Division")
+        yScaleFrame = ttk.LabelFrame(self.tab3, text="Scale/Division")
         yScaleFrame.grid(row=1, column=0)
         self.yScaleEntry = ttk.Entry(yScaleFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.yScaleEntry.pack()
 
-        numDivFrame = ttk.LabelFrame(tab3, text="Number of Divisions")
+        numDivFrame = ttk.LabelFrame(self.tab3, text="Number of Divisions")
         numDivFrame.grid(row=2, column=0)
         self.numDivEntry = ttk.Entry(numDivFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.numDivEntry.pack()
 
-        attenFrame = ttk.LabelFrame(tab3, text="Mech Atten")
+        attenFrame = ttk.LabelFrame(self.tab3, text="Mech Atten")
         attenFrame.grid(row=3, column=0)
         self.attenEntry = ttk.Entry(attenFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
         self.attenEntry.pack()
@@ -761,16 +787,18 @@ class SpecAn(FrontEnd):
         self.attenManButton = ttk.Radiobutton(attenFrame, variable=tkAttenType, text="Manual", value=MANUAL)
         self.attenManButton.pack(anchor=W)
 
-        unitPowerFrame = ttk.LabelFrame(tab3, text="Unit (Power)")
+        unitPowerFrame = ttk.LabelFrame(self.tab3, text="Unit (Power)")
         unitPowerFrame.grid(row=4, column=0)
         self.unitPowerEntry = ttk.Entry(unitPowerFrame, state="disabled")
         self.unitPowerEntry.pack()
 
         # SWEEP BUTTONS
-        singleSweepButton = ttk.Button(spectrumFrame, text="Single Sweep", command=lambda:self.singleSweep())
-        singleSweepButton.grid(row=1, column=1, sticky=NSEW)
-        continuousSweepButton = ttk.Button(spectrumFrame, text="Continuous", command=lambda:self.toggleAnalyzerDisplay())
-        continuousSweepButton.grid(row=2, column=1, sticky=NSEW) 
+        initButton = ttk.Button(spectrumFrame, text="Initialize", command=lambda:self.setState(state.INIT))
+        initButton.grid(row=1, column=1, sticky=NSEW)
+        self.singleSweepButton = ttk.Button(spectrumFrame, text="Single Sweep", command=lambda:self.singleSweep())
+        self.singleSweepButton.grid(row=2, column=1, sticky=NSEW)
+        self.continuousSweepButton = ttk.Button(spectrumFrame, text="Continuous", command=lambda:self.toggleAnalyzerDisplay())
+        self.continuousSweepButton.grid(row=3, column=1, sticky=NSEW) 
 
         self.bindWidgets() 
 
@@ -809,6 +837,21 @@ class SpecAn(FrontEnd):
         self.rbwFilterTypeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, rbwfiltertype = self.rbwFilterTypeCombo.current()))
         self.attenAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=AUTO))
         self.attenManButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=MANUAL))
+
+    def toggleInputs(self, action):
+        frames = (self.tab1, self.tab2, self.tab3)
+        widgets = (self.singleSweepButton, self.continuousSweepButton)
+
+        if action == ENABLE:
+            for frame in frames:
+                enableChildren(frame)
+            for widget in widgets:
+                widget.configure(state='enable')
+        elif action == DISABLE:
+            for frame in frames:
+                disableChildren(frame)
+            for widget in widgets:
+                widget.configure(state='disable')
 
     def setAnalyzerPlotLimits(self, **kwargs):
         """Sets self.ax limits to parameters passed in **kwargs if they exist. If not, gets relevant widget values to set limits.
@@ -1055,78 +1098,87 @@ class SpecAn(FrontEnd):
         with specPlotLock:
             self.setAnalyzerPlotLimits()
         return
+    
+    def setState(self, val):
+        self.analyzerState = val
 
     def loopAnalyzerDisplay(self):
         global visaLock, specPlotLock
 
-        # Wait for user to open a session to the spectrum analyzer
         while TRUE:
-            if self.Vi.isSessionOpen() == FALSE:
-                # Prevent this thread from taking up too much utilization
-                time.sleep(3)
-                continue
-            else:
-                break
-
-        # Maintain this loop to prevent fatal error if the connected device is not a spectrum analyzer.
-        errorFlag = TRUE
-        while errorFlag:
-            try:
-                visaLock.acquire()
-                self.Vi.resetAnalyzerState()
-                self.Vi.queryPowerUpErrors()
-                self.Vi.testBufferSize()
-                # Set widget values
-                self.setAnalyzerValue()
-                visaLock.release()
-                errorFlag = FALSE
-            except Exception as e:
-                logging.error(f"Could not initialize analyzer state, retrying...")
-                logging.error(e)
-                try:
-                    self.Vi.queryErrors()
-                except Exception as e:
-                    pass
-                    # logging.warning(e)
-                    # logging.warning(f'Could not query errors from device.')
-                visaLock.release()
-                time.sleep(8)
-
-        # Main analyzer loop
-        # TODO: variable time.sleep based on analyzer sweep time
-        while TRUE:
-            if self.contSweepFlag or self.singleSweepFlag:
-                visaLock.acquire()
-                try: # Check if the instrument is busy calibrating, settling, sweeping, or measuring 
-                    if self.Vi.getOperationRegister() & 0b00011011:
-                        continue 
-                except Exception as e:
-                    logging.fatal("Could not retrieve information from Operation Status Register.")
-                    logging.fatal(e)
-                    visaLock.release()
-                    self.contSweepFlag = False
+            match self.analyzerState:
+                case state.IDLE:
+                    # Prevent this thread from taking up too much utilization
+                    self.toggleInputs(DISABLE)
+                    time.sleep(1)
                     continue
-                try:
-                    with specPlotLock:
-                        if 'lines' in locals():     # Remove previous plot if it exists
-                            lines.pop(0).remove()
-                        buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
-                        xAxis = buffer[::2]
-                        yAxis = buffer[1::2]
-                        lines = self.ax.plot(xAxis, yAxis, color=self.color, marker=self.marker, linestyle=self.linestyle, linewidth=self.linewidth, markersize=self.markersize)
-                        self.ax.grid(visible=True)
-                        self.spectrumDisplay.draw()
-                except Exception as e:
-                    logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, recommend calling Vi.queryErrors() and/or Vi.resetAnalyzerState()")
-                    logging.fatal(e)
-                    self.contSweepFlag = False
-                visaLock.release()
-                self.singleSweepFlag = False
-                time.sleep(0.5)
-            else:
-                # Prevent this thread from taking up too much utilization
-                time.sleep(1)
-        return
+
+                case state.INIT:
+                    # Maintain this loop to prevent fatal error if the connected device is not a spectrum analyzer.
+                    if self.Vi.isSessionOpen() == FALSE:
+                        logging.error(f"Session to the analyzer is not open. Set up connection with Options > Configure..., then reinitialize.")
+                        self.analyzerState = state.IDLE
+                        continue
+                    try:
+                        visaLock.acquire()
+                        self.Vi.resetAnalyzerState()
+                        self.Vi.queryPowerUpErrors()
+                        self.Vi.testBufferSize()
+                        # Set widget values
+                        self.setAnalyzerValue()
+                        visaLock.release()
+                        self.analyzerState = state.LOOP
+                    except Exception as e:
+                        logging.error(e)
+                        try:
+                            self.Vi.queryErrors()
+                        except Exception as e:
+                            pass
+                            # logging.warning(e)
+                            # logging.warning(f'Could not query errors from device.')
+                        visaLock.release()
+                        self.toggleInputs(ENABLE)
+                        self.analyzerState = state.IDLE
+
+                case state.LOOP:
+                    # Main analyzer loop
+                    # TODO: variable time.sleep based on analyzer sweep time
+                    if self.Vi.isSessionOpen() == FALSE:
+                        logging.info(f"Lost connection to the analyzer.")
+                        self.analyzerState = state.IDLE
+                        continue
+                    self.toggleInputs(ENABLE)
+                    if self.contSweepFlag or self.singleSweepFlag:
+                        visaLock.acquire()
+                        try: # Check if the instrument is busy calibrating, settling, sweeping, or measuring 
+                            if self.Vi.getOperationRegister() & 0b00011011:
+                                continue 
+                        except Exception as e:
+                            logging.fatal("Could not retrieve information from Operation Status Register.")
+                            logging.fatal(e)
+                            visaLock.release()
+                            self.contSweepFlag = False
+                            continue
+                        try:
+                            with specPlotLock:
+                                if 'lines' in locals():     # Remove previous plot if it exists
+                                    lines.pop(0).remove()
+                                buffer = self.Vi.openRsrc.query_ascii_values(":READ:SAN?")
+                                xAxis = buffer[::2]
+                                yAxis = buffer[1::2]
+                                lines = self.ax.plot(xAxis, yAxis, color=self.color, marker=self.marker, linestyle=self.linestyle, linewidth=self.linewidth, markersize=self.markersize)
+                                self.ax.grid(visible=True)
+                                self.spectrumDisplay.draw()
+                        except Exception as e:
+                            logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, recommend calling Vi.queryErrors() and/or Vi.resetAnalyzerState()")
+                            logging.fatal(e)
+                            self.contSweepFlag = False
+                        visaLock.release()
+                        self.singleSweepFlag = False
+                        time.sleep(0.5)
+                    else:
+                        # Prevent this thread from taking up too much utilization
+                        time.sleep(1)
 
     def toggleAnalyzerDisplay(self):
         """sets contSweepFlag != contSweepFlag to control loopAnalyzerDisplay()
