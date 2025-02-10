@@ -633,7 +633,7 @@ class SpecAn(FrontEnd):
         self.contSweepFlag = False
         self.singleSweepFlag = False
         # STATE VARIABLES
-        self.analyzerState = state.IDLE
+        self.loopState = state.IDLE
         # CONSTANTS
         self.RBW_FILTER_SHAPE_VALUES = ('Gaussian', 'Flattop')
         self.RBW_FILTER_SHAPE_VAL_ARGS = ('GAUS', 'FLAT')
@@ -1101,13 +1101,13 @@ class SpecAn(FrontEnd):
         return
     
     def setState(self, val):
-        self.analyzerState = val
+        self.loopState = val
 
     def loopAnalyzerDisplay(self):
         global visaLock, specPlotLock
 
         while TRUE:
-            match self.analyzerState:
+            match self.loopState:
                 case state.IDLE:
                     # Prevent this thread from taking up too much utilization
                     self.toggleInputs(DISABLE)
@@ -1118,7 +1118,7 @@ class SpecAn(FrontEnd):
                     # Maintain this loop to prevent fatal error if the connected device is not a spectrum analyzer.
                     if self.Vi.isSessionOpen() == FALSE:
                         logging.error(f"Session to the analyzer is not open. Set up connection with Options > Configure..., then reinitialize.")
-                        self.analyzerState = state.IDLE
+                        self.loopState = state.IDLE
                         continue
                     try:
                         visaLock.acquire()
@@ -1128,7 +1128,7 @@ class SpecAn(FrontEnd):
                         # Set widget values
                         self.setAnalyzerValue()
                         visaLock.release()
-                        self.analyzerState = state.LOOP
+                        self.loopState = state.LOOP
                     except Exception as e:
                         logging.error(e)
                         try:
@@ -1139,14 +1139,14 @@ class SpecAn(FrontEnd):
                             # logging.warning(f'Could not query errors from device.')
                         visaLock.release()
                         self.toggleInputs(ENABLE)
-                        self.analyzerState = state.IDLE
+                        self.loopState = state.IDLE
 
                 case state.LOOP:
                     # Main analyzer loop
                     # TODO: variable time.sleep based on analyzer sweep time
                     if self.Vi.isSessionOpen() == FALSE:
                         logging.info(f"Lost connection to the analyzer.")
-                        self.analyzerState = state.IDLE
+                        self.loopState = state.IDLE
                         continue
                     self.toggleInputs(ENABLE)
                     if self.contSweepFlag or self.singleSweepFlag:
@@ -1242,6 +1242,9 @@ class AziElePlot(FrontEnd):
         self.parent.rowconfigure(0, weight=1)
         self.parent.columnconfigure(0, weight=1)
 
+        # STATE VARIABLES
+        self.loopState = state.IDLE
+
         # STYLE
         font = 'Courier 14'
         padx = 2
@@ -1314,6 +1317,10 @@ class AziElePlot(FrontEnd):
         self.drawArrow(azAxis, 0)
         self.drawArrow(elAxis, 90)
 
+        # Generate thread to handle live data plot in background
+        motorLoop = threading.Thread(target=self.loopDisplay, daemon=True)
+        motorLoop.start()
+
     def drawArrow(self, axis, angle):
         """Draws arrow on the matplotlib axis from the origin at the angle specified. Intended for polar plots only.
 
@@ -1343,6 +1350,18 @@ class AziElePlot(FrontEnd):
         elif axis == 'el' and value is not None:
             self.Motor.userEle = value
             self.Motor.readUserInput()
+
+    def loopDisplay(self):
+        while TRUE:
+            match self.loopState:
+                case state.IDLE:
+                    # Prevent this thread from taking up too much utilization
+                    time.sleep(1)
+                    continue
+                case state.INIT:
+                    return
+                case state.LOOP:
+                    return
             
 
 # Thread target to monitor IO connection status

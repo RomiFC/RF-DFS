@@ -228,6 +228,60 @@ class MotorIO:
         freeWriting.after(1000, update_text)
         freeWriting.mainloop()
 
+    # TODO: Figure out what everything above this line does and clean it up
+    def threadHandler(self, target, args=(), kwargs={}):
+        """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
+
+        Args:
+            target (method): Callable object to be invoked by the run() method.
+            args (tuple, optional): List or tuple for target invocation. Defaults to ().
+            kwargs (dict, optional): Dictionary of keyword arguments for target invocation. Defaults to {}.
+        """
+        if not hasattr(MotorIO, target.__name__):
+            logging.error(f'Class MotorIO does not contain a method with identifier {target.__name__}')
+            return
+        thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
+        thread.start()
+
+    def write(self, msg):
+        """Write a message to the serial object and append it with a CRLF if not present.
+
+        Args:
+            msg (Any): Message to send to the output buffer, will be converted to string.
+        """
+        msg = str(msg)
+        if msg[-1] != '\n':
+            msg = msg + '\r\n'
+        self.ser.write(msg.encode('utf-8'))
+
+    def read(self):
+        """Reads the amount of bytes in the serial input buffer and returns it.
+
+        Returns:
+            string: Bytes read from the input buffer decoded in utf-8 format.
+        """
+        buffer = self.ser.read(self.ser.in_waiting).decode('utf-8')
+        return buffer
+
+    def query(self, msg, timeout=5.0):
+        """Writes a message to the serial object at self.ser and awaits a response.
+
+        Args:
+            msg (string): Message to send to the output buffer, will be converted to string.
+            timeout (float, optional): Amount of time in seconds to wait for a response. Defaults to 5.0.
+
+        Returns:
+            string: Response from the serial object decoded in utf-8
+        """
+        self.write(msg)
+
+        timer = time.time()
+        while time.time() - timer < timeout:
+            buffer = self.read()
+            if buffer:
+                return buffer
+        logging.warning(f'No response from motor with query {msg}.')
+    
 class SerialIO:
     def __init__(self):
         """Contains methods for serial communication, this class contains its own threading lock on IO methods. The attribute 'serial' can be used to directly manipulate the instance of serial.Serial().
