@@ -43,6 +43,9 @@ class MotorIO:
         self.ser        = serial.Serial()
         self.OpenSerial()
 
+        # THREADING LOCK
+        self.serialLock = threading.RLock()
+
         # commands 
         self.commandToSend  = ""
         self.startCommand   = ['Prog 0', 'drive on x y']
@@ -64,8 +67,8 @@ class MotorIO:
         """Serial Communication, write in serial. Error pop up if fails. 
         """
         try: 
-            
-            self.ser.write( str(command).encode('utf-8')+'\r\n'.encode('utf-8') )
+            with self.serialLock:
+                self.ser.write( str(command).encode('utf-8')+'\r\n'.encode('utf-8') )
            
             # self.readLine()
         except:
@@ -80,7 +83,8 @@ class MotorIO:
         try:
             while( self.ser.in_waiting > 0):
                 logging.info(f'{self.ser.in_waiting}')
-                msg = self.ser.readline()
+                with self.serialLock:
+                    msg = self.ser.readline()
                 logging.info(f'{msg}')
                 
         except:
@@ -198,7 +202,8 @@ class MotorIO:
         
         def update_text(): 
             try:
-                line = self.ser.readline()
+                with self.serialLock:
+                    line = self.ser.readline()
                 if line.decode('utf-8') != '':
                     self.returnLineBox.config(text = line.decode('utf-8') )
             except:
@@ -252,7 +257,8 @@ class MotorIO:
         msg = str(msg)
         if msg[-1] != '\n':
             msg = msg + '\r\n'
-        self.ser.write(msg.encode('utf-8'))
+        with self.serialLock:
+            self.ser.write(msg.encode('utf-8'))
 
     def read(self):
         """Reads the amount of bytes in the serial input buffer and returns it.
@@ -260,7 +266,8 @@ class MotorIO:
         Returns:
             string: Bytes read from the input buffer decoded in utf-8 format.
         """
-        buffer = self.ser.read(self.ser.in_waiting).decode('utf-8')
+        with self.serialLock:
+            buffer = self.ser.read(self.ser.in_waiting).decode('utf-8')
         return buffer
 
     def query(self, msg, timeout=5.0):
