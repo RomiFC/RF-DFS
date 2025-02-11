@@ -237,12 +237,13 @@ class FrontEnd():
         modeFrame = tk.LabelFrame(controlFrame, text='Mode')
         modeFrame.grid(row=3, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         modeFrame.columnconfigure(0, weight=1)
-        standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=self.SELECT_BACKGROUND)
-        standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
-        manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND)
-        autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=self.SELECT_BACKGROUND)
+        self.standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton, self.autoButton)
         # Connection Status
         connectionsFrame = tk.LabelFrame(controlFrame, text='Connection Status')
         connectionsFrame.grid(row=4, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
@@ -1367,6 +1368,9 @@ class AziElePlot(FrontEnd):
             for widget in widgets:
                 widget.configure(state='disable')
 
+    def setState(self, val):
+        self.loopState = val
+
     def loopDisplay(self):
         while TRUE:
             match self.loopState:
@@ -1422,25 +1426,42 @@ class AziElePlot(FrontEnd):
 # Thread target to monitor IO connection status
 def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
     while True:
+        # VISA
         try:
             Vi.openRsrc.session
             FrontEnd.setStatus(FrontEnd.visaStatus, text='Connected')
         except:
             FrontEnd.setStatus(FrontEnd.visaStatus, text='NC')
 
+        # MOTOR
         if Motor.ser.is_open:
             FrontEnd.setStatus(FrontEnd.motorStatus, text='Connected')
         else: 
             FrontEnd.setStatus(FrontEnd.motorStatus, text='NC')
-        if Azi_Ele.axis0:
-            FrontEnd.setStatus(FrontEnd.azStatus, text='ENABLED')
-        else:
-            FrontEnd.setStatus(FrontEnd.azStatus, text='STOPPED')
-        if Azi_Ele.axis1:
-            FrontEnd.setStatus(FrontEnd.elStatus, text='ENABLED')
-        else:
-            FrontEnd.setStatus(FrontEnd.elStatus, text='STOPPED')
+        match Azi_Ele.loopState:
+            case state.IDLE:
+                for button in FrontEnd.MODE_BUTTONS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.standbyButton, background=FrontEnd.SELECT_BACKGROUND)
+            case state.INIT:
+                for button in FrontEnd.MODE_BUTTONS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+            case state.LOOP:
+                for button in FrontEnd.MODE_BUTTONS_LIST:
+                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.manualButton, background=FrontEnd.DEFAULT_BACKGROUND)
+        match Azi_Ele.axis0:
+            case True:
+                FrontEnd.setStatus(FrontEnd.azStatus, text='ENABLED')
+            case False:
+                FrontEnd.setStatus(FrontEnd.azStatus, text='STOPPED')
+        match Azi_Ele.axis1:
+            case True:
+                FrontEnd.setStatus(FrontEnd.elStatus, text='ENABLED')
+            case False:
+                FrontEnd.setStatus(FrontEnd.elStatus, text='STOPPED')
 
+        # PLC
         if PLC.serial.is_open:
             FrontEnd.setStatus(FrontEnd.plcStatus, text='Connected')
         else: 
@@ -1632,6 +1653,10 @@ Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
 statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay, Azi_Ele), daemon=True)
 statusMonitorThread.start()
+
+# Bind FrontEnd buttons to AziEle methods
+Front_End.standbyButton.configure(command = lambda: Azi_Ele.setState(state.IDLE))
+Front_End.manualButton.configure(command = lambda: Azi_Ele.setState(state.INIT))
 
 # Generate menu bars
 root.option_add('*tearOff', False)
