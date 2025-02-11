@@ -253,6 +253,7 @@ class MotorIO:
 
         Args:
             msg (Any): Message to send to the output buffer, will be converted to string.
+            log (bool, optional): Determines whether or not to log message at level MOTOR.
         """
         msg = str(msg)
         if msg[-1] != '\n':
@@ -266,6 +267,9 @@ class MotorIO:
     def read(self, log=False):
         """Reads the amount of bytes in the serial input buffer and returns it.
 
+        Args:
+            log (bool, optional): Determines whether or not to log response at level MOTOR.
+
         Returns:
             string: Bytes read from the input buffer decoded in utf-8 format.
         """
@@ -275,24 +279,28 @@ class MotorIO:
             logging.motor(f'>>> {buffer}')
         return buffer
 
-    def query(self, msg, timeout=5.0):
+    def query(self, msg, timeout=5.0, log=False):
         """Writes a message to the serial object at self.ser and awaits a response.
 
         Args:
             msg (string): Message to send to the output buffer, will be converted to string.
             timeout (float, optional): Amount of time in seconds to wait for a response. Defaults to 5.0.
+            log (bool, optional): Passed to write/read calls. Determines whether or not to log at level MOTOR.
+
+        Raises:
+            TimeoutError: If read does not return a value after 'timeout' seconds.
 
         Returns:
             string: Response from the serial object decoded in utf-8
         """
-        self.write(msg)
+        self.write(msg, log=log)
 
         timer = time.time()
         while time.time() - timer < timeout:
-            buffer = self.read()
+            buffer = self.read(log=log)
             if buffer:
                 return buffer
-        logging.timeout(f'No response from motor with query {msg}.')
+        raise TimeoutError('Timeout expired before motor query response.')
     
 class SerialIO:
     def __init__(self):
@@ -348,6 +356,7 @@ class SerialIO:
         """
         if delay is None:
             delay = self.TIMEOUT
+
         self.write(msg, converter=converter)
 
         timer = time.time()

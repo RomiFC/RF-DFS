@@ -205,16 +205,16 @@ class FrontEnd():
         self.clockLabel = tk.Label(controlFrame, font=CLOCK_FONT)
         self.clockLabel.grid(row=0, column=0, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         # Drive Status
-        elStatusFrame = tk.LabelFrame(controlFrame, text='Elevation Drive')
-        elStatusFrame.grid(row=1, column=0, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
-        elStatusFrame.columnconfigure(0, weight=1)
-        self.elStatus = tk.Button(elStatusFrame, text='STOPPED', font=FONT, state=DISABLED)
-        self.elStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         azStatusFrame = tk.LabelFrame(controlFrame, text='Azimuth Drive')
-        azStatusFrame.grid(row=1, column=1, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
+        azStatusFrame.grid(row=1, column=0, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
         azStatusFrame.columnconfigure(0, weight=1)
-        self.azStatus = tk.Button(azStatusFrame, text='STOPPED', font=FONT, state=DISABLED)
+        self.azStatus = tk.Button(azStatusFrame, text='STOPPED', font=FONT, state=DISABLED, width=6)
         self.azStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        elStatusFrame = tk.LabelFrame(controlFrame, text='Elevation Drive')
+        elStatusFrame.grid(row=1, column=1, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
+        elStatusFrame.columnconfigure(0, weight=1)
+        self.elStatus = tk.Button(elStatusFrame, text='STOPPED', font=FONT, state=DISABLED, width=6)
+        self.elStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         # PLC Operations
         chainFrame = tk.LabelFrame(controlFrame, text='PLC Operations')
         chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
@@ -297,7 +297,7 @@ class FrontEnd():
                     shortidn = str(idn[0]) + ', ' + str(idn[1]) + ', ' + str(idn[2])
                     self.spectrumFrame.configure(text=shortidn)
                 except Exception as e:
-                    logging.warning(f'Could not identify device: {e}')
+                    logging.error(f'{type(e).__name__}: {e}')
                     return
         elif device == 'motor':
             self.motorPort = self.motorSelectBox.get()[:4]
@@ -1130,7 +1130,7 @@ class SpecAn(FrontEnd):
                         visaLock.release()
                         self.loopState = state.LOOP
                     except Exception as e:
-                        logging.error(e)
+                        logging.error(f'{type(e).__name__}: {e}')
                         try:
                             self.Vi.queryErrors()
                         except Exception as e:
@@ -1155,8 +1155,8 @@ class SpecAn(FrontEnd):
                             if self.Vi.getOperationRegister() & 0b00011011:
                                 continue 
                         except Exception as e:
+                            logging.fatal(f'{type(e).__name__}: {e}')
                             logging.fatal("Could not retrieve information from Operation Status Register.")
-                            logging.fatal(e)
                             visaLock.release()
                             self.contSweepFlag = False
                             continue
@@ -1171,8 +1171,7 @@ class SpecAn(FrontEnd):
                                 self.ax.grid(visible=True)
                                 self.spectrumDisplay.draw()
                         except Exception as e:
-                            logging.fatal(f"Visa Status: {hex(self.Vi.openRsrc.last_status)}. Fatal error in call loopAnalyzerDisplay, recommend calling Vi.queryErrors() and/or Vi.resetAnalyzerState()")
-                            logging.fatal(e)
+                            logging.fatal(f'{type(e).__name__}: {e}')
                             self.contSweepFlag = False
                         visaLock.release()
                         self.singleSweepFlag = False
@@ -1244,6 +1243,8 @@ class AziElePlot(FrontEnd):
 
         # STATE VARIABLES
         self.loopState = state.IDLE
+        self.axis0 = False              # Keeps track of drive x and y states so they can be accessed by the main thread to update status buttons in class FrontEnd
+        self.axis1 = False
 
         # STYLE
         font = 'Courier 14'
@@ -1272,18 +1273,18 @@ class AziElePlot(FrontEnd):
 
 
         # CONTROL FRAME
-        ctrlFrame = ttk.Frame(self.parent)
-        ctrlFrame.grid(row=2, column=0, sticky=NSEW, columnspan=1)
+        self.ctrlFrame = ttk.Frame(self.parent)
+        self.ctrlFrame.grid(row=2, column=0, sticky=NSEW, columnspan=1)
         for x in range(4):
-            ctrlFrame.columnconfigure(x, weight=1)
+            self.ctrlFrame.columnconfigure(x, weight=1)
         # FEEDBACK
-        azFrame = ttk.Labelframe(ctrlFrame, text='Azimuth Angle')
+        azFrame = ttk.Labelframe(self.ctrlFrame, text='Azimuth Angle')
         azFrame.grid(row=0, column=0, sticky=NSEW, padx=padx, pady=pady)
-        azCmdFrame = ttk.Labelframe(ctrlFrame, text='Command Angle')
+        azCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Command Angle')
         azCmdFrame.grid(row=0, column=1, sticky=NSEW, padx=padx, pady=pady)
-        elFrame = ttk.Labelframe(ctrlFrame, text='Elevation Angle')
+        elFrame = ttk.Labelframe(self.ctrlFrame, text='Elevation Angle')
         elFrame.grid(row=0, column=2, sticky=NSEW, padx=padx, pady=pady)
-        elCmdFrame = ttk.Labelframe(ctrlFrame, text='Command Angle')
+        elCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Command Angle')
         elCmdFrame.grid(row=0, column=3, sticky=NSEW, padx=padx, pady=pady)
         azLabel = ttk.Label(azFrame, font=font, text=f'0{u'\N{DEGREE SIGN}'}')
         azLabel.grid(row=0, column=0, sticky=NSEW)
@@ -1294,10 +1295,10 @@ class AziElePlot(FrontEnd):
         elCmdLabel = ttk.Label(elCmdFrame, font=font, text=f'90{u'\N{DEGREE SIGN}'}')
         elCmdLabel.grid(row=0, column=0, sticky=NSEW)
         # CONTROLS
-        azEntryFrame = ttk.Frame(ctrlFrame)
+        azEntryFrame = ttk.Frame(self.ctrlFrame)
         azEntryFrame.grid(row=1, column=0, columnspan=2, sticky=NSEW)
         azEntryFrame.columnconfigure(1, weight=1)
-        elEntryFrame = ttk.Frame(ctrlFrame)
+        elEntryFrame = ttk.Frame(self.ctrlFrame)
         elEntryFrame.grid(row=1, column=2, columnspan=2, sticky=NSEW)
         elEntryFrame.columnconfigure(1, weight=1)
         azArrows = tk.Label(azEntryFrame, text='>>>')
@@ -1351,21 +1352,75 @@ class AziElePlot(FrontEnd):
             self.Motor.userEle = value
             self.Motor.readUserInput()
 
+    def toggleInputs(self, action):
+        frames = (self.ctrlFrame,)
+        widgets = ()
+
+        if action == ENABLE:
+            for frame in frames:
+                enableChildren(frame)
+            for widget in widgets:
+                widget.configure(state='enable')
+        elif action == DISABLE:
+            for frame in frames:
+                disableChildren(frame)
+            for widget in widgets:
+                widget.configure(state='disable')
+
     def loopDisplay(self):
         while TRUE:
             match self.loopState:
                 case state.IDLE:
                     # Prevent this thread from taking up too much utilization
+                    self.toggleInputs(DISABLE)
                     time.sleep(1)
                     continue
+
                 case state.INIT:
-                    return
+                    self.toggleInputs(DISABLE)
+                    try:
+                        motorLock.acquire()
+                        # Check program state and maybe output somewhere or automatically set to prog0
+                        prog = Motor.query('Prog 0')
+                        if 'P00' not in prog:
+                            raise NotImplementedError('Unexpected response from motor controller: {prog}')
+                        
+                        Motor.write('DRIVE ON X Y')
+                        # Check if drive responded correctly here and set status buttons.
+                        drive = Motor.query('DRIVE X')
+                        if 'DRIVE ON' not in drive:
+                            raise NotImplementedError('Unexpected response from AXIS0: {drive}')
+                        self.axis0 = True
+                        drive = Motor.query('DRIVE Y')
+                        if 'DRIVE ON' not in drive:
+                            raise NotImplementedError('Unexpected response from AXIS1: {drive}')
+                        self.axis1 = True
+
+                        motorLock.release()
+                        self.toggleInputs(ENABLE)
+                        self.loopState = state.LOOP
+                    except Exception as e:
+                        logging.error(f'{type(e).__name__}: {e}')
+                    # Check drive states and output to the buttons on the left hand panel. Enable buttons to allow user to toggle drives
+                        motorLock.release()
+                        self.loopState = state.IDLE
+
                 case state.LOOP:
-                    return
+                    try:
+                        motorLock.acquire()
+                        # query P6144 (x) and P6160 (y) for encoder position
+                        xEnc = Motor.query('PRINT P6144')
+                        yEnc = Motor.query('PRINT P6160')
+                        # Update live text/plots
+                        # Check if motors are moving and enable/disable inputs
+                    except Exception as e:
+                        logging.error(f'{type(e).__name__}: {e}')
+                        self.loopState = state.IDLE
+                    motorLock.release()
             
 
 # Thread target to monitor IO connection status
-def statusMonitor(FrontEnd, Vi, Motor, PLC):
+def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
     while True:
         try:
             Vi.openRsrc.session
@@ -1377,6 +1432,14 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC):
             FrontEnd.setStatus(FrontEnd.motorStatus, text='Connected')
         else: 
             FrontEnd.setStatus(FrontEnd.motorStatus, text='NC')
+        if Azi_Ele.axis0:
+            FrontEnd.setStatus(FrontEnd.azStatus, text='ENABLED')
+        else:
+            FrontEnd.setStatus(FrontEnd.azStatus, text='STOPPED')
+        if Azi_Ele.axis1:
+            FrontEnd.setStatus(FrontEnd.elStatus, text='ENABLED')
+        else:
+            FrontEnd.setStatus(FrontEnd.elStatus, text='STOPPED')
 
         if PLC.serial.is_open:
             FrontEnd.setStatus(FrontEnd.plcStatus, text='Connected')
@@ -1479,13 +1542,16 @@ def executeHandler(event, arg):
     consoleInput.delete(0, END)     # Clear the entry widget
     commandList.insert(0, arg)      # Save the issued command in list at index 0
     logging.terminal(f'>>> {arg}')
-    if execBool.get():
-        exec(arg)
-    else:
-        if printBool.get():
-            logging.terminal(f'{eval(arg)}')
+    try:
+        if execBool.get():
+            exec(arg)
         else:
-            eval(arg)
+            if printBool.get():
+                logging.terminal(f'{eval(arg)}')
+            else:
+                eval(arg)
+    except Exception as e:
+        logging.terminal(f'{type(e).__name__}: {e}')
 
 def redirector(inputStr):           # Redirect print/logging statements to the console textbox
     console.config(state=NORMAL)
@@ -1545,7 +1611,7 @@ sys.stderr.write = redirector
 
 # Check for initialization errors and print in the newly generated terminal window
 if 'cfg_error' in globals():
-    logging.warning(f'{cfg_error}')
+    logging.warning(f'{type(cfg_error).__name__}: {cfg_error}')
 if missingHeaders:
     for header in missingHeaders:
         logging.error(f'Missing header [{header}] in config.toml')
@@ -1564,7 +1630,7 @@ Front_End = FrontEnd(root, Vi, Motor, Relay)
 Spec_An = SpecAn(Vi, Front_End.spectrumFrame)
 Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
-statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay), daemon=True)
+statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay, Azi_Ele), daemon=True)
 statusMonitorThread.start()
 
 # Generate menu bars
