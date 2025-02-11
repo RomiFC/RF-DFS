@@ -59,5 +59,6 @@ def loggingLevelHandler(level):
 addLoggingLevel("TERMINAL", logging.INFO + 1)
 addLoggingLevel("SERIAL", logging.INFO + 2)
 addLoggingLevel("TIMEOUT", logging.INFO + 3)
+addLoggingLevel("MOTOR", logging.INFO + 4)
 
 addLoggingLevel("VERBOSE", VERBOSE)

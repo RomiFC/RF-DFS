@@ -248,7 +248,7 @@ class MotorIO:
         thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
         thread.start()
 
-    def write(self, msg):
+    def write(self, msg, log=False):
         """Write a message to the serial object and append it with a CRLF if not present.
 
         Args:
@@ -259,8 +259,11 @@ class MotorIO:
             msg = msg + '\r\n'
         with self.serialLock:
             self.ser.write(msg.encode('utf-8'))
+        
+        if log:
+            logging.motor(f'>>> {msg}')
 
-    def read(self):
+    def read(self, log=False):
         """Reads the amount of bytes in the serial input buffer and returns it.
 
         Returns:
@@ -268,6 +271,8 @@ class MotorIO:
         """
         with self.serialLock:
             buffer = self.ser.read(self.ser.in_waiting).decode('utf-8')
+        if log:
+            logging.motor(f'>>> {buffer}')
         return buffer
 
     def query(self, msg, timeout=5.0):
@@ -287,7 +292,7 @@ class MotorIO:
             buffer = self.read()
             if buffer:
                 return buffer
-        logging.warning(f'No response from motor with query {msg}.')
+        logging.timeout(f'No response from motor with query {msg}.')
     
 class SerialIO:
     def __init__(self):
