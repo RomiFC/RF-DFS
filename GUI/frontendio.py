@@ -248,6 +248,19 @@ class MotorIO:
         thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
         thread.start()
 
+    def openSerial(self, port, baud=9600, timeout=1.0):
+        """Open serial communications with the object 'serial' at the port and baud rate specified.  If a port is already open, close it and open a new session.
+
+        Args:
+            port (string): Serial port (COM#).
+            baud (int, optional): Baud rate. Defaults to 9600.
+            timeout (float, optional): Timeout in seconds. Defaults to 1.
+        """
+        with self.serialLock:
+            if self.ser.is_open:
+                self.ser.close()
+            self.ser = serial.Serial(port, baud, timeout=timeout)
+
     def write(self, msg, log=False):
         """Write a message to the serial object and append it with a CRLF if not present.
 
@@ -276,7 +289,7 @@ class MotorIO:
         with self.serialLock:
             buffer = self.ser.read(self.ser.in_waiting).decode('utf-8')
         if log:
-            logging.motor(f'>>> {buffer}')
+            logging.motor(f'{buffer}')
         return buffer
 
     def query(self, msg, timeout=5.0, log=False):
@@ -294,6 +307,7 @@ class MotorIO:
             string: Response from the serial object decoded in utf-8
         """
         self.write(msg, log=log)
+        time.sleep(0.1)
 
         timer = time.time()
         while time.time() - timer < timeout:

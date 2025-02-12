@@ -145,7 +145,10 @@ def enableChildren(parent):
     for child in parent.winfo_children():
         wtype = child.winfo_class()
         if wtype not in ('Frame', 'LabelFrame', 'TFrame', 'TLabelframe'):
-            child.configure(state='enable')
+            try:
+                child.configure(state='enable')
+            except:
+                child.configure(state='normal')
         else:
             enableChildren(child)
 
@@ -302,6 +305,7 @@ class FrontEnd():
                     return
         elif device == 'motor':
             self.motorPort = self.motorSelectBox.get()[:4]
+            self.motor.openSerial(self.motorPort)
         elif device == 'plc':
             self.PLC.openSerial(port)
             self.PLC.threadHandler(self.PLC.queryStatus)
@@ -1361,7 +1365,7 @@ class AziElePlot(FrontEnd):
             for frame in frames:
                 enableChildren(frame)
             for widget in widgets:
-                widget.configure(state='enable')
+                widget.configure(state='normal')
         elif action == DISABLE:
             for frame in frames:
                 disableChildren(frame)
@@ -1384,39 +1388,56 @@ class AziElePlot(FrontEnd):
                     self.toggleInputs(DISABLE)
                     try:
                         motorLock.acquire()
+                        self.Motor.write('\n')
                         # Check program state and maybe output somewhere or automatically set to prog0
-                        prog = Motor.query('Prog 0')
+                        prog = self.Motor.query('Prog 0')
                         if 'P00' not in prog:
-                            raise NotImplementedError('Unexpected response from motor controller: {prog}')
+                            raise NotImplementedError(f'Unexpected response from motor controller: {prog}')
                         
-                        Motor.write('DRIVE ON X Y')
+                        self.Motor.write('DRIVE ON X Y')
                         # Check if drive responded correctly here and set status buttons.
-                        drive = Motor.query('DRIVE X')
-                        if 'DRIVE ON' not in drive:
-                            raise NotImplementedError('Unexpected response from AXIS0: {drive}')
+                        drive = self.Motor.query('DRIVE X')
+                        if 'ON' not in drive:
+                            raise NotImplementedError(f'Unexpected response from AXIS0: {drive}')
                         self.axis0 = True
-                        drive = Motor.query('DRIVE Y')
-                        if 'DRIVE ON' not in drive:
-                            raise NotImplementedError('Unexpected response from AXIS1: {drive}')
+                        drive = self.Motor.query('DRIVE Y')
+                        if 'ON' not in drive:
+                            raise NotImplementedError(f'Unexpected response from AXIS1: {drive}')
                         self.axis1 = True
 
-                        motorLock.release()
                         self.toggleInputs(ENABLE)
                         self.loopState = state.LOOP
                     except Exception as e:
                         logging.error(f'{type(e).__name__}: {e}')
                     # Check drive states and output to the buttons on the left hand panel. Enable buttons to allow user to toggle drives
-                        motorLock.release()
                         self.loopState = state.IDLE
+                    finally:
+                        motorLock.release()
 
                 case state.LOOP:
                     try:
                         motorLock.acquire()
                         # query P6144 (x) and P6160 (y) for encoder position
-                        xEnc = Motor.query('PRINT P6144')
-                        yEnc = Motor.query('PRINT P6160')
+                        response = self.Motor.query('PRINT P6144').splitlines()
+                        for i in response:
+                            if 'P00' in i or 'PRINT' in i:
+                                response.remove(i)
+                        if len(response) > 1:
+                            raise ValueError(f'Encoder query expected 1 line and returned {len(response)}: {response}')
+                        xEnc = int(response[0])
+
+                        response = self.Motor.query('PRINT P6160').splitlines()
+                        for i in response:
+                            if 'P00' in i or 'PRINT' in i:
+                                response.remove(i)
+                        if len(response) > 1:
+                            raise ValueError(f'Encoder query expected 1 line and returned {len(response)}: {response}')
+                        yEnc = int(response[0])
+
+                        logging.motor(f'{xEnc}, {yEnc}')
                         # Update live text/plots
                         # Check if motors are moving and enable/disable inputs
+                        time.sleep(1)
                     except Exception as e:
                         logging.error(f'{type(e).__name__}: {e}')
                         self.loopState = state.IDLE
