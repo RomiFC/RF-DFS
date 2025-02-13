@@ -20,10 +20,10 @@ config = """
 [calibration]
 # Encoder home is the encoder position when the dish is parked (azimuth at true north, elevation straight up).
 x_enc_home = -235753513
-y_enc_home = 0
+y_enc_home = 239092664
 # Encoder counts per rotation is the amount of counts per 360 degree rotation of the antenna, not the encoder.
-x_countsperrotation = 0
-y_countsperrotation = 0
+x_countsperrotation = 45936033
+y_countsperrotation = 45936033
 
 [theme]
 ttk = "clearlooks"
