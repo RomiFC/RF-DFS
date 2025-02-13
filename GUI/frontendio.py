@@ -316,6 +316,19 @@ class MotorIO:
                 return buffer
         raise TimeoutError('Timeout expired before motor query response.')
     
+    def flushInput(self):
+        """Flush the input buffer, discarding all its contents.
+        """
+        with self.serialLock:
+            self.ser.reset_input_buffer()
+
+    def flushOutput(self):
+        """Clear output buffer, aborting the current output and discarding all that is in the buffer.
+        Note, for some USB serial adapters, this may only flush the buffer of the OS and not all the data that may be present in the USB part.
+        """
+        with self.serialLock:
+            self.ser.reset_output_buffer()
+    
 class SerialIO:
     def __init__(self):
         """Contains methods for serial communication, this class contains its own threading lock on IO methods. The attribute 'serial' can be used to directly manipulate the instance of serial.Serial().

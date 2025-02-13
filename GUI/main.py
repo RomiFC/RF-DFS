@@ -1312,10 +1312,10 @@ class AziElePlot(FrontEnd):
         self.azLabel.grid(row=0, column=0, sticky=NSEW)
         self.elLabel = ttk.Label(elFrame, font=font, text=f'--')
         self.elLabel.grid(row=0, column=0, sticky=NSEW)
-        azCmdLabel = ttk.Label(azCmdFrame, font=font, text=f'--')
-        azCmdLabel.grid(row=0, column=0, sticky=NSEW)
-        elCmdLabel = ttk.Label(elCmdFrame, font=font, text=f'--')
-        elCmdLabel.grid(row=0, column=0, sticky=NSEW)
+        self.azCmdLabel = ttk.Label(azCmdFrame, font=font, text=f'--')
+        self.azCmdLabel.grid(row=0, column=0, sticky=NSEW)
+        self.elCmdLabel = ttk.Label(elCmdFrame, font=font, text=f'--')
+        self.elCmdLabel.grid(row=0, column=0, sticky=NSEW)
         # CONTROLS
         self.azEntryFrame = ttk.Frame(self.ctrlFrame)
         self.azEntryFrame.grid(row=1, column=0, columnspan=2, sticky=NSEW)
@@ -1333,8 +1333,8 @@ class AziElePlot(FrontEnd):
         elEntry.grid(row=0, column=1, sticky=NSEW)
 
         # BIND ENTRY WIDGETS
-        azEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=azEntry.get(), axis='az'))
-        elEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=elEntry.get(), axis='el'))
+        azEntry.bind('<Return>', lambda event: self.threadHandler(self.sendMoveCommand, event, value=azEntry.get(), axis='az'))
+        elEntry.bind('<Return>', lambda event: self.threadHandler(self.sendMoveCommand, event, value=elEntry.get(), axis='el'))
 
         # Arrow demonstration
         self.drawArrow(self.azAxis, 0)
@@ -1367,21 +1367,48 @@ class AziElePlot(FrontEnd):
                 self.elArrow = axis.arrow(angle/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
 
         self.bearingDisplay.draw()
-    
-    def sendMoveCommand(self, event, value=None, axis=None):
-        """_summary_
+
+    def threadHandler(self, target, *event, **kwargs):
+        """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
 
         Args:
             event (event): tkinter event which initiates function call
+            target (method): Callable object to be invoked by the run() method.
+            kwargs (dict, optional): Dictionary of keyword arguments for target invocation. Defaults to {}.
+        """
+        if not hasattr(AziElePlot, target.__name__):
+            logging.error(f'Class AziElePlot does not contain a method with identifier {target.__name__}')
+            return
+        thread = threading.Thread(target = target, kwargs = kwargs, daemon=True)
+        thread.start()
+    
+    def sendMoveCommand(self, value=None, axis=None):
+        """_summary_
+
+        Args:
             value (float, optional): Value in degrees to send as argument to object of MotorIO. Defaults to None.
             axis (string, optional): Either 'az' or 'el' to determine which axis to move. Defaults to None.
         """
+        value = float(value)
+
         if axis == 'az' and value is not None:
             with motorLock:
                 self.Motor.write(f'jog inc x {value}')
+                time.sleep(0.1)
+                self.Motor.flushInput()
+            command = float(self.azLabel['text'].replace(u'\N{DEGREE SIGN}', '')) + value
+            self.azCmdLabel.configure(text = f'{command}{u'\N{DEGREE SIGN}'}')
+
         elif axis == 'el' and value is not None:
             with motorLock:
                 self.Motor.write(f'jog inc y {value}')
+                time.sleep(0.1)
+                self.Motor.flushInput()
+            command = float(self.elLabel['text'].replace(u'\N{DEGREE SIGN}', '')) + value
+            self.elCmdLabel.configure(text = f'{command}{u'\N{DEGREE SIGN}'}')
+
+        # Disable inputs. If done correctly, the loop thread should enable inputs when bit 516 is 0
+        self.toggleInputs(DISABLE)
         
 
     def toggleInputs(self, action):
@@ -1432,7 +1459,6 @@ class AziElePlot(FrontEnd):
                             raise NotImplementedError(f'Unexpected response from AXIS1: {drive}')
                         self.axis1 = True
 
-                        self.toggleInputs(ENABLE)
                         self.loopState = state.LOOP
                     except Exception as e:
                         logging.error(f'{type(e).__name__}: {e}')
@@ -1444,6 +1470,15 @@ class AziElePlot(FrontEnd):
                 case state.LOOP:
                     try:
                         motorLock.acquire()
+                        # Check bit 516 (In motion) to determine whether or not to allow inputs
+                        # TODO: bit 516 returns 0 even when moving
+                        response = self.Motor.query('PRINT P516').splitlines()
+                        for i in response:
+                            match i:
+                                case '0':
+                                    self.toggleInputs(ENABLE)
+                                case '1':
+                                    self.toggleInputs(DISABLE)
                         # query P6144 (x) and P6160 (y) for encoder position
                         response = self.Motor.query('PRINT P6144').splitlines()
                         for i in response:
@@ -1462,20 +1497,21 @@ class AziElePlot(FrontEnd):
                         yEnc = int(response[0])
 
                         # Calculate position in degrees
-                        xPos = (xEnc - X_HOME) / X_CPD
-                        yPos = (yEnc - Y_HOME) / Y_CPD
+                        xPos = round((xEnc - X_HOME) / X_CPD, 4)
+                        yPos = round((yEnc - Y_HOME) / Y_CPD, 4)
                         # Draw arrows on respective axes
                         self.drawArrow(self.azAxis, xPos)
                         self.drawArrow(self.elAxis, yPos)
                         # Set readout widgets
-                        clearAndSetWidget(self.azLabel, f'{xPos}{u'\N{DEGREE SIGN}'}')
-                        clearAndSetWidget(self.elLabel, f'{yPos}{u'\N{DEGREE SIGN}'}')
+                        self.azLabel.configure(text = f'{xPos}{u'\N{DEGREE SIGN}'}')
+                        self.elLabel.configure(text = f'{yPos}{u'\N{DEGREE SIGN}'}')
                         # TODO: Check if motors are moving and enable/disable inputs
-                        time.sleep(1)
                     except Exception as e:
                         logging.error(f'{type(e).__name__}: {e}')
                         self.loopState = state.IDLE
-                    motorLock.release()
+                    finally:
+                        motorLock.release()
+                        time.sleep(1)
             
 
 # Thread target to monitor IO connection status
