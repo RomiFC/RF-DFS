@@ -190,10 +190,11 @@ class FrontEnd():
         BUTTON_PADX = 5
         BUTTON_PADY = 5
 
-        # Root frames
+        # Root resizing
         root.rowconfigure(0, weight=1)
         root.rowconfigure(1, weight=1)
         root.columnconfigure(1, weight=1)
+        # Root frames
         plotFrame = ttk.Frame(root)
         plotFrame.grid(row=0, column=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY) 
         controlFrame = tk.Frame(root)
@@ -250,7 +251,7 @@ class FrontEnd():
         self.standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
         self.manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND, state=DISABLED)
         self.autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton, self.autoButton)
         # Connection Status
@@ -1146,10 +1147,9 @@ class SpecAn(FrontEnd):
                             self.Vi.queryErrors()
                         except Exception as e:
                             pass
-                            # logging.warning(e)
-                            # logging.warning(f'Could not query errors from device.')
-                        visaLock.release()
+                            # logging.error(f'{type(e).__name__}: {e}. Could not query errors from device.')
                         self.toggleInputs(ENABLE)
+                        visaLock.release()
                         self.loopState = state.IDLE
 
                 case state.LOOP:
@@ -1476,7 +1476,7 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
             case state.LOOP:
                 for button in FrontEnd.MODE_BUTTONS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
-                FrontEnd.setStatus(FrontEnd.manualButton, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.setStatus(FrontEnd.manualButton, background=FrontEnd.SELECT_BACKGROUND)
         match Azi_Ele.axis0:
             case True:
                 FrontEnd.setStatus(FrontEnd.azStatus, text='ENABLED')
@@ -1718,10 +1718,6 @@ menuOptions.add_radiobutton(label='Logging: Debug', variable = tkLoggingLevel, c
 
 # Help
 menuHelp.add_command(label='Open wiki...', command=Front_End.openHelp)
-
-# Limit window size to the minimum size on generation
-# root.update()
-# root.minsize(root.winfo_width(), root.winfo_height())
 
 root.protocol("WM_DELETE_WINDOW", Front_End.onExit)
 root.mainloop()
