@@ -191,6 +191,9 @@ class FrontEnd():
         BUTTON_PADY = 5
 
         # Root frames
+        root.rowconfigure(0, weight=1)
+        root.rowconfigure(1, weight=1)
+        root.columnconfigure(1, weight=1)
         plotFrame = ttk.Frame(root)
         plotFrame.grid(row=0, column=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY) 
         controlFrame = tk.Frame(root)
@@ -204,23 +207,26 @@ class FrontEnd():
         self.spectrumFrame = tk.LabelFrame(plotFrame, text = "Spectrum Analyzer")   # Frame that holds matplotlib spectrum plot
         self.directionFrame.grid(row = 0, column = 0, sticky = NSEW)
         self.spectrumFrame.grid(row = 0, column = 1, sticky=NSEW)
+        plotFrame.rowconfigure(0, weight=1)
+        plotFrame.columnconfigure(0, weight=1)
+        plotFrame.columnconfigure(1, weight=1)
         # Clock
         self.clockLabel = tk.Label(controlFrame, font=CLOCK_FONT)
         self.clockLabel.grid(row=0, column=0, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         # Drive Status
         azStatusFrame = tk.LabelFrame(controlFrame, text='Azimuth Drive')
-        azStatusFrame.grid(row=1, column=0, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
+        azStatusFrame.grid(row=1, column=0, sticky=(N, E, W), padx=FRAME_PADX, pady=FRAME_PADY)
         azStatusFrame.columnconfigure(0, weight=1)
         self.azStatus = tk.Button(azStatusFrame, text='STOPPED', font=FONT, state=DISABLED, width=6)
         self.azStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         elStatusFrame = tk.LabelFrame(controlFrame, text='Elevation Drive')
-        elStatusFrame.grid(row=1, column=1, sticky=NSEW, padx=FRAME_PADX, pady=FRAME_PADY)
+        elStatusFrame.grid(row=1, column=1, sticky=(N, E, W), padx=FRAME_PADX, pady=FRAME_PADY)
         elStatusFrame.columnconfigure(0, weight=1)
         self.elStatus = tk.Button(elStatusFrame, text='STOPPED', font=FONT, state=DISABLED, width=6)
         self.elStatus.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         # PLC Operations
         chainFrame = tk.LabelFrame(controlFrame, text='PLC Operations')
-        chainFrame.grid(row=2, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        chainFrame.grid(row=2, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             chainFrame.columnconfigure(i, weight=1, uniform=True)
         self.initP1Button = tk.Button(chainFrame, font=FONT, text='INIT', command=lambda:self.PLC.threadHandler(self.PLC.query, (opcodes.P1_INIT.value,), {'delay': 15.0}))
@@ -238,7 +244,7 @@ class FrontEnd():
         self.PLC_OUTPUTS_LIST = (self.sleepP1Button, self.dfs1Button, self.ems1Button)              # Mutually exclusive buttons for which only one should be selected
         # Mode
         modeFrame = tk.LabelFrame(controlFrame, text='Mode')
-        modeFrame.grid(row=3, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        modeFrame.grid(row=3, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         modeFrame.columnconfigure(0, weight=1)
         self.standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=self.SELECT_BACKGROUND)
         self.standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
@@ -249,7 +255,7 @@ class FrontEnd():
         self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton, self.autoButton)
         # Connection Status
         connectionsFrame = tk.LabelFrame(controlFrame, text='Connection Status')
-        connectionsFrame.grid(row=4, column=0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        connectionsFrame.grid(row=4, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             connectionsFrame.columnconfigure(i, weight=1)
         visaLabel = tk.Label(connectionsFrame, text='VISA:', font=FONT)
@@ -1532,6 +1538,7 @@ for x in range(5):
 stdioFrame.columnconfigure(1, weight=1)
 consoleFrame = ttk.Frame(stdioFrame)    # So the scrollbar isn't stretched to the width of the rightmost widget in stdioFrame
 consoleFrame.grid(column=0, row=0, sticky=NSEW, columnspan=5)
+consoleFrame.rowconfigure(0, weight=1)
 consoleFrame.columnconfigure(0, weight=1)
 console = tk.Text(consoleFrame, height=15)
 console.grid(column=0, row=0, sticky=(N, S, E, W))
@@ -1713,8 +1720,8 @@ menuOptions.add_radiobutton(label='Logging: Debug', variable = tkLoggingLevel, c
 menuHelp.add_command(label='Open wiki...', command=Front_End.openHelp)
 
 # Limit window size to the minimum size on generation
-root.update()
-root.minsize(root.winfo_width(), root.winfo_height())
+# root.update()
+# root.minsize(root.winfo_width(), root.winfo_height())
 
 root.protocol("WM_DELETE_WINDOW", Front_End.onExit)
 root.mainloop()
