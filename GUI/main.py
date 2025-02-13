@@ -78,6 +78,12 @@ finally:
     if missingHeaders or missingKeys or 'cfg_error' in locals():
         cfg = defaultconfig.cfg
 
+# ENCODER CONSTANTS (HOME AND COUNTS PER DEGREE)
+X_HOME = cfg['calibration']['x_enc_home']
+Y_HOME = cfg['calibration']['y_enc_home']
+X_CPD = cfg['calibration']['x_countsperrotation'] / 360
+Y_CPD = cfg['calibration']['y_countsperrotation'] / 360
+
 # THREADING EVENTS
 visaLock = threading.RLock()        # For VISA resources
 motorLock = threading.RLock()       # For motor controller
@@ -1257,27 +1263,32 @@ class AziElePlot(FrontEnd):
         self.axis0 = False              # Keeps track of drive x and y states so they can be accessed by the main thread to update status buttons in class FrontEnd
         self.axis1 = False
 
+        # VARIABLES
+        self.azArrow = None
+        self.elArrow = None
+
         # STYLE
         font = 'Courier 14'
         padx = 2
         pady = 2
 
         # PLOT
-        fig, (azAxis, elAxis) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
+        fig, (self.azAxis, self.elAxis) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
         fig.set_size_inches(fig.get_size_inches()[0], fig.get_size_inches()[1] * 0.8)      # Sets to minimum height since two plots can appear large in the root window
-        azAxis.set_title("Azimuth", va='bottom')
-        elAxis.set_title("Elevation", va='bottom')
-        azAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
-        elAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
-        azAxis.set_theta_zero_location('N')
-        elAxis.set_thetagrids([0, 30, 60, 90, 120])
-        azAxis.autoscale(enable=False, tight=True)
-        elAxis.autoscale(enable=False, tight=True)
-        azAxis.set_facecolor('#d5de9c')
-        elAxis.set_facecolor('#d5de9c')
-        elAxis.axvspan(0, -240/180.*np.pi, facecolor='0.85')
-        azAxis.grid(color='#316931')
-        elAxis.grid(color='#316931')
+        self.azAxis.set_title("Azimuth", va='bottom')
+        self.elAxis.set_title("Elevation", va='bottom')
+        self.azAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
+        self.elAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
+        self.azAxis.set_theta_zero_location('N')
+        self.azAxis.set_theta_direction(-1)
+        self.elAxis.set_thetagrids([0, 30, 60, 90, 120])
+        self.azAxis.autoscale(enable=False, tight=True)
+        self.elAxis.autoscale(enable=False, tight=True)
+        self.azAxis.set_facecolor('#d5de9c')
+        self.elAxis.set_facecolor('#d5de9c')
+        self.elAxis.axvspan(0, -240/180.*np.pi, facecolor='0.85')
+        self.azAxis.grid(color='#316931')
+        self.elAxis.grid(color='#316931')
 
         self.bearingDisplay = FigureCanvasTkAgg(fig, master=self.parent)
         self.bearingDisplay.get_tk_widget().grid(row = 0, column = 0, sticky=NSEW, columnspan=2)
@@ -1326,8 +1337,8 @@ class AziElePlot(FrontEnd):
         elEntry.bind('<Return>', lambda event: self.sendMoveCommand(event, value=elEntry.get(), axis='el'))
 
         # Arrow demonstration
-        self.drawArrow(azAxis, 0)
-        self.drawArrow(elAxis, 90)
+        self.drawArrow(self.azAxis, 0)
+        self.drawArrow(self.elAxis, 90)
 
         # Generate thread to handle live data plot in background
         motorLoop = threading.Thread(target=self.loopDisplay, daemon=True)
@@ -1340,9 +1351,22 @@ class AziElePlot(FrontEnd):
             axis (plt.subplots): Matplotlib axis
             angle (float): Angle in degrees
         """
-        axis.arrow(angle/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
+        # Remove previous plot if it exists, then draw new arrow
+        match axis:
+            case self.azAxis:
+                try:
+                    self.azArrow.remove()
+                except AttributeError:
+                    pass
+                self.azArrow = axis.arrow(angle/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
+            case self.elAxis:
+                try:
+                    self.elArrow.remove()
+                except AttributeError:
+                    pass
+                self.elArrow = axis.arrow(angle/180.*np.pi, 0, 0, 0.8, alpha = 1, width = 0.03, edgecolor = 'blue', facecolor = 'blue', lw = 3, zorder = 5)
+
         self.bearingDisplay.draw()
-        return
     
     def sendMoveCommand(self, event, value=None, axis=None):
         """_summary_
@@ -1441,8 +1465,13 @@ class AziElePlot(FrontEnd):
                         yEnc = int(response[0])
 
                         logging.motor(f'{xEnc}, {yEnc}')
-                        # Update live text/plots
-                        # Check if motors are moving and enable/disable inputs
+                        # Calculate position in degrees
+                        xPos = (xEnc - X_HOME) / X_CPD
+                        yPos = (yEnc - Y_HOME) / Y_CPD
+                        # Draw arrows on respective axes
+                        self.drawArrow(self.azAxis, xPos)
+                        self.drawArrow(self.elAxis, yPos)
+                        # TODO: Check if motors are moving and enable/disable inputs
                         time.sleep(1)
                     except Exception as e:
                         logging.error(f'{type(e).__name__}: {e}')
