@@ -1308,28 +1308,28 @@ class AziElePlot(FrontEnd):
         elFrame.grid(row=0, column=2, sticky=NSEW, padx=padx, pady=pady)
         elCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Command Angle')
         elCmdFrame.grid(row=0, column=3, sticky=NSEW, padx=padx, pady=pady)
-        azLabel = ttk.Label(azFrame, font=font, text=f'0{u'\N{DEGREE SIGN}'}')
-        azLabel.grid(row=0, column=0, sticky=NSEW)
-        elLabel = ttk.Label(elFrame, font=font, text=f'90{u'\N{DEGREE SIGN}'}')
-        elLabel.grid(row=0, column=0, sticky=NSEW)
-        azCmdLabel = ttk.Label(azCmdFrame, font=font, text=f'0{u'\N{DEGREE SIGN}'}')
+        self.azLabel = ttk.Label(azFrame, font=font, text=f'--')
+        self.azLabel.grid(row=0, column=0, sticky=NSEW)
+        self.elLabel = ttk.Label(elFrame, font=font, text=f'--')
+        self.elLabel.grid(row=0, column=0, sticky=NSEW)
+        azCmdLabel = ttk.Label(azCmdFrame, font=font, text=f'--')
         azCmdLabel.grid(row=0, column=0, sticky=NSEW)
-        elCmdLabel = ttk.Label(elCmdFrame, font=font, text=f'90{u'\N{DEGREE SIGN}'}')
+        elCmdLabel = ttk.Label(elCmdFrame, font=font, text=f'--')
         elCmdLabel.grid(row=0, column=0, sticky=NSEW)
         # CONTROLS
-        azEntryFrame = ttk.Frame(self.ctrlFrame)
-        azEntryFrame.grid(row=1, column=0, columnspan=2, sticky=NSEW)
-        azEntryFrame.columnconfigure(1, weight=1)
-        elEntryFrame = ttk.Frame(self.ctrlFrame)
-        elEntryFrame.grid(row=1, column=2, columnspan=2, sticky=NSEW)
-        elEntryFrame.columnconfigure(1, weight=1)
-        azArrows = tk.Label(azEntryFrame, text='>>>')
+        self.azEntryFrame = ttk.Frame(self.ctrlFrame)
+        self.azEntryFrame.grid(row=1, column=0, columnspan=2, sticky=NSEW)
+        self.azEntryFrame.columnconfigure(1, weight=1)
+        self.elEntryFrame = ttk.Frame(self.ctrlFrame)
+        self.elEntryFrame.grid(row=1, column=2, columnspan=2, sticky=NSEW)
+        self.elEntryFrame.columnconfigure(1, weight=1)
+        azArrows = tk.Label(self.azEntryFrame, text='>>>')
         azArrows.grid(row=0, column=0)
-        azEntry = tk.Entry(azEntryFrame, font=font, background=azArrows.cget('background'), borderwidth=0, validate="key", validatecommand=(isNumWrapper, '%P'))
+        azEntry = tk.Entry(self.azEntryFrame, font=font, background=azArrows.cget('background'), borderwidth=0, validate="key", validatecommand=(isNumWrapper, '%P'))
         azEntry.grid(row=0, column=1, sticky=NSEW)
-        elArrows = tk.Label(elEntryFrame, text='>>>')
+        elArrows = tk.Label(self.elEntryFrame, text='>>>')
         elArrows.grid(row=0, column=0)
-        elEntry = tk.Entry(elEntryFrame, font=font, background=elArrows.cget('background'), borderwidth=0, validate="key", validatecommand=(isNumWrapper, '%P'))
+        elEntry = tk.Entry(self.elEntryFrame, font=font, background=elArrows.cget('background'), borderwidth=0, validate="key", validatecommand=(isNumWrapper, '%P'))
         elEntry.grid(row=0, column=1, sticky=NSEW)
 
         # BIND ENTRY WIDGETS
@@ -1376,19 +1376,16 @@ class AziElePlot(FrontEnd):
             value (float, optional): Value in degrees to send as argument to object of MotorIO. Defaults to None.
             axis (string, optional): Either 'az' or 'el' to determine which axis to move. Defaults to None.
         """
-        if self.Motor.port != Front_End.getMotorPort()[:4]: 
-            portName = Front_End.getMotorPort()
-            self.Motor.port = portName[:4]
-            self.Motor.OpenSerial()
         if axis == 'az' and value is not None:
-            self.Motor.userAzi = value
-            self.Motor.readUserInput()
+            with motorLock:
+                self.Motor.write(f'jog inc x {value}')
         elif axis == 'el' and value is not None:
-            self.Motor.userEle = value
-            self.Motor.readUserInput()
+            with motorLock:
+                self.Motor.write(f'jog inc y {value}')
+        
 
     def toggleInputs(self, action):
-        frames = (self.ctrlFrame,)
+        frames = (self.azEntryFrame, self.elEntryFrame)
         widgets = ()
 
         if action == ENABLE:
@@ -1464,13 +1461,15 @@ class AziElePlot(FrontEnd):
                             raise ValueError(f'Encoder query expected 1 line and returned {len(response)}: {response}')
                         yEnc = int(response[0])
 
-                        logging.motor(f'{xEnc}, {yEnc}')
                         # Calculate position in degrees
                         xPos = (xEnc - X_HOME) / X_CPD
                         yPos = (yEnc - Y_HOME) / Y_CPD
                         # Draw arrows on respective axes
                         self.drawArrow(self.azAxis, xPos)
                         self.drawArrow(self.elAxis, yPos)
+                        # Set readout widgets
+                        clearAndSetWidget(self.azLabel, f'{xPos}{u'\N{DEGREE SIGN}'}')
+                        clearAndSetWidget(self.elLabel, f'{yPos}{u'\N{DEGREE SIGN}'}')
                         # TODO: Check if motors are moving and enable/disable inputs
                         time.sleep(1)
                     except Exception as e:
