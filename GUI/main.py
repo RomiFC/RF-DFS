@@ -1302,11 +1302,11 @@ class AziElePlot(FrontEnd):
         # FEEDBACK
         azFrame = ttk.Labelframe(self.ctrlFrame, text='Azimuth Angle')
         azFrame.grid(row=0, column=0, sticky=NSEW, padx=padx, pady=pady)
-        azCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Command Angle')
+        azCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Last Command')
         azCmdFrame.grid(row=0, column=1, sticky=NSEW, padx=padx, pady=pady)
         elFrame = ttk.Labelframe(self.ctrlFrame, text='Elevation Angle')
         elFrame.grid(row=0, column=2, sticky=NSEW, padx=padx, pady=pady)
-        elCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Command Angle')
+        elCmdFrame = ttk.Labelframe(self.ctrlFrame, text='Last Command')
         elCmdFrame.grid(row=0, column=3, sticky=NSEW, padx=padx, pady=pady)
         self.azLabel = ttk.Label(azFrame, font=font, text=f'--')
         self.azLabel.grid(row=0, column=0, sticky=NSEW)
@@ -1396,19 +1396,17 @@ class AziElePlot(FrontEnd):
                 self.Motor.write(f'jog inc x {value}')
                 time.sleep(0.1)
                 self.Motor.flushInput()
-            command = float(self.azLabel['text'].replace(u'\N{DEGREE SIGN}', '')) + value
-            self.azCmdLabel.configure(text = f'{command}{u'\N{DEGREE SIGN}'}')
+            self.azCmdLabel.configure(text = f'{value}{u'\N{DEGREE SIGN}'}')
 
         elif axis == 'el' and value is not None:
             with motorLock:
                 self.Motor.write(f'jog inc y {value}')
                 time.sleep(0.1)
                 self.Motor.flushInput()
-            command = float(self.elLabel['text'].replace(u'\N{DEGREE SIGN}', '')) + value
-            self.elCmdLabel.configure(text = f'{command}{u'\N{DEGREE SIGN}'}')
+            self.elCmdLabel.configure(text = f'{value}{u'\N{DEGREE SIGN}'}')
 
         # Disable inputs. If done correctly, the loop thread should enable inputs when bit 516 is 0
-        self.toggleInputs(DISABLE)
+        # self.toggleInputs(DISABLE)
         
 
     def toggleInputs(self, action):
@@ -1471,14 +1469,14 @@ class AziElePlot(FrontEnd):
                     try:
                         motorLock.acquire()
                         # Check bit 516 (In motion) to determine whether or not to allow inputs
-                        # TODO: bit 516 returns 0 even when moving
-                        response = self.Motor.query('PRINT P516').splitlines()
-                        for i in response:
-                            match i:
-                                case '0':
-                                    self.toggleInputs(ENABLE)
-                                case '1':
-                                    self.toggleInputs(DISABLE)
+                        # TODO: Find out why bit 516 returns 0 even when moving
+                        # response = self.Motor.query('PRINT P516').splitlines()
+                        # for i in response:
+                        #     match i:
+                        #         case '0':
+                        #             self.toggleInputs(ENABLE)
+                        #         case '1':
+                        #             self.toggleInputs(DISABLE)
                         # query P6144 (x) and P6160 (y) for encoder position
                         response = self.Motor.query('PRINT P6144').splitlines()
                         for i in response:
