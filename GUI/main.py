@@ -1275,8 +1275,8 @@ class AziElePlot(FrontEnd):
         # PLOT
         fig, (self.azAxis, self.elAxis) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
         fig.set_size_inches(fig.get_size_inches()[0], fig.get_size_inches()[1] * 0.8)      # Sets to minimum height since two plots can appear large in the root window
-        self.azAxis.set_title("Azimuth", va='bottom')
-        self.elAxis.set_title("Elevation", va='bottom')
+        self.azAxis.set_title("Azimuth", va='bottom', y=1.1)
+        self.elAxis.set_title("Elevation", va='bottom', y=1.1)
         self.azAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
         self.elAxis.set_rticks([0.25, 0.5, 0.75], labels=[])
         self.azAxis.set_theta_zero_location('N')
