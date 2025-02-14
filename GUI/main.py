@@ -34,6 +34,9 @@ from tkinter.ttk import *
 from ttkthemes import ThemedTk
  
 # CONSTANTS
+IDLE_DELAY = 1.0
+ANALYZER_LOOP_DELAY = 0.5
+MOTOR_LOOP_DELAY = 0.5
 RETURN_ERROR = 1
 RETURN_SUCCESS = 0
 ENABLE = 1
@@ -1129,7 +1132,7 @@ class SpecAn(FrontEnd):
                 case state.IDLE:
                     # Prevent this thread from taking up too much utilization
                     self.toggleInputs(DISABLE)
-                    time.sleep(1)
+                    time.sleep(IDLE_DELAY)
                     continue
 
                 case state.INIT:
@@ -1192,10 +1195,10 @@ class SpecAn(FrontEnd):
                             self.contSweepFlag = False
                         visaLock.release()
                         self.singleSweepFlag = False
-                        time.sleep(0.5)
+                        time.sleep(ANALYZER_LOOP_DELAY)
                     else:
                         # Prevent this thread from taking up too much utilization
-                        time.sleep(1)
+                        time.sleep(IDLE_DELAY)
 
     def toggleAnalyzerDisplay(self):
         """sets contSweepFlag != contSweepFlag to control loopAnalyzerDisplay()
@@ -1433,7 +1436,7 @@ class AziElePlot(FrontEnd):
                 case state.IDLE:
                     # Prevent this thread from taking up too much utilization
                     self.toggleInputs(DISABLE)
-                    time.sleep(1)
+                    time.sleep(IDLE_DELAY)
                     continue
 
                 case state.INIT:
@@ -1509,7 +1512,7 @@ class AziElePlot(FrontEnd):
                         self.loopState = state.IDLE
                     finally:
                         motorLock.release()
-                        time.sleep(1)
+                        time.sleep(MOTOR_LOOP_DELAY)
             
 
 # Thread target to monitor IO connection status
