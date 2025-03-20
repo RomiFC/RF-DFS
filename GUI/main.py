@@ -825,7 +825,7 @@ class SpecAn(FrontEnd):
         self.bindWidgets() 
 
         # Generate thread to handle live data plot in background
-        analyzerLoop = threading.Thread(target=self.loopAnalyzerDisplay, daemon=True)
+        analyzerLoop = threading.Thread(target=self.analyzerDisplayLoop, daemon=True)
         analyzerLoop.start()
 
     def bindWidgets(self):
@@ -1124,7 +1124,7 @@ class SpecAn(FrontEnd):
     def setState(self, val):
         self.loopState = val
 
-    def loopAnalyzerDisplay(self):
+    def analyzerDisplayLoop(self):
         global visaLock, specPlotLock
 
         while TRUE:
@@ -1201,7 +1201,7 @@ class SpecAn(FrontEnd):
                         time.sleep(IDLE_DELAY)
 
     def toggleAnalyzerDisplay(self):
-        """sets contSweepFlag != contSweepFlag to control loopAnalyzerDisplay()
+        """sets contSweepFlag != contSweepFlag to control analyzerDisplayLoop()
         """
         if self.Vi.isSessionOpen() == FALSE:
             logging.error("Cannot initiate sweep, session to the analyzer is not open.")
@@ -1216,7 +1216,7 @@ class SpecAn(FrontEnd):
             self.contSweepFlag = False
 
     def singleSweep(self):
-        """Sets singleSweepFlag TRUE and contSweepFlag FALSE to control loopAnalyzerDisplay()
+        """Sets singleSweepFlag TRUE and contSweepFlag FALSE to control analyzerDisplayLoop()
         """
         if self.Vi.isSessionOpen() == FALSE:
             logging.error("Cannot initiate sweep, session to the analyzer is not open.")
@@ -1344,7 +1344,7 @@ class AziElePlot(FrontEnd):
         self.drawArrow(self.elAxis, 90)
 
         # Generate thread to handle live data plot in background
-        motorLoop = threading.Thread(target=self.loopDisplay, daemon=True)
+        motorLoop = threading.Thread(target=self.bearingDisplayLoop, daemon=True)
         motorLoop.start()
 
     def drawArrow(self, axis, angle):
@@ -1430,7 +1430,7 @@ class AziElePlot(FrontEnd):
     def setState(self, val):
         self.loopState = val
 
-    def loopDisplay(self):
+    def bearingDisplayLoop(self):
         while TRUE:
             match self.loopState:
                 case state.IDLE:
