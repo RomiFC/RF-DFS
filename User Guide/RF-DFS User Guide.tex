@@ -1,0 +1,529 @@
+\documentclass[titlepage]{article}
+
+% Suppresses chktex warnings 
+% chktex-file 1
+% chktex-file 3
+% chktex-file 8
+% chktex-file 10
+% chktex-file 17
+% chktex-file 24
+% chktex-file 26
+% chktex-file 36
+% chktex-file 44
+% chktex-file 46
+
+\usepackage{geometry}
+\usepackage{tikz}
+\usetikzlibrary{fit}
+\usetikzlibrary{intersections}
+\usepackage{pgfplots}
+\usepgfplotslibrary{fillbetween}
+\pgfplotsset{compat=1.18}
+\pgfplotsset{hide xscale/.style={/pgfplots/xtick scale label code/.code={}}}
+\pgfplotsset{hide yscale/.style={/pgfplots/ytick scale label code/.code={}}}
+\usepackage{amsmath}
+\usepackage{upgreek}
+\usepackage{url}
+\hyphenation{}	        % Correct bad hyphenation
+\usepackage{graphicx}   % For including figures and pictures
+\usepackage{float}      % Used to fix location of images i.e.\begin{figure}[H]
+\usepackage{fancyhdr}   % For headers and footers
+\pagestyle{fancy}
+\usepackage{lastpage}   % Allows referencing last page (for footer)
+\usepackage{titling}    % To reference title, author, and date
+\usepackage{array}      % For fixed-width tables
+\usepackage{makecell}   % Formats individual table cells
+\usepackage{multirow}   % For multi-row columns (Top left justify header)
+\usepackage[american]{circuitikz} % Used to draw circuit and block diagrams
+\usepackage{appendix}   
+\usepackage{colortbl}   % For coloring table cells
+\definecolor{nraoblue}{rgb}{0.776,0.851,0.945}  % Color of table headers
+\usepackage{enumitem}   % For formatting enumerated lists
+\usepackage[parfill]{parskip}               % Removes paragraph indentation, adds line break
+\usepackage[hang, flushmargin]{footmisc}    % Removes footnote indentation
+\setenumerate[1]{label={(\arabic*)}}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{references.bib}
+\usepackage{hyperref}   % Allows hyperlinks
+\hypersetup{
+  colorlinks   = true,  % Colors links instead of ugly boxes
+  filecolor    = blue,  % Color for local hyperlinks
+  linkcolor    = ., % Color for internal hyperlinks
+  citecolor    = ., % Color for citations
+  urlcolor     = blue,  % Color for linked urls
+}
+\usepackage{caption}    % Changes figure/table caption color and size
+\definecolor{captioncolor}{RGB}{79,129,189}
+\captionsetup{font={
+    small, 
+    color=captioncolor,
+    bf,
+}}
+ 
+
+% Changes font from Computer Modern to Gill Sans MT
+% This requires XeLaTeX or LuaTeX to function
+% Add "latex-workshop.latex.recipe.default": "latexmk (xelatex)" to workspace.json
+\usepackage{fontspec}
+\setmainfont{gil.ttf}[
+    BoldFont        = gil-b.ttf,
+    ItalicFont      = gil-i.ttf,
+    BoldItalicFont  = gil-bi.ttf,
+]
+
+% Global TikZ parameters
+\tikzset{every picture/.style={/utils/exec={\fontfamily{lmr}}}}
+\ctikzset{sources/fill=red!20}
+\ctikzset{chips/fill=cyan!20}
+\ctikzset{electromechanicals/fill=blue!20}
+\ctikzset{blocks/fill=green!20}
+\ctikzset{amplifiers/fill=yellow!30}
+\tikzset{amp/.append style={fill=yellow!30}}
+\tikzset{twoport/.append style={fill=cyan!20}}
+% TikZ node[server] symbol
+\makeatletter
+\pgfkeys{/pgf/.cd,
+  parallelepiped offset x/.initial=2mm,
+  parallelepiped offset y/.initial=2mm
+}
+\pgfdeclareshape{parallelepiped}
+{
+  \inheritsavedanchors[from=rectangle] % this is nearly a rectangle
+  \inheritanchorborder[from=rectangle]
+  \inheritanchor[from=rectangle]{north}
+  \inheritanchor[from=rectangle]{north west}
+  \inheritanchor[from=rectangle]{north east}
+  \inheritanchor[from=rectangle]{center}
+  \inheritanchor[from=rectangle]{west}
+  \inheritanchor[from=rectangle]{east}
+  \inheritanchor[from=rectangle]{mid}
+  \inheritanchor[from=rectangle]{mid west}
+  \inheritanchor[from=rectangle]{mid east}
+  \inheritanchor[from=rectangle]{base}
+  \inheritanchor[from=rectangle]{base west}
+  \inheritanchor[from=rectangle]{base east}
+  \inheritanchor[from=rectangle]{south}
+  \inheritanchor[from=rectangle]{south west}
+  \inheritanchor[from=rectangle]{south east}
+  \backgroundpath{
+    % store lower right in xa/ya and upper right in xb/yb
+    \southwest \pgf@xa=\pgf@x \pgf@ya=\pgf@y
+    \northeast \pgf@xb=\pgf@x \pgf@yb=\pgf@y
+    \pgfmathsetlength\pgfutil@tempdima{\pgfkeysvalueof{/pgf/parallelepiped
+      offset x}}
+    \pgfmathsetlength\pgfutil@tempdimb{\pgfkeysvalueof{/pgf/parallelepiped
+      offset y}}
+    \def\ppd@offset{\pgfpoint{\pgfutil@tempdima}{\pgfutil@tempdimb}}
+    \pgfpathmoveto{\pgfqpoint{\pgf@xa}{\pgf@ya}}
+    \pgfpathlineto{\pgfqpoint{\pgf@xb}{\pgf@ya}}
+    \pgfpathlineto{\pgfqpoint{\pgf@xb}{\pgf@yb}}
+    \pgfpathlineto{\pgfqpoint{\pgf@xa}{\pgf@yb}}
+    \pgfpathclose
+    \pgfpathmoveto{\pgfqpoint{\pgf@xb}{\pgf@ya}}
+    \pgfpathlineto{\pgfpointadd{\pgfpoint{\pgf@xb}{\pgf@ya}}{\ppd@offset}}
+    \pgfpathlineto{\pgfpointadd{\pgfpoint{\pgf@xb}{\pgf@yb}}{\ppd@offset}}
+    \pgfpathlineto{\pgfpointadd{\pgfpoint{\pgf@xa}{\pgf@yb}}{\ppd@offset}}
+    \pgfpathlineto{\pgfqpoint{\pgf@xa}{\pgf@yb}}
+    \pgfpathmoveto{\pgfqpoint{\pgf@xb}{\pgf@yb}}
+    \pgfpathlineto{\pgfpointadd{\pgfpoint{\pgf@xb}{\pgf@yb}}{\ppd@offset}}
+  }
+}
+\makeatother
+
+\tikzset{
+  ports/.style={
+    line width=0.3pt,
+    top color=gray!20,
+    bottom color=gray!80
+  },
+  server/.style={
+    parallelepiped,
+    fill=white, draw,
+    minimum width=0.35cm,
+    minimum height=0.75cm,
+    parallelepiped offset x=3mm,
+    parallelepiped offset y=2mm,
+    xscale=-1,
+    path picture={
+      \draw[top color=gray!5,bottom color=gray!40]
+      (path picture bounding box.south west) rectangle 
+      (path picture bounding box.north east);
+      \coordinate (A-center) at ($(path picture bounding box.center)!0!(path
+        picture bounding box.south)$);
+      \coordinate (A-west) at ([xshift=-0.575cm]path picture bounding box.west);
+      \draw[ports]([yshift=0.1cm]$(A-west)!0!(A-center)$)
+        rectangle +(0.2,0.065);
+      \draw[ports]([yshift=0.01cm]$(A-west)!0.085!(A-center)$)
+        rectangle +(0.15,0.05);
+      \fill[black]([yshift=-0.35cm]$(A-west)!-0.1!(A-center)$)
+        rectangle +(0.235,0.0175);
+      \fill[black]([yshift=-0.385cm]$(A-west)!-0.1!(A-center)$)
+        rectangle +(0.235,0.0175);
+      \fill[black]([yshift=-0.42cm]$(A-west)!-0.1!(A-center)$)
+        rectangle +(0.235,0.0175);
+    }  
+  },
+}
+
+% The following lines define a new command \nraocite that cites references in NRAO format RD0X by redefining \cite command to remove brackets. \nraoprecite includes a prenote.
+\DeclareCiteCommand{\cite} [\mkbibemph{\emph{}}]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \printtext[bibhyperref]{\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+\DeclareCiteCommand*{\cite} [\mkbibemph\emph{}]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}
+   \printtext[bibhyperref]{\usebibmacro{citeyear}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+\newcommand{\nraocite}[1]{[RD0\cite{#1}]}
+\newcommand{\nraoprecite}[2][]{[RD0\cite{#2}{, #1}]}
+
+
+% ASSIGN TITLE, AUTHOR, DATE, DOCUMENT NUMBER, STATUS, HERE
+\title{Title goes here}
+\author{Author
+    }% <-this % stops a space
+\date{Jan 1, 2000}
+\def\docnum{DOC NUM}
+\def\status{\textcolor{red}{DRAFT}}
+
+% HEADERS AND FOOTERS
+\renewcommand{\headrulewidth}{0pt}
+\fancyheadoffset[L,R]{2cm}
+\fancyhead[L]{\vspace{-1cm}\includegraphics[width=2cm]{images/NRAO Logo Badge.png}}
+\fancyhead[R]{
+\renewcommand{\arraystretch}{1.4}
+\renewcommand{\arrayrulewidth}{0.25pt}
+\begin{tabular}{|w{l}{6.7cm}|w{l}{4.9cm}|w{l}{3.4cm}|}
+    \hline
+        \multirow[t]{2}{6.7cm}{\textit{\textbf{Title:}} \thetitle} &
+        \textit{\textbf{Owner:}} \theauthor &
+        \textit{\textbf{Date:}}  \thedate \\
+            &   &   \\
+    \hline
+        \multicolumn{2}{|l|}{
+            \textit{\textbf{NRAO Doc \#:}} \docnum  
+        } &
+        \textit{\textbf{Version:}} A \\
+    \hline
+\end{tabular}
+}
+\fancyfoot[C]{Page \textbf{\thepage} of \textbf{\pageref{LastPage}}}
+
+ % DOCUMENT STARTS HERE
+\begin{document}
+\setlength{\leftmargin}{1in}        % Sets margin
+\setlength{\rightmargin}{1in}       % Sets margin
+\setlength{\voffset}{-1.2in}        % Moves header up
+\setlength{\headheight}{3.5cm}      % Defines header height
+\setlength{\textheight}{591pt}      % Extends text/body size down
+\setlength{\footskip}{60pt}         % Defines gap between body and footer
+
+\thispagestyle{fancy}
+\begin{center}
+     \includegraphics[width=5cm]{images/NRAO Logo Badge.png} \\
+     \vspace*{0.5cm}
+     \textbf{\huge\thetitle} \\
+     \vspace*{0.5cm}
+     \large\docnum \\
+     \Large Status: \status \\
+     \vspace*{0.6cm} \large
+     % FIRST TABLE HERE
+     \begin{tabular}{|m{6.93cm}|m{4.5cm}|m{2cm}|} \hline
+        \rowcolor{nraoblue}
+        \textbf{Prepared By} & \textbf{Organization} & \textbf{Date} \\ \hline
+        \makecell[l]{Author\\Title} & NRAO Electronics Div. & 1/1/2000 \\ 
+        \hline
+    \end{tabular} \\
+    \vspace*{0.8cm}
+    \begin{tabular}{|m{3cm}|m{3.5cm}|m{6.93cm}|} \hline
+        \rowcolor{nraoblue}
+        \textbf{Approvals} & \textbf{Organization} & \textbf{Signatures} \\ \hline
+    \end{tabular}
+    \renewcommand{\arraystretch}{2}
+    % CONTENT OF SECOND TABLE HERE
+    \begin{tabular}{|w{l}{3cm}|m{3.5cm}|m{6.93cm}|} \hline
+        \parbox{3cm}{\raggedright
+        Name\\Title
+        } & NRAO Electronics Division \raggedright &  \\ 
+        \hline
+        \parbox{3cm}{\raggedright
+        Name\\Title
+        } & NRAO Electronics Division \raggedright &  \\ 
+        \hline
+        \parbox{3cm}{\raggedright
+        Name\\Title
+        } & NRAO Electronics Division \raggedright &  \\ 
+        \hline
+    \end{tabular} \\
+    \renewcommand{\arraystretch}{1}
+    \vspace*{0.8cm}
+    \begin{tabular}{|m{3cm}|m{3.5cm}|m{6.93cm}|} \hline
+        \rowcolor{nraoblue}
+        \textbf{Released By} & \textbf{Organization} & \textbf{Signature} \\ \hline
+    \end{tabular}
+    \renewcommand{\arraystretch}{1.5}
+    % CONTENT OF THIRD TABLE HERE
+    \begin{tabular}{|m{3cm}|m{3.5cm}|m{6.93cm}|} \hline
+        \parbox{3cm}{\raggedright
+        Name\\Title
+        } & NRAO Electronics Division \raggedright &  \\ 
+        \hline
+    \end{tabular}
+    \renewcommand{\arraystretch}{1}
+\end{center}
+
+% CHANGE RECORD
+\newpage
+\section*{Change Record}
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{|m{1.5cm}|m{2.2cm}|m{2.5cm}|m{1.7cm}|m{5cm}|} \hline
+        \rowcolor{nraoblue}
+        Version & Date & Author & Affected\newline Section(s) & Reason\\ \hline
+    \end{tabular}
+\renewcommand{\arraystretch}{1.6}
+    \begin{tabular}{|m{1.5cm}|m{2.2cm}|m{2.5cm}|m{1.7cm}|m{5cm}|} \hline
+        01 & Aug 15, 2023 & R. Nguyen & All & Initial Draft \\ \hline
+        02 & Aug 16, 2023 & \makecell[l]{T. Anderson\\R. Nguyen} & All & Edits \\ \hline
+        A  & Aug 16, 2023 & T. Anderson & All & Review \\ \hline
+          &          &           &     &               \\ \hline
+          &          &           &     &               \\ \hline
+          &          &           &     &               \\ \hline
+          &          &           &     &               \\ \hline
+    \end{tabular}
+\renewcommand{\arraystretch}{1}
+\end{center}
+
+\newpage
+\tableofcontents
+\listoffigures
+\thispagestyle{fancy}
+\newpage
+
+\section{Introduction}
+
+\subsection{Purpose}
+
+
+\subsection{Scope}
+
+
+\subsection{Verb Convention}
+“Must” for an obligation; “must not” for a prohibition. 
+
+“May” for a discretionary action; “should” for a recommendation. 
+
+“Will” is used to indicate a future happening/action. 
+
+
+% \section{Related Documents and Drawings}
+% \subsection{Applicable Documents}
+% The following documents may not be directly referenced herein, but may provide necessary context or supporting material.
+% \begin{center}
+% \begin{tabular}{|m{2cm}|m{8cm}|m{3cm}|} \hline
+%     \rowcolor{nraoblue}
+%     Ref. No. & Document Title & Rev/Doc. No.\\ \hline
+%     AD01 & Desiderata for Solar Observing with the EVLA & EVLAM\_70 \\ 
+%     \hline
+%     AD02 & EVLA Hardware Modifications in Support of Solar Observing & EVLAM\_72 \\
+%     \hline
+% \end{tabular}
+% \end{center}
+
+% \subsection{Reference Documents}
+% The following documents are referenced within this text:
+% \begin{center}
+% \renewcommand{\arraystretch}{1.2}
+% \begin{tabular}{|m{2cm}|m{8cm}|m{3cm}|} \hline
+%     \rowcolor{nraoblue}
+%     Ref. No. & Document Title & Rev/Doc. No.\\ \hline
+%     RD01 & \citefield{solartemp}{title} & \href{https://ipnpr.jpl.nasa.gov/progress_report/42-175/175E.pdf}{Online} \\ \hline
+%     RD02 & \citefield{aeh}{title} & DSOC Bookcase \\\hline
+%     RD03 & \citefield{tora}{title} & Privately Owned \\\hline
+%     RD04 & \citefield{xbandvla}{title} & \href{https://tmo.jpl.nasa.gov/progress_report/42-92/92O.PDF}{Online} \\\hline
+%     RD05 & \citefield{sfd1986}{title} & \href{https://www.govinfo.gov/content/pkg/GOVPUB-C13-53a55ea34f3ca8aaacf289a9caa0bee6/pdf/GOVPUB-C13-53a55ea34f3ca8aaacf289a9caa0bee6.pdf}{Online} \\\hline
+% \end{tabular}
+% \renewcommand{\arraystretch}{1}
+% \end{center}
+
+\section{Section title}
+\label{sec:sectionlabel}
+Section text here
+
+\subsection{Subsection}
+\label{sec:subsectionlabel}
+Subsection text here
+\begin{enumerate}
+    \item List item
+    \item List item
+\end{enumerate}
+
+\begin{figure}[!ht]
+    \begin{center}
+        \begin{circuitikz}
+            \draw(0, 0) node[server, scale=1.5, name=computer]{};
+            \draw(computer.south) node[anchor=north]{};
+            \ctikzset{bipoles/oscope/waveform=triangle}
+            \ctikzset{bipoles/oscope/width=1.0}
+            \draw(computer.east)  ++ (0.6, 0) 
+            coordinate(ctreast)-- ++ (1, 0)
+            node[oscopeshape, anchor=west](spec){N9040b};
+            \draw(spec.in 1) node[ocirc, scale=0.7]{};
+            \draw(spec.in 2) node[ocirc, scale=0.7]{};
+            \draw(spec.east) -- ++ (1.8, 0)
+            node[twoportshape, name=s1]{} -- ++ (0.8, 0)
+            to[amp, boxed, invert] ++ (1.7, 0) -- ++ (0.8, 0)
+            node[twoportshape, name=s2]{};
+            \draw(s1.center) node[spdt, scale=0.6]{};
+            \draw(s2.center) node[spdt, xscale=-1, scale=0.6]{};
+            \node[draw, rectangle, dashed, fit=(s1) (s2), inner sep=10](box){};
+
+            \draw(s2.right up) -- ++ (1.7, 0)
+            node[dinantenna, xscale=-1](ems){\ctikzflipx{EMS}};
+            \draw(s2.right down) -- ++ (2.5, 0)
+            node[dinantenna](dfs){DFS};
+
+            \draw([yshift=5pt]box.north)[<-] -- ++ (0, 0.4)
+            node[qfpchip, anchor=south, external pins width=0, hide numbers, name=uc, solid, scale=0.8]{PLC};
+            
+            
+            \path[name path = border1](uc.west) -- ++ (-5, 0);
+            \path[name path = line1, overlay]([yshift=18pt]ctreast) -- +(45:5);
+            \draw[name intersections={of=border1 and line1}] ([yshift=18pt]ctreast) -- (intersection-1) -- (uc.west);
+            \path[name path=border2](intersection-1) -- ++ (0, -5);
+            \path[name path = line2, overlay]([yshift=-18pt]ctreast) -- +(-45:5);
+            \draw[name intersections={of=border2 and line2}] ([yshift=-18pt]ctreast) -- (intersection-1) coordinate(p1);
+            
+            \draw(p1) -- ++ (2, 0)
+            node[qfpchip, anchor=west, external pins width=0, hide numbers, name=acr, scale=0.8, align=center]{Motor\\Ctrl.};
+            \draw([yshift=-8pt]acr.east) -- ++ (3.5, 0)
+            node[elmech, rotate=90, anchor=top](m2){};
+            \draw(m2) [->, dashed] -| ([yshift=-10pt]dfs.center);
+            \draw([yshift=8pt]acr.east) -- ++ (1.5, 0)
+            node[elmech, rotate=90, anchor=top](m1){};
+            %\draw(m1) [->] -- ++ (3, 0) -- ([yshift=-10pt, xshift=-10pt]dfs.center);
+            \path[name path = border3](dfs.center) -- ++ (0, -2);
+            \path[name path = line3, overlay](m1.bottom) -- ++ (5, 0);
+            \draw[name intersections={of=border3 and line3}, dashed] (m1.bottom) -- (intersection-1)
+            node[diamondpole]{};
+            \draw(m1.center) node{Az};
+            \draw(m2.center) node{El};
+        \end{circuitikz}
+    \caption{Block diagram 2.}\label{fig:sysblock}
+    \end{center}
+\end{figure}
+\begin{figure}[!ht]
+  \begin{center}
+      \begin{circuitikz}
+          % \draw[help lines, dashed] grid (13, 3);
+          % \draw[help lines, dashed] grid (13, -3);
+
+          \draw(0, 0) node[bnc](port1){N9040b};
+          \draw(port1.hot) -- ++ (1, 0)
+          node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
+        
+          \draw(sw1.out 1) -| ++ (1.5, 1.5)
+          -- ++ (0.5, 0)
+          to[twoport, name=tp1, fill=green!20] ++ (2, 0)
+          to[amp, invert] ++ (2, 0)
+          to[amp, invert, name=emsref1] ++ (2, 0)
+          to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
+          node[antenna]{EMS};
+          % node[bnc, xscale=-1](port3){\ctikzflipx{EMS}};
+          
+          \draw(sw1.out 2) -| ++ (1.5, -1.5)
+          -- ++ (0.5, 0)
+          to[twoport, name=tp2, fill=green!20] ++ (2, 0)
+          to[amp, invert] ++ (2, 0)
+          to[amp, invert, name=dfsref1] ++ (2, 0)
+          to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
+          node[antenna]{DFS};
+          % node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
+
+          % Attenuator
+          \draw (tp1.center)
+          node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
+          \draw (tp1.north)
+          node[anchor=south]{62 ft Heliax};
+          \draw (tp2.center)
+          node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
+          \draw (tp2.north)
+          node[anchor=south]{120 ft Heliax};
+
+          % Switch labels and arrows
+          \draw(sw1.north) node[anchor=south](sw1lab){S1};
+          \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.2) node[anchor=south]{PLC};
+
+          % Amplifier labels
+          \draw(emsref1.north) ++ (0, 0.2) node[anchor=south]{PMA3-14LN+};
+          \draw(dfsref1.north) ++ (0, 0.1) node[anchor=south]{PMA3-14LN+};
+      \end{circuitikz}
+  \caption{Phase 2 Block Diagram}\label{fig:ph2ampblock}
+  \end{center}
+\end{figure}
+\begin{figure}[!ht]
+    \begin{center}
+        \begin{circuitikz}
+            \draw[help lines, dashed] grid (13, 3);
+            \draw[help lines, dashed] grid (13, -3);
+
+            \draw(0, 0) node[bnc](port1){N9040b};
+            \draw(port1.hot) -- ++ (1, 0)
+            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
+            
+            \draw(sw1.out 1) -- ++ (0.5, 0) |- ++ (0.75, 0.85)
+            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw2){};
+            
+            \draw(sw2.out 1) -| ++ (0.75, 0.75)
+            -- ++ (0.5, 0)
+            to[amp, invert] ++ (1.5, 0)
+            to[amp, invert, name=emsref1] ++ (1.5, 0)
+            to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
+            coordinate(p1);
+            
+            \draw(sw2.out 2) -| ++ (0.75, -0.75)
+            -- ++ (0.5 ,0)
+            to[amp, invert] ++ (1.5, 0)
+            to[amp, invert, name=emsref2] ++ (1.5, 0)
+            to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
+            coordinate(p2);
+
+            \draw($(p1)!0.5!(p2)$) ++ (1, 0)
+            node[rotary switch = 2 in 30 wiper 20, xscale=-1](sw3){};
+            \draw(sw3.out 1) -| (p1);
+            \draw(sw3.out 2) -| (p2);
+            \draw(sw3.in) -- ++ (1, 0)
+            node[bnc, xscale=-1](port2){\ctikzflipx{EMS}};
+            
+            \draw(sw1.out 2) -| ++ (1.5, -1.5)
+            -- ++ (1, 0)
+            to[amp, invert] ++ (2, 0)
+            to[amp, invert, name=dfsref1] ++ (2, 0)
+            to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
+            -- ++ (1.63, 0)
+            node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
+
+            % Switch labels and arrows
+            \draw(sw1.north) node[anchor=south](sw1lab){S1};
+            \draw(sw2.north) node[anchor=south](sw2lab){S2};
+            \draw(sw3.north) node[anchor=south](sw3lab){S3};
+            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.2) node[anchor=south]{PLC};
+            \draw(sw2lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
+            \draw(sw3lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
+
+            % Amplifier labels
+            \draw(emsref1.north) ++ (0, 0.2) node[anchor=south]{PMA3-14LN+};
+            \draw(emsref2.north) ++ (0, 0.2) node[anchor=south]{PMA-183PLN+};
+            \draw(dfsref1.north) ++ (0, 0.1) node[anchor=south]{TBD};
+        \end{circuitikz}
+    \caption{Phase 2 Block Diagram}\label{fig:ph3ampblock}
+    \end{center}
+\end{figure}
+
+\end{document}
+
+
