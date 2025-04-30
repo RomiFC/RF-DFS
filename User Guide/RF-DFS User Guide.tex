@@ -315,27 +315,31 @@ copy from readme/wiki/plan or something
 The Radio Frequency - Direction Finding System and Environmental Monitoring System are tools utilized by the NRAO-NM Interference Protection Group to identify and locate RF interference at the Very Large Array. The former is a 3-meter dish antenna with azimuth and elevation drives whereas the latter is a 50-foot tower with an omnidirectional club antenna. Both are connected to the RFI shack and controlled by a Python front end. This interface allows a user to control RF switching between both antennas and log data through a spectrum analyzer. 
 
 \subsection{System Overview}
-The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (emsmonpc2).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation.
+The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (emsmonpc2).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation. RF switching is controlled by a PLC in the RFI shack (not shown).
 
 \begin{figure}[!ht]
   \begin{center}
       \begin{circuitikz}
           % Shack
           \draw(0, 0) node[server, scale=1.5, name=computer]{};
-          \draw(computer.east) ++ (0.5, 0.2) node[anchor=west](computerlabel){PC};
+          % \draw(computer.east) ++ (0.5, 0.2) node[anchor=west](computerlabel){PC};
           \draw(computer.west) node[anchor=east]{};
           \ctikzset{bipoles/oscope/waveform=triangle}
           \ctikzset{bipoles/oscope/width=1.0}
           \draw(computer.west)  ++ (-1, 0.2) 
           coordinate(ctrwest)-- ++ (-1.2, 0)
           node[oscopeshape, anchor=east](spec){};
+          \draw(spec.west) -- ++ (-1.2, 0)
+          node[twoportshape, anchor=east](shackswitch){};
+          \draw(shackswitch.center) node[spdt, scale=0.6, xscale=-1]{};
           \draw(ctrwest) ++ (-0.6, 0) node[anchor=south]{GPIB};
           \draw(spec.south) node[anchor=north]{N9040b};
           \draw(spec.in 1) node[ocirc, scale=0.7]{};
           \draw(spec.in 2) node[ocirc, scale=0.7]{};
+          \draw(spec.west) ++ (-0.6, 0) node[anchor=south]{Coax};
 
           % DFS
-          \draw(spec.west) -- ++ (-2.5, 0)
+          \draw(shackswitch.west) -- ++ (-2, 0)
           to[amp, invert] ++ (-2, 0)
           to[amp, invert, name=dfslna1] ++ (-2, 0)
           -| ++ (-1, 0)
@@ -343,21 +347,26 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
           -- ++ (0, 0.5)
           node[bareantenna, anchor=south](dfsantenna){};
           % \draw(dfslna1.east) ++ (0.5, 0.5) node[anchor=south](){PMA3-14LN+};
-          \draw(spec.west) ++ (-1.3, 0) node[anchor=south]{Coax};
 
           % EMS
-          \draw(spec.north) -- ++ (0, 1.5)
-          to[amp, invert, name=emslna2] ++ (0, 2)
-          to[amp, invert, name=emslna1] ++ (0, 2)
+          % \draw(spec.north) -- ++ (0, 1.5)
+          % to[amp, invert, name=emslna2] ++ (0, 2)
+          % to[amp, invert, name=emslna1] ++ (0, 2)
+          % node[bareantenna, anchor=south](emsantenna){};
+          \draw(shackswitch.north) -- ++ (0, 2)
+          node[twoportshape, name=s1]{} -- ++ (0, 0.8)
+          to[amp, boxed, invert] ++ (0, 1) -- ++ (0, 0.8)
+          node[twoportshape, name=s2]{} -- ++ (0, 0.8)
           node[bareantenna, anchor=south](emsantenna){};
-          \draw(spec.north) ++ (0, 1)
-          node[anchor=west]{Coax};
+          % \draw(spec.north) ++ (0, 0.75) node[anchor=west]{Coax};
+          \draw(s1.center) node[spdt, scale=0.6, rotate=90]{};
+          \draw(s2.center) node[spdt, xscale=-1, scale=0.6, rotate=270]{};
           % \draw(emslna1) ++ (0, -0.7) node[anchor=west](emslnalabel){PMA3-14LN+};
 
           % Motor stuff
-          \draw(computer.south) |- ++ (-7, -1)
+          \draw(computer.south) |- ++ (-8.5, -1)
           node[qfpchip, anchor=west, external pins width=0, hide numbers, name=acr, scale=0.8, align=center]{Motor\\Ctrl.};
-          \draw(computer.south) ++ (-3.9, -1)
+          \draw(computer.south) ++ (0, -1)
           node[anchor=south east](seriallabel){RS-485};
           \draw([yshift=-8pt]acr.west) -- ++ (-2, 0)
           node[elmech, rotate=90, anchor=bottom](m2){};
@@ -374,8 +383,8 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
 
           % Boxes
           \node[draw, rectangle, dashed, fit=(dfsantenna) (acr), inner sep=10](dfsbox){};
-          \node[draw, rectangle, dashed, fit=(emsantenna) (emslna2), inner sep=10](emsbox){};
-          \node[draw, rectangle, dashed, fit=(spec) (computer) (computerlabel), inner sep=10](shackbox){};
+          \node[draw, rectangle, dashed, fit=(emsantenna) (s1), inner sep=10](emsbox){};
+          \node[draw, rectangle, dashed, fit=(shackswitch) (computer), inner sep=10](shackbox){};
 
           % Box Labels
           \draw(dfsbox.north) node[anchor=south]{RF - DFS};
