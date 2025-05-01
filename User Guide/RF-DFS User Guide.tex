@@ -397,6 +397,83 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
 
 \subsection{RF Signal Chain}
 asdf
+
+\begin{figure}[!ht]
+    \begin{center}
+        \begin{circuitikz}
+            % \draw[help lines, dashed] grid (14, 3);
+            % \draw[help lines, dashed] grid (14, -3);
+
+            \draw(0, 0) node[bnc](port1){N9040b};
+            \draw(port1.hot) -- ++ (1, 0)
+            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
+            
+            \draw(sw1.out 1) -- ++ (0.5, 0) 
+            to[twoport, name=emscableloss, fill=green!20] ++ (0, 2.35)
+            -- ++ (0.75, 0)
+            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw2){};
+            \draw (emscableloss.center) node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
+            
+            % EMS low band
+            \draw(sw2.out 1) -| ++ (0.75, 0.5)
+            -- ++ (0.5, 0)
+            to[amp, invert, t=\ctikzflipx{\footnotesize LNA}] ++ (2.75, 0)
+            coordinate(emsref1)
+            to[amp, invert, t=\ctikzflipx{\footnotesize LNA}] ++ (2.75, 0)
+            -- ++ (0.5, 0)
+            coordinate(p1);
+            
+            % EMS downconverted stage
+            \draw(sw2.out 2) -| ++ (0.75, -0.5) coordinate(asdf)
+            -- ++ (0.25 ,0)
+            to[amp, invert, name=ifamp, t=\ctikzflipx{IF}] ++ (1.5, 0)
+            -- ++ (0.25, 0) node[mixer, anchor=w, name=mixer1]{};
+            \draw(mixer1.e) -- ++ (0.25, 0)
+            to[bandpass] ++ (1.5, 0)
+            to[amp, invert, name=rfamp, t=\ctikzflipx{RF}] ++ (1.5, 0) -- ++ (0.25, 0)
+            coordinate(p2);
+            \draw(mixer1.s) -- ++ (0, -0.5)
+            node[anchor=north](pll){LO};
+            
+            % DFS
+            \draw(sw1.out 2) -| ++ (0.5, 0)
+            to[twoport, name=dfscableloss, fill=green!20] (current subpath start -| asdf)
+            -- (current subpath start -| p2)
+            node[ampshape, xscale=-1, anchor=east, fill=yellow!30, t=\ctikzflipx{\footnotesize LNA}](dfsref1){};
+            \draw(dfsref1.west)
+            to[amp, invert, t=\ctikzflipx{\footnotesize LNA}] ++ (2, 0)
+            node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
+            \draw (dfscableloss.center) node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
+            
+            % EMS port
+            \draw($(p1)!0.5!(p2)$) ++ (1, 0)
+            node[rotary switch = 2 in 30 wiper 20, xscale=-1](sw3){};
+            \draw(sw3.out 1) -| (p1);
+            \draw(sw3.out 2) -| (p2);
+            \draw(sw3.in) -- (sw3.in -| port3)
+            node[bnc, xscale=-1](port2){\ctikzflipx{EMS}};
+
+            % Switch labels and arrows
+            \draw(sw1.north) node[anchor=south](sw1lab){S1};
+            \draw(sw2.north) node[anchor=south](sw2lab){S2};
+            \draw(sw3.north) node[anchor=south](sw3lab){S3};
+            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 3.25) coordinate(sw1plclabel) node[anchor=south]{PLC};
+            \draw(sw2lab.north) [dashed, <-] -- (sw2lab.north |- sw1plclabel) node[anchor=south]{PLC};
+            \draw(sw3lab.north) [dashed, <-] -- (sw3lab.north |- sw1plclabel) node[anchor=south]{PLC};
+
+            % Phase 3 box            
+            \node[draw, rectangle, dashed, fit=(ifamp) (rfamp) (pll), inner sep=8](ph3box){};
+
+            % Labels
+            \draw([yshift=2pt]dfscableloss.north)[<-] -- ++ (0, 0.25) node[anchor=south](cablelosslabel){Cable loss};
+            \draw(cablelosslabel.north)[->] to [bend right=45] ([xshift=2pt]emscableloss.south);
+            \draw(ph3box.south east) node[anchor=south east]{Future Upgrade};
+            % \draw(emsref1.north |- sw1plclabel) node[anchor=south]{PMA3-14LN+};
+            % \draw(dfsref1.north) ++ (0.8, 0.2) node[anchor=south]{PMA3-14LN+};
+        \end{circuitikz}
+    \caption{Phase 2 Block Diagram}\label{fig:ph3ampblock}
+    \end{center}
+\end{figure}
 \begin{figure}[!ht]
   \begin{center}
     \input{figures/pma3-14ln+.pgf}
@@ -535,64 +612,7 @@ software installation stuff, ni-visa, other requirements
   \caption{Phase 2 Block Diagram}\label{fig:ph2ampblock}
   \end{center}
 \end{figure}
-\begin{figure}[!ht]
-    \begin{center}
-        \begin{circuitikz}
-            \draw[help lines, dashed] grid (13, 3);
-            \draw[help lines, dashed] grid (13, -3);
 
-            \draw(0, 0) node[bnc](port1){N9040b};
-            \draw(port1.hot) -- ++ (1, 0)
-            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
-            
-            \draw(sw1.out 1) -- ++ (0.5, 0) |- ++ (0.75, 0.85)
-            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw2){};
-            
-            \draw(sw2.out 1) -| ++ (0.75, 0.75)
-            -- ++ (0.5, 0)
-            to[amp, invert] ++ (1.5, 0)
-            to[amp, invert, name=emsref1] ++ (1.5, 0)
-            to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
-            coordinate(p1);
-            
-            \draw(sw2.out 2) -| ++ (0.75, -0.75)
-            -- ++ (0.5 ,0)
-            to[amp, invert] ++ (1.5, 0)
-            to[amp, invert, name=emsref2] ++ (1.5, 0)
-            to[amp, invert] ++ (1.5, 0) -- ++ (0.5, 0)
-            coordinate(p2);
-
-            \draw($(p1)!0.5!(p2)$) ++ (1, 0)
-            node[rotary switch = 2 in 30 wiper 20, xscale=-1](sw3){};
-            \draw(sw3.out 1) -| (p1);
-            \draw(sw3.out 2) -| (p2);
-            \draw(sw3.in) -- ++ (1, 0)
-            node[bnc, xscale=-1](port2){\ctikzflipx{EMS}};
-            
-            \draw(sw1.out 2) -| ++ (1.5, -1.5)
-            -- ++ (1, 0)
-            to[amp, invert] ++ (2, 0)
-            to[amp, invert, name=dfsref1] ++ (2, 0)
-            to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
-            -- ++ (1.63, 0)
-            node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
-
-            % Switch labels and arrows
-            \draw(sw1.north) node[anchor=south](sw1lab){S1};
-            \draw(sw2.north) node[anchor=south](sw2lab){S2};
-            \draw(sw3.north) node[anchor=south](sw3lab){S3};
-            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.2) node[anchor=south]{PLC};
-            \draw(sw2lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
-            \draw(sw3lab.north) [dashed, <-] -- ++ (0, 1) node[anchor=south]{PLC};
-
-            % Amplifier labels
-            \draw(emsref1.north) ++ (0, 0.2) node[anchor=south]{PMA3-14LN+};
-            \draw(emsref2.north) ++ (0, 0.2) node[anchor=south]{PMA-183PLN+};
-            \draw(dfsref1.north) ++ (0, 0.1) node[anchor=south]{TBD};
-        \end{circuitikz}
-    \caption{Phase 2 Block Diagram}\label{fig:ph3ampblock}
-    \end{center}
-\end{figure}
 
 \end{document}
 
