@@ -32,12 +32,14 @@
 \usepackage{fancyhdr}   % For headers and footers
 \pagestyle{fancy}
 \usepackage{lastpage}   % Allows referencing last page (for footer)
+\usepackage{listings}   % For highlighting code
 \usepackage{titling}    % To reference title, author, and date
 \usepackage{array}      % For fixed-width tables
 \usepackage{makecell}   % Formats individual table cells
 \usepackage{multirow}   % For multi-row columns (Top left justify header)
 \usepackage[american]{circuitikz} % Used to draw circuit and block diagrams
 \usepackage{appendix}   
+\usepackage{xcolor}     % For coloring code listings
 \usepackage{colortbl}   % For coloring table cells
 \definecolor{nraoblue}{rgb}{0.776,0.851,0.945}  % Color of table headers
 \usepackage{enumitem}   % For formatting enumerated lists
@@ -73,6 +75,32 @@
     BoldItalicFont  = gil-bi.ttf,
 ]
 
+% Code listing styling
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
 % Global TikZ parameters
 \tikzset{every picture/.style={/utils/exec={\fontfamily{lmr}}}}
 \ctikzset{sources/fill=red!20}
@@ -531,7 +559,46 @@ software installation stuff, ni-visa, other requirements
 \subsubsection{Antenna Position}
 \subsubsection{Spectrum Analyzer Controls}
 \subsubsection{Terminal}
+Python commands can also be evaluated or executed in the terminal, the difference between both commands is described in the Python documentation. It is highly recommended to reference the source code when issuing terminal commands, as this has the potential for deadlock, race conditions, and other undefined scenarios if care is not taken. Instances, their attributes, and methods, can all be accessed using the terminal although all commands will be generated in the main thread. As a result, most IO calls will be blocking for the duration of their execution. This can be avoided by using a thread handler, if it exists in the appropriate scope, or generating a thread for the given IO call. See:
 
+\verb|SpecAn.setAnalyzerThreadHandler|:
+\begin{lstlisting}[language=Python]
+class SpecAn(FrontEnd):
+    def setAnalyzerThreadHandler(self, *event, **kwargs):
+        _dict = {}
+        for key in kwargs:
+            _dict[key] = kwargs.get(key)
+        thread = threading.Thread(target=self.setAnalyzerValue, kwargs=_dict)
+        thread.start()
+\end{lstlisting}
+
+\verb|SerialIO.threadHandler|:
+\begin{lstlisting}[language=Python]
+class SerialIO:
+    def threadHandler(self, target, args=(), kwargs={}):
+    """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
+
+    Args:
+        target (method): Callable object to be invoked by the run() method.
+        args (tuple, optional): List or tuple for target invocation. Defaults to ().
+        kwargs (dict, optional): Dictionary of keyword arguments for target invocation. Defaults to {}.
+    """
+    if not hasattr(SerialIO, target.__name__):
+        logging.error(f'Class SerialIO does not contain a method with identifier {target.__name__}')
+        return
+    thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
+    thread.start()
+\end{lstlisting}
+
+Or, if generating a thread using the \verb|Execute| function, use semicolons to separate lines of code.
+\begin{lstlisting}[language=Python]
+thread=threading.Thread(target=Vi.openRsrc.write, args=(":SENS:FREQ:STOP 10e9",), daemon=True);thread.start()
+\end{lstlisting}
+Is equivalent to\dots
+\begin{lstlisting}[language=Python]
+thread=threading.Thread(target=Vi.openRsrc.write, args=(":SENS:FREQ:STOP 10e9",), daemon=True)
+thread.start()
+\end{lstlisting}  
 
 \begin{figure}[!ht]
     \begin{center}
