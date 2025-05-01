@@ -396,7 +396,13 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
 \end{figure}
 
 \subsection{RF Signal Chain}
-asdf
+Each system has a single 50-10000 MHz receiver but the framework is in place to add additional receivers relatively easily. Figure~\ref{fig:rfblock} shows an RF block diagram of existing components and the plan for an additional 6-18 GHz receiver on the EMS tower.
+
+All switches are Dynatech Microwave M4-413K201L SP4T relay switches. Switches S2 and S3 are already installed in the EMS tower to make adding a receiver as streamlined as possible. The reason there are no switches at the DFS is because it requires either a redesign of the LNA housing to fit relay switches or solid state switches that are integrated on a board with the other RF components.
+
+The coaxial cables running up the tower and to the dish are Andrew LDF1-50 1/4'' heliax cables with an upper frequency limit of 15800 MHz. The loss is around 21 dB/100ft at 16 GHz, as such, it may be required to build a downconverting stage for any higher frequency receivers, especially with the relatively long cable runs present in these systems.
+
+The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wideband low noise MMICs. The boards that house these amplifiers are designed in house and fabricated on OSHPark 4-layer stackups in order to save cost over using prebuilt components. Figure~\ref{fig:pma3} shows the gain and noise figure of an assembled amplifier over the operating frequency.
 
 \begin{figure}[!ht]
     \begin{center}
@@ -406,16 +412,16 @@ asdf
 
             \draw(0, 0) node[bnc](port1){N9040b};
             \draw(port1.hot) -- ++ (1, 0)
-            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
+            node[rotary switch = 4 in 60 wiper 60, anchor=in](sw1){};
             
-            \draw(sw1.out 1) -- ++ (0.5, 0) 
-            to[twoport, name=emscableloss, fill=green!20] ++ (0, 2.35)
+            \draw(sw1.out 1) -- ++ (0.75, 0) 
+            to[twoport, name=emscableloss, fill=green!20] ++ (0, 2.75)
             -- ++ (0.75, 0)
-            node[rotary switch = 2 in 30 wiper 20, anchor=in](sw2){};
+            node[rotary switch = 4 in 60 wiper 60, anchor=in](sw2){};
             \draw (emscableloss.center) node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
             
             % EMS low band
-            \draw(sw2.out 1) -| ++ (0.75, 0.5)
+            \draw(sw2.out 1) -| ++ (1, 0.5) coordinate(abcd)
             -- ++ (0.5, 0)
             to[amp, invert, t=\ctikzflipx{\footnotesize LNA}] ++ (2.75, 0)
             coordinate(emsref1)
@@ -424,16 +430,18 @@ asdf
             coordinate(p1);
             
             % EMS downconverted stage
-            \draw(sw2.out 2) -| ++ (0.75, -0.5) coordinate(asdf)
+            \draw(sw2.out 2) -- (current subpath start -| abcd)
+            -- ++ (0, -0.75)
+            coordinate(asdf)
             -- ++ (0.25 ,0)
             to[amp, invert, name=ifamp, t=\ctikzflipx{IF}] ++ (1.5, 0)
-            -- ++ (0.25, 0) node[mixer, anchor=w, name=mixer1]{};
+            -- ++ (0.25, 0) node[mixer, anchor=w, name=mixer1, fill=cyan!20]{};
             \draw(mixer1.e) -- ++ (0.25, 0)
             to[bandpass] ++ (1.5, 0)
             to[amp, invert, name=rfamp, t=\ctikzflipx{RF}] ++ (1.5, 0) -- ++ (0.25, 0)
             coordinate(p2);
-            \draw(mixer1.s) -- ++ (0, -0.5)
-            node[anchor=north](pll){LO};
+            \draw(mixer1.s)[<-] -- ++ (0, -0.5)
+            node[oscillator, anchor=north, fill=cyan!20](pll){LO};
             
             % DFS
             \draw(sw1.out 2) -| ++ (0.5, 0)
@@ -446,8 +454,8 @@ asdf
             \draw (dfscableloss.center) node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
             
             % EMS port
-            \draw($(p1)!0.5!(p2)$) ++ (1, 0)
-            node[rotary switch = 2 in 30 wiper 20, xscale=-1](sw3){};
+            \draw(sw2 -| p1) ++ (1, 0)
+            node[rotary switch = 4 in 60 wiper 60, xscale=-1](sw3){};
             \draw(sw3.out 1) -| (p1);
             \draw(sw3.out 2) -| (p2);
             \draw(sw3.in) -- (sw3.in -| port3)
@@ -457,7 +465,7 @@ asdf
             \draw(sw1.north) node[anchor=south](sw1lab){S1};
             \draw(sw2.north) node[anchor=south](sw2lab){S2};
             \draw(sw3.north) node[anchor=south](sw3lab){S3};
-            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 3.25) coordinate(sw1plclabel) node[anchor=south]{PLC};
+            \draw(sw1lab.north) [dashed, <-] -- ++ (0, 3.5) coordinate(sw1plclabel) node[anchor=south]{PLC};
             \draw(sw2lab.north) [dashed, <-] -- (sw2lab.north |- sw1plclabel) node[anchor=south]{PLC};
             \draw(sw3lab.north) [dashed, <-] -- (sw3lab.north |- sw1plclabel) node[anchor=south]{PLC};
 
@@ -465,13 +473,13 @@ asdf
             \node[draw, rectangle, dashed, fit=(ifamp) (rfamp) (pll), inner sep=8](ph3box){};
 
             % Labels
-            \draw([yshift=2pt]dfscableloss.north)[<-] -- ++ (0, 0.25) node[anchor=south](cablelosslabel){Cable loss};
+            \draw([yshift=2pt]dfscableloss.north)[<-] -- ++ (0, 0.15) node[anchor=south](cablelosslabel){Cable loss};
             \draw(cablelosslabel.north)[->] to [bend right=45] ([xshift=2pt]emscableloss.south);
             \draw(ph3box.south east) node[anchor=south east]{Future Upgrade};
             % \draw(emsref1.north |- sw1plclabel) node[anchor=south]{PMA3-14LN+};
             % \draw(dfsref1.north) ++ (0.8, 0.2) node[anchor=south]{PMA3-14LN+};
         \end{circuitikz}
-    \caption{Phase 2 Block Diagram}\label{fig:ph3ampblock}
+    \caption{Phase 2 Block Diagram}\label{fig:rfblock}
     \end{center}
 \end{figure}
 \begin{figure}[!ht]
@@ -484,6 +492,21 @@ asdf
 \section{Hardware Installation Guide}\label{sec:hig}
 \subsection{RFI Shack Components}
 shack panel, switching, plc, n9040b, other stuff. PLC cat6 pinout, rs232 db9 pinout,
+
+The major components located in the RFI shack are as follows:
+\begin{enumerate}
+  \item Windows PC \verb|EMSMONPC2|
+  \item Keysight N9040B Spectrum Analyzer
+  \item Panel containing:
+  \begin{enumerate}
+    \item One Dynatech Microwave M4-413K201L SP4T relay switch
+    \item One DIN-mounted AutomationDirect P1AM-100 PLC with an attached P1-15TD2 output module
+    \item One DIN-mounted Advantech BB-HESP4DR RS-422/485 dataline surge suppressor
+    \item One SerialComm RS-232 to 4 wire RS-422/485 converter
+    \item Two L-com AL-CAT6AJW CAT6a Lightning Protectors
+  \end{enumerate}
+\end{enumerate}
+
 \subsection{RF-DFS Components}
 motor controller, motors, serial lps
 \subsection{RF-EMS Components}
