@@ -161,7 +161,7 @@
   }
 }
 \makeatother
-
+% I don't even remember what this does
 \tikzset{
   ports/.style={
     line width=0.3pt,
@@ -195,6 +195,45 @@
         rectangle +(0.235,0.0175);
     }  
   },
+}
+% Wiring diagram matrix stuff (syntax for jumping lines and block styles)
+\tikzset{
+    connect/.style args={(#1) to (#2) over #3 by #4}{
+        insert path={
+            \pgfextra{
+                \pgfinterruptpath
+                    \path [name path=userpath] (#1) -- (#2);
+                    \path [name intersections={of=userpath and #3,by=overpoint}];
+                \endpgfinterruptpath                
+            }
+            let \p1=($(#1)-(overpoint)$), \n1={veclen(\x1,\y1)}, 
+                            \n2={atan2(\y1,\x1)}, \n3={abs(#4)}, \n4={#4>0 ?180:-180}  in 
+                            (#1) -- ($(#1)!\n1-\n3!(overpoint)$) 
+                            arc (\n2:\n2+\n4:\n3) -- (#2)
+        }
+    },
+}
+\tikzset{wire board/.style={
+          matrix of nodes,
+          row sep={17pt, between origins},
+          nodes={anchor=center, minimum height=14pt} % set min height or else distance from matrix.north to first row will change depending on the content of the first row
+          },
+        wiresright/.style={
+          column 1/.style={nodes={left}},
+          column 2/.style={font=\bfseries},
+          column 3/.style={nodes={above right}},
+          },
+        wiresboth/.style={
+          column 1/.style={nodes={above left}},
+          column 2/.style={font=\bfseries},
+          column 4/.style={font=\bfseries},
+          column 5/.style={nodes={above right}},
+          },
+        wiresleft/.style={
+          column 1/.style={nodes={above left}},
+          column 2/.style={font=\bfseries},
+          column 3/.style={nodes={right}},
+        },
 }
 
 % The following lines define a new command \nraocite that cites references in NRAO format RD0X by redefining \cite command to remove brackets. \nraoprecite includes a prenote.
@@ -537,55 +576,13 @@ The major components located in the RFI shack are as follows:
   \end{enumerate}
 \end{enumerate}
 
-%%% Adapted from https://tex.stackexchange.com/a/111674/114143
-%%% provides syntax for jumping lines
-\tikzset{
-    connect/.style args={(#1) to (#2) over #3 by #4}{
-        insert path={
-            \pgfextra{
-                \pgfinterruptpath
-                    \path [name path=userpath] (#1) -- (#2);
-                    \path [name intersections={of=userpath and #3,by=overpoint}];
-                \endpgfinterruptpath                
-            }
-            let \p1=($(#1)-(overpoint)$), \n1={veclen(\x1,\y1)}, 
-                            \n2={atan2(\y1,\x1)}, \n3={abs(#4)}, \n4={#4>0 ?180:-180}  in 
-                            (#1) -- ($(#1)!\n1-\n3!(overpoint)$) 
-                            arc (\n2:\n2+\n4:\n3) -- (#2)
-        }
-    },
-}
-
-%% Block styles (to avoid repetition and ease our lives)
-\tikzset{wire board/.style={
-          matrix of nodes,
-          row sep={17pt, between origins},
-          nodes={anchor=center, minimum height=14pt} % set min height or else distance from matrix.north to first row will change depending on the content of the first row
-          },
-        converter/.style={
-          column 1/.style={nodes={left}},
-          column 2/.style={font=\bfseries},
-          column 3/.style={nodes={above right}},
-          },
-        lps/.style={
-          column 1/.style={nodes={above left}},
-          column 2/.style={font=\bfseries},
-          column 4/.style={font=\bfseries},
-          column 5/.style={nodes={above right}},
-          },
-        db9/.style={
-          column 1/.style={nodes={above left}},
-          column 2/.style={font=\bfseries},
-          column 3/.style={nodes={right}},
-        },
-}
 \begin{figure}[!ht]
   \begin{center}
     \begin{tikzpicture}
       % \draw[help lines, dashed] grid (12, 3);
       % \draw[help lines, dashed] grid (12, -7);
       % CONVERTER
-      \matrix[wire board,converter] (converter) {
+      \matrix[wire board, wiresright] (converter) {
         Tx-   &  1   &   \scriptsize D-001   \\
         Tx+   &  2   &   \scriptsize D-002   \\
         Rx+   &  3   &   \scriptsize D-003   \\
@@ -597,7 +594,7 @@ The major components located in the RFI shack are as follows:
         \draw (p1) node[anchor=south west, align=left]{to PC COM1\\\textbf{RS-232 to RS-485}};
 
         % LIGHTNING PROTECTION SYSTEM
-        \matrix[wire board, lps, matrix anchor=north, right=5cm of converter.north] (lps) {
+        \matrix[wire board, wiresboth, matrix anchor=north, right=5cm of converter.north] (lps) {
           \scriptsize D-006 &   A   &  -----  &  M  & \scriptsize Green\\
           \scriptsize D-004 &   B   &  -----  &  L  & \scriptsize Wh/Gr\\
           \scriptsize aaaaa &   C   &  -----  &  K  & \scriptsize Wh/Red\\
@@ -612,7 +609,7 @@ The major components located in the RFI shack are as follows:
         \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{HESP4DR};
 
         % DB9 CONNECTOR
-        \matrix[wire board, db9, matrix anchor=north, right=5cm of lps.north] (db9) {
+        \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (db9) {
           \scriptsize Wh/Red &   1   &   RX485- \\
           \scriptsize Red   &   2   &   RX232/RX485 \\
           \scriptsize Green &   3   &   TX232/TX485- \\
@@ -652,7 +649,109 @@ The major components located in the RFI shack are as follows:
 
 \end{tikzpicture}
 \end{center}
-\caption{Serial wiring diagram.}\label{fig:serialwiring}
+\caption{RS-485 serial wiring diagram for connecting the PC to the ACR9000 motor controller. Note that Pins 7 and 9 on the ACR9000 should be connected to GND when using 4-wire RS-485 and left open when using RS-232.}\label{fig:serialwiring}
+\end{figure}
+
+\begin{figure}[!ht]
+  \begin{center}
+    \begin{tikzpicture}
+      % \draw[help lines, dashed] grid (12, 3);
+      % \draw[help lines, dashed] grid (12, -7);
+      % PLC
+      \matrix[wire board, wiresright] (plc) {
+        asdf   &  V1  &   \scriptsize D-001   \\
+        asdf   &  1   &   \scriptsize D-001   \\
+        asdf   &  2   &   \scriptsize D-002   \\
+        asdf   &  3   &   \scriptsize D-003   \\
+        asdf   &  4   &   \scriptsize D-004   \\
+        asdf   &  5   &   \scriptsize Black   \\
+        asdf   &  6   &   \scriptsize Black   \\
+        asdf   &  7   &   \scriptsize Black   \\
+        asdf   &  8   &   \scriptsize Black   \\
+        asdf   &  V2  &   \scriptsize D-001   \\
+        asdf   &  9   &   \scriptsize D-001   \\
+        asdf   &  10  &   \scriptsize D-002   \\
+        asdf   &  11  &   \scriptsize D-003   \\
+        asdf   &  12  &   \scriptsize D-004   \\
+        asdf   &  13  &   \scriptsize Black   \\
+        asdf   &  14  &   \scriptsize Black   \\
+        asdf   &  15  &   \scriptsize Black   \\
+        asdf   &  0V  &   \scriptsize Black   \\
+        };
+        \draw (plc-1-2.north east) rectangle (plc-9-1.south east);
+        \draw (plc-10-2.north east) rectangle (plc-17-1.south east);
+        \draw (plc-18-2.north east) rectangle (plc-18-1.south east);
+        \draw (plc-1-2.north west)+(-1.5cm,0.5cm) coordinate(p1) rectangle ($(plc-18-2.south west)+(0,-0.5cm)$);
+        \draw (p1) node[anchor=south west, align=left]{\textbf{P1-15TD2}};
+
+        % CAT6 LIGHTNING PROTECTION SYSTEM
+        \matrix[wire board, wiresboth, matrix anchor=north, right=5cm of plc.north] (lps) {
+          \scriptsize Wh/Or &   1   &  -----  &  1  & \scriptsize Wh/Or\\
+          \scriptsize Orange&   2   &  -----  &  2  & \scriptsize Orange\\
+          \scriptsize Wh/Gr &   3   &  -----  &  3  & \scriptsize Wh/Gr\\
+          \scriptsize Blue  &   4   &  -----  &  4  & \scriptsize Blue\\
+          \scriptsize Wh/Bl &   5   &  -----  &  5  & \scriptsize Wh/Bl\\
+          \scriptsize Green &   6   &  -----  &  6  & \scriptsize Green\\
+          \scriptsize Wh/Br &   7   &  -----  &  7  & \scriptsize Wh/Br\\
+          \scriptsize Brown &   8   &  -----  &  8  & \scriptsize Brown\\
+        };
+        % Boxing the contents
+        \draw (lps-1-2.north east) rectangle (lps-8-2.south west);
+        \draw (lps-1-4.north east) rectangle (lps-8-4.south west);
+        \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-8-4.south west)+(0cm,-0.5cm)$);
+        \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{CAT6a LPS};
+
+        % RF SWITCHES 2 AND 3
+        \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (emsswitches) {
+          \scriptsize Red   &   +A  & +28VDC \\
+          \scriptsize Black &   -B  & GND \\
+          \scriptsize Grey  &   1   & Port 1 \\
+          \scriptsize Purple&   2   & Port 2 \\
+          \scriptsize Blue  &   3   & Port 3 \\
+          \scriptsize Green &   4   & Port 4 \\
+        };
+        \draw (emsswitches-1-2.north west) rectangle (emsswitches-6-3.south west);
+        \draw (emsswitches-1-3.north west)+(3cm,0.5cm) coordinate(p3) rectangle ($(emsswitches-6-3.south west)+(0,-0.5cm)$);
+        \draw (p3) node[anchor=south east, align=right]{\textbf{Switches S2 and S3}};
+
+        % RF SWITCHES 1
+        \path (plc.south) -- (plc.south -| emsswitches.south)
+        node[matrix, wire board, wiresleft, matrix anchor=south] (shackswitch) {
+          \scriptsize Red   &   +A  & +28VDC \\
+          \scriptsize Black &   -B  & GND \\
+          \scriptsize Grey  &   1   & Port 1 \\
+          \scriptsize Purple&   2   & Port 2 \\
+          \scriptsize Blue  &   3   & Port 3 \\
+          \scriptsize Green &   4   & Port 4 \\
+        };
+        \draw (shackswitch-1-2.north west) rectangle (shackswitch-6-3.south west);
+        \draw (shackswitch-1-3.north west)+(3cm,0.5cm) coordinate(p3) rectangle ($(shackswitch-6-3.south west)+(0,-0.5cm)$);
+        \draw (p3) node[anchor=south east, align=right]{\textbf{Switch 1}};
+
+        % WIRING 
+        % NOTE: WIRE FROM THE SMALL TEXT CORNER ANCHOR, NOT THE NUMBERED ANCHORS
+        \draw(plc-1-2) -- (lps-1-2);
+        \draw(plc-2-2) -- (lps-2-2);
+        \draw(plc-3-2) -- (lps-3-2);
+        \draw(plc-4-2) -- (lps-4-2);
+        \path(plc-5-2) -- coordinate[midway](m) (lps-5-2);
+        \draw(plc-5-2) -- (m) |- (lps-6-2);
+
+        \path(lps-1-4) -- coordinate[midway](m) (emsswitches-1-2);
+        \path(lps-1-4) -- coordinate[midway](1quarter) (m);
+        \path(m) -- coordinate[midway](3quarter) (emsswitches-1-2);
+        \path(1quarter) -- coordinate[midway](3eighth) (m);
+        \path(m) -- coordinate[midway](5eighth) (3quarter);
+
+        \draw(lps-1-4) -- (3eighth) -- (emsswitches-3-2 -| 5eighth) -- (emsswitches-3-2);
+        \draw(lps-2-4) -- (lps-2-4 -| 3eighth) -- (emsswitches-4-2 -| 5eighth) -- (emsswitches-4-2);
+        \draw(lps-3-4) -- (lps-3-4 -| 3eighth) -- (5eighth) -- (emsswitches-1-2);
+        \draw(lps-4-4) -- (lps-4-4 -| 3eighth) -- (emsswitches-2-2 -| 5eighth) -- (emsswitches-2-2);
+        \draw(lps-6-4) -- (lps-6-4 -| m) coordinate(gndm);
+        \draw(gndm) |- (emsswitches-5-2);
+\end{tikzpicture}
+\end{center}
+\caption{AAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHH.}\label{fig:rfswitchwiring}
 \end{figure}
 
 \subsection{RF-DFS Components}
@@ -673,7 +772,25 @@ opcodes
 copy everything from github wiki
 \subsection{Getting Started}
 software installation stuff, ni-visa, other requirements
+
+In order to use the front-end interface, download the following deployment requirements and the latest release on \verb|EMSMONPC2|, then run the executable.
+\begin{enumerate}
+  \item NI-VISA
+  \item NI-488.2 if the spectrum analyzer connection is GPIB
+\end{enumerate}
+
 \subsection{Using the Program}
+After starting the program, navigate to \verb|Options>Configure| at the top left banner to connect to the appropriate devices/COM ports. The \verb|Connection Status| window will let you know if a device is connected, however, it is up to the user to ensure that the correct device has been selected in the \verb|Configure| menu. The terminal will output any initialization errors (such as if the wrong device/port is selected).
+
+From here, the user can issue SCPI commands to the spectrum analyzer using the control panel on the right, issue motor commands using the \verb|Antenna Position| panel, or select RF chains using the \verb|PLC Operations| panel on the left. Commands can be issued to the spectrum analyzer by either selecting a button or typing an entry and pressing \verb|Enter|. All entries will be issued in base units for the given parameter (Hz, seconds, etc.), however, shorthand scientific notation is allowed (5e9 will be passed as 5 GHz).
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth]{images/3gui.png}
+  \end{center}
+  \caption{asdf}\label{fig:gui}
+\end{figure}
+
 \subsubsection{Header}
 \subsubsection{Control Panel}
 \subsubsection{Antenna Position}
@@ -712,110 +829,6 @@ Is equivalent to\dots
 thread=threading.Thread(target=Vi.openRsrc.write, args=(":SENS:FREQ:STOP 10e9",), daemon=True)
 thread.start()
 \end{lstlisting}  
-
-\begin{figure}[!ht]
-    \begin{center}
-        \begin{circuitikz}
-            \draw(0, 0) node[server, scale=1.5, name=computer]{};
-            \draw(computer.south) node[anchor=north]{};
-            \ctikzset{bipoles/oscope/waveform=triangle}
-            \ctikzset{bipoles/oscope/width=1.0}
-            \draw(computer.east)  ++ (0.6, 0) 
-            coordinate(ctreast)-- ++ (1, 0)
-            node[oscopeshape, anchor=west](spec){N9040b};
-            \draw(spec.in 1) node[ocirc, scale=0.7]{};
-            \draw(spec.in 2) node[ocirc, scale=0.7]{};
-            \draw(spec.east) -- ++ (1.8, 0)
-            node[twoportshape, name=s1]{} -- ++ (0.8, 0)
-            to[amp, boxed, invert] ++ (1.7, 0) -- ++ (0.8, 0)
-            node[twoportshape, name=s2]{};
-            \draw(s1.center) node[spdt, scale=0.6]{};
-            \draw(s2.center) node[spdt, xscale=-1, scale=0.6]{};
-            \node[draw, rectangle, dashed, fit=(s1) (s2), inner sep=10](box){};
-
-            \draw(s2.right up) -- ++ (1.7, 0)
-            node[dinantenna, xscale=-1](ems){\ctikzflipx{EMS}};
-            \draw(s2.right down) -- ++ (2.5, 0)
-            node[dinantenna](dfs){DFS};
-
-            \draw([yshift=5pt]box.north)[<-] -- ++ (0, 0.4)
-            node[qfpchip, anchor=south, external pins width=0, hide numbers, name=uc, solid, scale=0.8]{PLC};
-            
-            
-            \path[name path = border1](uc.west) -- ++ (-5, 0);
-            \path[name path = line1, overlay]([yshift=18pt]ctreast) -- +(45:5);
-            \draw[name intersections={of=border1 and line1}] ([yshift=18pt]ctreast) -- (intersection-1) -- (uc.west);
-            \path[name path=border2](intersection-1) -- ++ (0, -5);
-            \path[name path = line2, overlay]([yshift=-18pt]ctreast) -- +(-45:5);
-            \draw[name intersections={of=border2 and line2}] ([yshift=-18pt]ctreast) -- (intersection-1) coordinate(p1);
-            
-            \draw(p1) -- ++ (2, 0)
-            node[qfpchip, anchor=west, external pins width=0, hide numbers, name=acr, scale=0.8, align=center]{Motor\\Ctrl.};
-            \draw([yshift=-8pt]acr.east) -- ++ (3.5, 0)
-            node[elmech, rotate=90, anchor=top](m2){};
-            \draw(m2) [->, dashed] -| ([yshift=-10pt]dfs.center);
-            \draw([yshift=8pt]acr.east) -- ++ (1.5, 0)
-            node[elmech, rotate=90, anchor=top](m1){};
-            %\draw(m1) [->] -- ++ (3, 0) -- ([yshift=-10pt, xshift=-10pt]dfs.center);
-            \path[name path = border3](dfs.center) -- ++ (0, -2);
-            \path[name path = line3, overlay](m1.bottom) -- ++ (5, 0);
-            \draw[name intersections={of=border3 and line3}, dashed] (m1.bottom) -- (intersection-1)
-            node[diamondpole]{};
-            \draw(m1.center) node{Az};
-            \draw(m2.center) node{El};
-        \end{circuitikz}
-    \caption{Block diagram 2.}\label{fig:sysblock}
-    \end{center}
-\end{figure}
-
-\begin{figure}[!ht]
-  \begin{center}
-      \begin{circuitikz}
-          % \draw[help lines, dashed] grid (13, 3);
-          % \draw[help lines, dashed] grid (13, -3);
-
-          \draw(0, 0) node[bnc](port1){N9040b};
-          \draw(port1.hot) -- ++ (1, 0)
-          node[rotary switch = 2 in 30 wiper 20, anchor=in](sw1){};
-        
-          \draw(sw1.out 1) -| ++ (1.5, 1.5)
-          -- ++ (0.5, 0)
-          to[twoport, name=tp1, fill=green!20] ++ (2, 0)
-          to[amp, invert, name=emsref1] ++ (2, 0)
-          to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
-          node[antenna]{EMS};
-          % node[bnc, xscale=-1](port3){\ctikzflipx{EMS}};
-          
-          \draw(sw1.out 2) -| ++ (1.5, -1.5)
-          -- ++ (0.5, 0)
-          to[twoport, name=tp2, fill=green!20] ++ (2, 0)
-          to[amp, invert, name=dfsref1] ++ (2, 0)
-          to[amp, invert] ++ (2, 0) -- ++ (0.5, 0)
-          node[antenna]{DFS};
-          % node[bnc, xscale=-1](port3){\ctikzflipx{DFS}};
-
-          % Attenuator
-          \draw (tp1.center)
-          node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
-          \draw (tp1.north)
-          node[anchor=south]{62 ft Heliax};
-          \draw (tp2.center)
-          node[resistorshape, anchor = center, rotate = 90, scale = 0.8]{};
-          \draw (tp2.north)
-          node[anchor=south]{100 ft Heliax};
-
-          % Switch labels and arrows
-          \draw(sw1.north) node[anchor=south](sw1lab){S1};
-          \draw(sw1lab.north) [dashed, <-] -- ++ (0, 2.2) node[anchor=south]{PLC};
-
-          % Amplifier labels
-          \draw(emsref1.north) ++ (1, 0.2) node[anchor=south]{PMA3-14LN+};
-          \draw(dfsref1.north) ++ (1, 0.1) node[anchor=south]{PMA3-14LN+};
-      \end{circuitikz}
-  \caption{Phase 2 Block Diagram}\label{fig:ph2ampblock}
-  \end{center}
-\end{figure}
-
 
 \end{document}
 
