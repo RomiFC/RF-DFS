@@ -15,7 +15,9 @@
 \usepackage{geometry}
 \usepackage{tikz}
 \usetikzlibrary{fit}
+\usetikzlibrary{positioning}
 \usetikzlibrary{intersections}
+\usetikzlibrary{matrix}
 \usepackage{pgf}        % Used to import pgf figures with \input
 \def\mathdefault#1{#1}  % Fixes 'Undefined control sequence \mathdefault' in imported pgf files
 \usepackage{pgfplots}
@@ -528,12 +530,130 @@ The major components located in the RFI shack are as follows:
   \item Panel containing:
   \begin{enumerate}
     \item One Dynatech Microwave M4-413K201L SP4T relay switch
-    \item One DIN-mounted AutomationDirect P1AM-100 PLC with an attached P1-15TD2 output module
+    \item One DIN-mounted AutomationDirect P1AM-100 PLC with an attached P1-15TD2 output module and P1-01AC power supply
     \item One DIN-mounted Advantech BB-HESP4DR RS-422/485 dataline surge suppressor
     \item One SerialComm RS-232 to 4 wire RS-422/485 converter
     \item Two L-com AL-CAT6AJW CAT6a Lightning Protectors
   \end{enumerate}
 \end{enumerate}
+
+%%% Adapted from https://tex.stackexchange.com/a/111674/114143
+%%% provides syntax for jumping lines
+\tikzset{
+    connect/.style args={(#1) to (#2) over #3 by #4}{
+        insert path={
+            \pgfextra{
+                \pgfinterruptpath
+                    \path [name path=userpath] (#1) -- (#2);
+                    \path [name intersections={of=userpath and #3,by=overpoint}];
+                \endpgfinterruptpath                
+            }
+            let \p1=($(#1)-(overpoint)$), \n1={veclen(\x1,\y1)}, 
+                            \n2={atan2(\y1,\x1)}, \n3={abs(#4)}, \n4={#4>0 ?180:-180}  in 
+                            (#1) -- ($(#1)!\n1-\n3!(overpoint)$) 
+                            arc (\n2:\n2+\n4:\n3) -- (#2)
+        }
+    },
+}
+
+%% Block styles (to avoid repetition and ease our lives)
+\tikzset{wire board/.style={
+          matrix of nodes,
+          row sep={17pt, between origins},
+          nodes={anchor=center}
+          },
+        converter/.style={
+          column 1/.style={nodes={left}},
+          column 2/.style={font=\bfseries},
+          column 3/.style={nodes={above right}},
+          },
+        lps/.style={
+          column 1/.style={nodes={above left}},
+          column 2/.style={font=\bfseries},
+          column 4/.style={font=\bfseries},
+          column 5/.style={nodes={above right}},
+          },
+        db9/.style={
+          column 1/.style={nodes={above left}},
+          column 2/.style={font=\bfseries},
+          column 3/.style={nodes={right}},
+        },
+}
+\begin{figure}[!ht]
+  \begin{center}
+    \begin{tikzpicture}
+      \draw[help lines, dashed] grid (12, 3);
+      \draw[help lines, dashed] grid (12, -7);
+      % CONVERTER
+      \matrix[wire board,converter] (converter) {
+        Tx-   &  1   &   \scriptsize D-001   \\
+        Tx+   &  2   &   \scriptsize D-002   \\
+        Rx+   &  3   &   \scriptsize D-003   \\
+        Rx-   &  4   &   \scriptsize D-004   \\
+        GND   &  5   &   \scriptsize D-005   \\
+        };
+        \draw (converter-1-2.north east) rectangle (converter-5-2.south west);
+        \draw (converter-1-2.north west)+(-1.5cm,0.5cm) coordinate(p1) rectangle ($(converter-5-2.south west)+(0,-0.5cm)$);
+        \draw (p1) node[anchor=south west, align=left]{to PC COM1\\\textbf{RS-232 to RS-485}};
+
+        % LIGHTNING PROTECTION SYSTEM
+        \matrix[wire board, lps, matrix anchor=north, right=5cm of converter.north] (lps) {
+          \scriptsize D-006 &   A   &  -----  &  M  & \scriptsize Green\\
+          \scriptsize D-004 &   B   &  -----  &  L  & \scriptsize Black\\
+          \scriptsize D-005 &   C   &  -----  &  K  & \scriptsize Black\\
+          \scriptsize D-007 &   D   &  -----  &  J  & \scriptsize Black\\
+          \scriptsize D-001 &   F   &  -----  &  G  & \scriptsize \\
+          \scriptsize D-008 &   E   &  GND    &  H  & \scriptsize Black\\
+        };
+        % Boxing the contents
+        \draw (lps-1-2.north east) rectangle (lps-6-2.south west);
+        \draw ([xshift=-1pt]lps-1-4.north east) rectangle (lps-6-4.south west);
+        \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-6-4.south west)+(0cm,-0.5cm)$);
+        \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{LPS};
+
+        % DB9 CONNECTOR
+        \matrix[wire board, db9, matrix anchor=north, right=5cm of lps.north] (db9) {
+          \scriptsize Wh/Red &   1   &   RX485- \\
+          \scriptsize Red   &   2   &   RX232/RX485 \\
+          \scriptsize Green &   3   &   TX232/TX485- \\
+          \scriptsize Wh/Gr &   4   &   TX485+ \\
+          \scriptsize Black &   5   &   GND  \\
+          \scriptsize       &   6   &   NC \\
+          \scriptsize Grey  &   7   &   See Below \\
+          \scriptsize       &   8   &   NC \\
+          \scriptsize Grey  &   9   &   See Below \\
+        };
+        \draw (db9-1-2.north east) rectangle (db9-9-2.south west);
+        \draw (db9-1-2.north east)+(3cm,0.5cm) coordinate(p3) rectangle ($(db9-9-2.south east)+(0,-0.5cm)$);
+        \draw (p3) node[anchor=south east, align=right]{to RF-DFS\\\textbf{DB9 Connector}};
+
+        % WIRING this is the most hellish thing i've ever done never make a wiring diagram in tikz it isnt worth it
+        \draw(converter-1-2) -- (lps-1-2);
+        \draw(converter-2-2) -- (lps-2-2);
+        \draw(converter-3-2) -- (lps-3-2);
+        \draw(converter-4-2) -- (lps-4-2);
+        \path(converter-5-2) -- coordinate[midway](m) (lps-5-2);
+        \draw(converter-5-2) -- (m) |- (lps-6-2);
+
+        \path(lps-1-4) -- coordinate[midway](m) (db9-1-2);
+        \path(lps-1-4) -- coordinate[midway](1quarter) (m);
+        \path(m) -- coordinate[midway](3quarter) (db9-1-2);
+        \path(1quarter) -- coordinate[midway](3eighth) (m);
+        \path(m) -- coordinate[midway](5eighth) (3quarter);
+
+        \draw(lps-1-4) -- (3eighth) -- (db9-3-2 -| 5eighth) -- (db9-3-2);
+        \draw(lps-2-4) -- (lps-2-4 -| 3eighth) -- (db9-4-2 -| 5eighth) -- (db9-4-2);
+        \draw(lps-3-4) -- (lps-3-4 -| 3eighth) -- (5eighth) -- (db9-1-2);
+        \draw(lps-4-4) -- (lps-4-4 -| 3eighth) -- (db9-2-2 -| 5eighth) -- (db9-2-2);
+        \draw(lps-6-4) -- (lps-6-4 -| m) coordinate(gndm);
+        \draw(gndm) |- (db9-5-2);
+        \draw(gndm) |- (db9-7-2);
+        \draw(gndm) |- (db9-9-2);
+
+\end{tikzpicture}
+\end{center}
+\caption{Serial wiring diagram.}\label{fig:serialwiring}
+\end{figure}
 
 \subsection{RF-DFS Components}
 motor controller, motors, serial lps
@@ -576,18 +696,11 @@ class SpecAn(FrontEnd):
 \begin{lstlisting}[language=Python]
 class SerialIO:
     def threadHandler(self, target, args=(), kwargs={}):
-    """Generates a new thread to handle IO routines without blocking main thread. For most operations, this should be used instead of calling target methods directly.
-
-    Args:
-        target (method): Callable object to be invoked by the run() method.
-        args (tuple, optional): List or tuple for target invocation. Defaults to ().
-        kwargs (dict, optional): Dictionary of keyword arguments for target invocation. Defaults to {}.
-    """
-    if not hasattr(SerialIO, target.__name__):
-        logging.error(f'Class SerialIO does not contain a method with identifier {target.__name__}')
-        return
-    thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
-    thread.start()
+        if not hasattr(SerialIO, target.__name__):
+            logging.error(f'Class SerialIO does not contain a method with identifier {target.__name__}')
+            return
+        thread = threading.Thread(target = target, args = args, kwargs = kwargs, daemon=True)
+        thread.start()
 \end{lstlisting}
 
 Or, if generating a thread using the \verb|Execute| function, use semicolons to separate lines of code.
