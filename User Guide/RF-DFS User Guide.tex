@@ -381,7 +381,7 @@
 \section{Introduction}
 
 \subsection{What is the RF-DFS and RF-EMS?}
-copy from readme/wiki/plan or something
+% copy from readme/wiki/plan or something
 
 The Radio Frequency - Direction Finding System and Environmental Monitoring System are tools utilized by the NRAO-NM Interference Protection Group to identify and locate RF interference at the Very Large Array. The former is a 3-meter dish antenna with azimuth and elevation drives whereas the latter is a 50-foot tower with an omnidirectional club antenna. Both are connected to the RFI shack and controlled by a Python front end. This interface allows a user to control RF switching between both antennas and log data through a spectrum analyzer. 
 
@@ -466,7 +466,7 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
   \end{center}
 \end{figure}
 
-\subsection{RF Signal Chain}
+\subsection{RF Signal Chain}\label{sec:rfchain}
 Each system has a single 50-10000 MHz receiver but the framework is in place to add additional receivers relatively easily. Figure~\ref{fig:rfblock} shows an RF block diagram of existing components and the plan for an additional 6-18 GHz receiver on the EMS tower.
 
 All switches are Dynatech Microwave M4-413K201L SP4T relay switches. Switches S2 and S3 are already installed in the EMS tower to make adding a receiver as streamlined as possible. The reason there are no switches at the DFS is because it requires either a redesign of the LNA housing to fit relay switches or solid state switches that are integrated on a board with the other RF components.
@@ -562,8 +562,7 @@ The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wi
 
 \section{Hardware Installation Guide}\label{sec:hig}
 \subsection{RFI Shack Components}
-shack panel, switching, plc, n9040b, other stuff. PLC cat6 pinout, rs232 db9 pinout,
-
+% shack panel, switching, plc, n9040b, other stuff. PLC cat6 pinout, rs232 db9 pinout,
 The major components located in the RFI shack are as follows:
 \begin{enumerate}
   \item Windows PC \verb|EMSMONPC2|
@@ -577,6 +576,23 @@ The major components located in the RFI shack are as follows:
     \item Two L-com AL-CAT6AJW CAT6a Lightning Protectors
   \end{enumerate}
 \end{enumerate}
+
+The primary IO through the computer is a DB9 serial communication line to the ACR9000 motor controller at the RF-DFS, a GPIB or ethernet line to the Keysight N9040B inside the shack, and a USB line to the P1AM-100 PLC inside the shack. Figure~\ref{fig:shackblock} shows how to connect all of these components. The serial line is output as RS-232 from the computer's COM1 port, then is converted to RS-485 before being routed through the HESP4DR lightning protection system and exiting the shack. Coaxial cables from each system are connected to an RF switch with the common port connected to the N9040B. Lastly, the P1AM-100 PLC's output terminal block is connected to another screw terminal block which feeds RF switching lines to S1 in the shack, and S2 and S3 on the EMS panel via CAT6a cable and lightning protection system. Note that a second CAT6a LPS module is present and intended for us with the RF-DFS but is currently unconnected for reasons listed in Section~\ref{sec:rfchain}.
+
+Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the ACR9000 Hardware Installation Guide for information on this.
+
+Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:rfswitchwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work as well if the wiring and pinouts are changed for it.
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{c|c|c}
+      Interface          & Pin 7 & Pin 9 \\ \hline
+      RS-232             & Open  & Open  \\
+      RS-485 full-duplex & GND   & GND   \\
+    \end{tabular}
+  \end{center}
+  \caption{ACR9000 COM1 transmission modes.}\label{tab:acr9000com1}
+\end{table}
 
 \begin{figure}[!ht]
   \begin{center}
@@ -684,9 +700,9 @@ The major components located in the RFI shack are as follows:
           \scriptsize Wh/Gr &   4   &   TX485+ \\
           \scriptsize Black &   5   &   GND  \\
           \scriptsize       &   6   &   NC \\
-          \scriptsize Grey  &   7   &   See Below \\
+          \scriptsize Grey  &   7   &   See Table~\ref{tab:acr9000com1} \\
           \scriptsize       &   8   &   NC \\
-          \scriptsize Grey  &   9   &   See Below \\
+          \scriptsize Grey  &   9   &   See Table~\ref{tab:acr9000com1} \\
         };
         \draw (db9-1-2.north east) rectangle (db9-9-2.south west);
         \draw (db9-1-2.north east)+(3cm,0.5cm) coordinate(p3) rectangle ($(db9-9-2.south east)+(0,-0.5cm)$);
@@ -718,7 +734,7 @@ The major components located in the RFI shack are as follows:
 
 \end{tikzpicture}
 \end{center}
-\caption{RS-485 serial wiring diagram for connecting the PC to the ACR9000 motor controller. Note that Pins 7 and 9 on the ACR9000 should be connected to GND when using 4-wire RS-485 and left open when using RS-232.}\label{fig:serialwiring}
+\caption{RS-485 serial wiring diagram for connecting the PC to the ACR9000 motor controller.}\label{fig:serialwiring}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -841,7 +857,79 @@ The major components located in the RFI shack are as follows:
 \subsection{RF-DFS Components}
 motor controller, motors, serial lps
 \subsection{RF-EMS Components}
-switching, amplifiers, lps,
+% switching, amplifiers, lps,
+The major components located in the RF-EMS tower are as follows:
+\begin{enumerate}
+  \item One IEC 60320 C14 AC power receptacle
+  \item One AC line filter
+  \item One L-com AL-CAT6AJW CAT6a Lightning Protectors
+  \item One Standard Power SPS 15-5 5V 1.5A Linear Power Supply
+  \item One Condor HB12-1.7-A+ 12V 1.7A Linear Power Supply
+  \item One Condor HBB15-1.5-A+ 15V 1.5A Linear Power Supply
+  \item One Condor HB28-1-A+ 28V Linear 1A Power Supply
+  \item Two Dynatech Microwave M4-413K201L SP4T relay switches
+  \item Two PMA3-14LN+ low noise amplifiers
+\end{enumerate}
+asdffffffffff
+
+\begin{figure}
+  \begin{center}
+    \begin{circuitikz}
+      % AC power
+      \draw(0, 0) node[ocirc](ac){};
+      \draw(ac.west) node[anchor=east]{120 VAC};
+      \draw(ac) -- ++ (1, 0)
+      node[lowpass2shape, anchor=west](lpf){};
+      % Circle nodes
+      \draw(lpf.east) -- ++ (2, 0)
+      node[circ](c1){} -- ++ (2, 0)
+      node[circ](c2){} -- ++ (2, 0)
+      node[circ](c3){} -- ++ (2, 0)
+      node[circ](c4){};
+      \draw(c1) -- ++ (0, -0.5) node[sacdcshape, anchor=north](dc1){};
+      \draw(c2) -- ++ (0, -0.5) node[sacdcshape, anchor=north](dc2){};
+      \draw(c3) -- ++ (0, -0.5) node[sacdcshape, anchor=north](dc3){};
+      \draw(c4) -- ++ (0, -0.5) node[sacdcshape, anchor=north](dc4){};
+      % AC/DC power supplies
+      \draw(dc1.south) node[anchor=north west, color=brown]{\footnotesize 5VDC};
+      \draw(dc2.south) node[anchor=north west, color=orange]{\footnotesize 12VDC};
+      \draw(dc3.south) node[anchor=north west, color=yellow!60!orange!100]{\footnotesize 15VDC};
+      \draw(dc4.south) node[anchor=north west, color=red]{\footnotesize 28VDC};
+      % Terminal block
+      \draw(dc1.south west) ++ (-1, -1.5) coordinate(termblocknw);
+      \draw(termblocknw -| dc4.south east) coordinate(termblockne); 
+      \draw(dc4.south east) ++ (0, -2.5) coordinate(termblockse);
+      \draw(termblocknw |- termblockse) coordinate(termblocksw); 
+      \draw(termblocknw) rectangle (termblockse);
+      \foreach \x in {0,1,...,15} {
+        \draw([xshift=0.25cm]termblocknw) ++ (\x*0.5cm, 0) coordinate(here) -- (here |- termblocksw);
+        }
+      \foreach \x in {0,1,...,14} {
+        \path([xshift=0.50cm]termblocknw) ++ (\x*0.5cm, 0) coordinate(here) -- (here |- termblocksw) node[ocirc, midway](term\x){};
+      }
+      \draw(termblocknw |- term0) node[anchor=east](termlabel){Terminal Block};
+      % Wires from power supply to terminal block
+      \draw(dc1.south)[thick] -- (dc1.south |- termblocknw);
+      \draw(dc2.south)[thick] -- (dc2.south |- termblocknw);
+      \draw(dc3.south)[thick] -- (dc3.south |- termblocknw);
+      \draw(dc4.south)[thick] -- (dc4.south |- termblocknw);
+      \draw(dc1.south)[thick, dashed, brown] -- (dc1.south |- termblocknw);
+      \draw(dc2.south)[thick, dashed, orange] -- (dc2.south |- termblocknw);
+      \draw(dc3.south)[thick, dashed, yellow!60!orange!100] -- (dc3.south |- termblocknw);
+      \draw(dc4.south)[thick, dashed, red] -- (dc4.south |- termblocknw);
+      \draw(dc1.south |- termblocknw) node[anchor=south west, color=brown]{\footnotesize Br};
+      \draw(dc2.south |- termblocknw) node[anchor=south west, color=orange]{\footnotesize Or};
+      \draw(dc3.south |- termblocknw) node[anchor=south west, color=yellow!60!orange!100]{\footnotesize Yw};
+      \draw(dc4.south |- termblocknw) node[anchor=south west, color=red]{\footnotesize Red};
+      % LPS
+      \path(dc1.south |- termblocknw) -- coordinate[midway](dc1m) (dc1.south);
+      \draw(ac |- dc1m)[blue] node[ocirc](cat6){} to[tmultiwire=8] (dc1m -| term0) -- (termblocknw -| term0);
+      \draw(cat6.west) node[anchor=east, blue]{CAT6a};
+
+    \end{circuitikz}
+  \end{center}
+  \caption{RF-EMS power connection diagram.}\label{fig:emsblock}
+\end{figure}
 
 \section{Communications}
 maybe put pinouts and connections here instead to keep them all together
@@ -855,8 +943,7 @@ opcodes
 \section{Software User Guide}
 copy everything from github wiki
 \subsection{Getting Started}
-software installation stuff, ni-visa, other requirements
-
+% software installation stuff, ni-visa, other requirements
 In order to use the front-end interface, download the following deployment requirements and the latest release on \verb|EMSMONPC2|, then run the executable.
 \begin{enumerate}
   \item NI-VISA
