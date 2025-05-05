@@ -196,6 +196,8 @@
     }  
   },
 }
+% Adds key for current tikz coordinate
+\newcommand\currentpos{\the\tikz@lastxsaved,\the\tikz@lastysaved}
 % Wiring diagram matrix stuff (syntax for jumping lines and block styles)
 \tikzset{
     connect/.style args={(#1) to (#2) over #3 by #4}{
@@ -578,6 +580,72 @@ The major components located in the RFI shack are as follows:
 
 \begin{figure}[!ht]
   \begin{center}
+    \begin{circuitikz}
+      % PC AND MIDDLE ROW
+      \draw(0, 0) node[server, scale = 1.5, name=computer]{};
+      \ctikzset{bipoles/oscope/waveform=triangle}
+      \ctikzset{bipoles/oscope/width=1.0}
+      \draw(computer.east) ++ (0.55, 0.2) coordinate(ctreast) -- ++ (1.2, 0)
+      node[oscopeshape, anchor=west](spec){};
+      \draw(spec.east)[color=orange] -- ++ (1.2, 0)
+      node[twoportshape, anchor=west, color=black](shackswitch){};
+      \draw(shackswitch.center) node[spdt, scale=0.6]{};
+      \draw(ctreast) ++ (0.6, 0) node[anchor=south]{GPIB};
+      \draw(spec.south) node[anchor=north]{N9040b};
+      \draw(spec.in 1) node[ocirc, scale=0.7]{};
+      \draw(spec.in 2) node[ocirc, scale=0.7]{};
+      \draw(spec.east) ++ (0.6, 0) node[anchor=south, color=orange]{Coax};
+      \draw([yshift=5pt]shackswitch.east)[color=orange] -- ++ (3, 0)
+      node[ocirc](emsnode){};
+      \draw([yshift=-5pt]shackswitch.east)[color=orange] -- ++ (3, 0)
+      node[ocirc](dfsnode){};
+      
+      % BOTTOM ROW
+      \draw(spec) ++ (0, -2) node[qfpchip, external pins width=0, hide numbers, name=plc, scale=0.8, align=center]{PLC};
+      \draw(computer.south) |- (plc.west);
+      \path(computer.south) -- (computer.south |- plc.west) node[anchor=south west]{USB};
+      \path(shackswitch) -- (shackswitch |- plc)
+      node[twoportshape](terminalblock){};
+      \draw([yshift=5pt]terminalblock.west) -- coordinate[midway](uppermid) ([yshift=5pt]terminalblock.east);
+      \draw([yshift=-5pt]terminalblock.west) -- coordinate[midway](lowermid) ([yshift=-5pt]terminalblock.east);
+      \path(terminalblock.north) -- node[ocirc, midway]{} (uppermid);
+      \path(terminalblock.south) -- node[ocirc, midway]{} (lowermid);
+      \path(uppermid) -- node[ocirc, midway]{} (lowermid);
+      \draw(plc.east) to[tmultiwire] (terminalblock.west);
+      \draw(terminalblock.east)[color=blue] to[tmultiwire] ++ (1.2, 0) node[american gas filled surge arrestershape, anchor=west](lps){};
+      \draw(lps.east)[color=blue] -- (lps.east -| emsnode) node[ocirc](cat6node){};
+      \draw(terminalblock.north)[color=red] to[tmultiwire, invert] (shackswitch.south);
+      \path(terminalblock.north) -- coordinate[midway](m) (shackswitch.south);
+      \draw([xshift=7pt]m.east) node[anchor=west, color=red]{Power/Switching};
+
+      % TOP ROW
+      \draw(spec) ++ (0, 2) node[twoportsplitshape, circuitikz/bipoles/twoportsplit/width=1.5, t1=\footnotesize RS-232, t2=\footnotesize RS-485](converter){};
+      \draw(computer.north) ++ (-0.45, 0.3) coordinate(ctrnorth) |- (converter.west);
+      \path(ctrnorth) -- (ctrnorth |- converter) node[anchor=north west]{DB9};
+      \path(converter.east) -- (converter -| lps)
+      node[american gas filled surge arrestershape, color=magenta](seriallps){};
+      \draw(converter.east)[color=magenta] to[tmultiwire] (seriallps.west){};
+      \draw(seriallps.east)[color=magenta] -- (seriallps.east -| emsnode) node[ocirc](serialnode){};
+
+      % LABELS
+      \draw(terminalblock.south) node[anchor=north]{\footnotesize Terminal Block};
+      \path(lps) (lps |- terminalblock.south) node[anchor=north, color=blue]{\footnotesize CAT6 LPS};
+      \draw(seriallps.north) node[anchor=south, color=magenta]{\footnotesize RS-485 LPS};
+      \draw(serialnode.east) node[anchor=west]{DB9 to DFS};
+      \draw(emsnode.east) node[anchor=south west]{Coax to DFS};
+      \draw(dfsnode.east) node[anchor=north west]{Coax to EMS};
+      \draw(cat6node.east) node[anchor=west]{CAT6 to EMS};
+
+      % extends the image size bc the pc node is bigger than its drawing for some reason
+      \draw(emsnode) ++ (3.5, 0);
+
+    \end{circuitikz}
+  \end{center}
+  \caption{shack components}\label{fig:shackblock}
+\end{figure}
+
+\begin{figure}[!ht]
+  \begin{center}
     \begin{tikzpicture}
       % \draw[help lines, dashed] grid (12, 3);
       % \draw[help lines, dashed] grid (12, -7);
@@ -595,16 +663,16 @@ The major components located in the RFI shack are as follows:
 
         % LIGHTNING PROTECTION SYSTEM
         \matrix[wire board, wiresboth, matrix anchor=north, right=5cm of converter.north] (lps) {
-          \scriptsize D-006 &   A   &  -----  &  M  & \scriptsize Green\\
-          \scriptsize D-004 &   B   &  -----  &  L  & \scriptsize Wh/Gr\\
-          \scriptsize aaaaa &   C   &  -----  &  K  & \scriptsize Wh/Red\\
-          \scriptsize asdf  &   D   &  -----  &  J  & \scriptsize Red\\
+          \scriptsize D-006 &   A   &  -----  &  M  & \scriptsize Wh/Red\\
+          \scriptsize D-004 &   B   &  -----  &  L  & \scriptsize Red\\
+          \scriptsize aaaaa &   C   &  -----  &  K  & \scriptsize Green\\
+          \scriptsize asdf  &   D   &  -----  &  J  & \scriptsize Wh/Gr\\
           \scriptsize       &   F   &  -----  &  G  & \scriptsize \\
           \scriptsize Black &   E   &  GND    &  H  & \scriptsize Black\\
         };
         % Boxing the contents
         \draw (lps-1-2.north east) rectangle (lps-6-2.south west);
-        \draw ([xshift=-1pt]lps-1-4.north east) rectangle (lps-6-4.south west);
+        \draw (lps-1-4.north east) rectangle (lps-6-4.south west);
         \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-6-4.south west)+(0cm,-0.5cm)$);
         \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{HESP4DR};
 
@@ -625,27 +693,28 @@ The major components located in the RFI shack are as follows:
         \draw (p3) node[anchor=south east, align=right]{to RF-DFS\\\textbf{DB9 Connector}};
 
         % WIRING this is the most hellish thing i've ever done never make a wiring diagram in tikz it isnt worth it
-        \draw(converter-1-2) -- (lps-1-2);
-        \draw(converter-2-2) -- (lps-2-2);
-        \draw(converter-3-2) -- (lps-3-2);
-        \draw(converter-4-2) -- (lps-4-2);
-        \path(converter-5-2) -- coordinate[midway](m) (lps-5-2);
-        \draw(converter-5-2) -- (m) |- (lps-6-2);
-
-        \path(lps-1-4) -- coordinate[midway](m) (db9-1-2);
-        \path(lps-1-4) -- coordinate[midway](1quarter) (m);
-        \path(m) -- coordinate[midway](3quarter) (db9-1-2);
-        \path(1quarter) -- coordinate[midway](3eighth) (m);
-        \path(m) -- coordinate[midway](5eighth) (3quarter);
-
-        \draw(lps-1-4) -- (3eighth) -- (db9-3-2 -| 5eighth) -- (db9-3-2);
-        \draw(lps-2-4) -- (lps-2-4 -| 3eighth) -- (db9-4-2 -| 5eighth) -- (db9-4-2);
-        \draw(lps-3-4) -- (lps-3-4 -| 3eighth) -- (5eighth) -- (db9-1-2);
-        \draw(lps-4-4) -- (lps-4-4 -| 3eighth) -- (db9-2-2 -| 5eighth) -- (db9-2-2);
-        \draw(lps-6-4) -- (lps-6-4 -| m) node[circ=1pt](gndm){};
-        \draw(gndm) |- (db9-5-2);
-        \draw(gndm) -- (db9-7-2 -| gndm) node[circ=1pt](gndm2){} -- (db9-7-2);
-        \draw(gndm2) |- (db9-9-2);
+        \path(converter-1-3.south west) -- (lps-1-1.south east)
+        coordinate[pos=0.25](1quarter)
+        coordinate[pos=0.375](3eighth)
+        coordinate[pos=0.5](m)
+        coordinate[pos=0.675](5eighth)
+        coordinate[pos=0.75](3quarter);
+        
+        \draw(converter-1-3.south west) -- (3eighth) -- (lps-3-2 -| 5eighth) -- (lps-3-1.south east);
+        \draw(converter-2-3.south west) -- (converter-2-2 -| 3eighth) -- (lps-4-2 -| 5eighth) -- (lps-4-1.south east);
+        \draw(converter-3-3.south west) -- (converter-3-2 -| 3eighth) -- (5eighth) -- (lps-1-1.south east);
+        \draw(converter-4-3.south west) -- (converter-4-2 -| 3eighth) -- (lps-2-2 -| 5eighth) -- (lps-2-1.south east);
+        \draw(converter-5-2) -- (converter-5-2 -| m) |- (lps-6-2);
+        
+        \draw(lps-1-5.south west) -- (db9-1-2);
+        \draw(lps-2-5.south west) -- (db9-2-2);
+        \draw(lps-3-5.south west) -- (db9-3-2);
+        \draw(lps-4-5.south west) -- (db9-4-2);
+        \path(lps-5-5.south west) -- coordinate[midway](m) (db9-5-2);
+        \draw(lps-6-5.south west) -- (lps-6-4 -| m) node[circ=1pt](gndm){};
+        \draw(gndm) |- (db9-5-1.south east);
+        \draw(gndm) -- (db9-7-2 -| gndm) node[circ=1pt](gndm2){} -- (db9-7-1.south east);
+        \draw(gndm2) |- (db9-9-1.south east);
 
 \end{tikzpicture}
 \end{center}
