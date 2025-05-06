@@ -37,11 +37,12 @@
 \usepackage{listings}   % For highlighting code
 \usepackage{titling}    % To reference title, author, and date
 \usepackage{array}      % For fixed-width tables
+\usepackage{tabularx}   % For tables with automatic line breaks and fixed widths too i think
 \usepackage{makecell}   % Formats individual table cells
 \usepackage{multirow}   % For multi-row columns (Top left justify header)
 \usepackage[american]{circuitikz} % Used to draw circuit and block diagrams
 \usepackage{appendix}   
-\usepackage{xcolor}     % For coloring code listings
+\usepackage{xcolor}     % For coloring code listings and other stuff probably
 \usepackage{colortbl}   % For coloring table cells
 \definecolor{nraoblue}{rgb}{0.776,0.851,0.945}  % Color of table headers
 \usepackage{enumitem}   % For formatting enumerated lists
@@ -560,7 +561,9 @@ The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wi
 \end{figure}
 
 \section{Hardware Installation Guide}\label{sec:hig}
-\subsection{RFI Shack Components}
+The RFI Shack, RF-DFS, and RF-EMS all contain a metal panel upon which most of their components are mounted. This is located at the base of the pedestal for the RF-DFS and inside the front-end box for the RF-EMS (See Figure~\ref{fig:oldems}). Most components are mounted with \#4-40 or \#6-32 socket head machine screws. Each panel also has a screw terminal block for connecting non-bundled or spliced wires.
+
+\subsection{RFI Shack Components}\label{sec:higshack}
 % shack panel, switching, plc, n9040b, other stuff. PLC cat6 pinout, rs232 db9 pinout,
 The major components located in the RFI shack are as follows:
 \begin{enumerate}
@@ -580,7 +583,7 @@ The primary IO through the computer is a DB9 serial communication line to the AC
 
 Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the ACR9000 Hardware Installation Guide for information on this.
 
-Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:rfswitchwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work as well if the wiring and pinouts are changed for it.
+Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:rfswitchwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring and pinouts are changed for it.
 
 \begin{table}
   \begin{center}
@@ -853,23 +856,29 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 \caption{AAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHH.}\label{fig:rfswitchwiring}
 \end{figure}
 
-\subsection{RF-DFS Components}
+\subsection{RF-DFS Components}\label{sec:higdfs}
 motor controller, motors, serial lps
-\subsection{RF-EMS Components}
+
+\subsection{RF-EMS Components}\label{sec:higems}
 % switching, amplifiers, lps,
-The major components located on the panel in the RF-EMS tower are as follows:
+The major components located on the RF-EMS tower are as follows:
 \begin{enumerate}
-  \item One IEC 60320 C14 AC power receptacle
-  \item One AC line filter
-  \item One L-com AL-CAT6AJW CAT6a Lightning Protectors
-  \item One Standard Power SPS 15-5 5V 1.5A Linear Power Supply
-  \item One Condor HB12-1.7-A+ 12V 1.7A Linear Power Supply
-  \item One Condor HBB15-1.5-A+ 15V 1.5A Linear Power Supply
-  \item One Condor HB28-1-A+ 28V Linear 1A Power Supply
-  \item Two Dynatech Microwave M4-413K201L SP4T relay switches
-  \item Two PMA3-14LN+ low noise amplifiers
+  \item One Electro-Metrics EM-6857 omnidirectional club antenna
+  \item Three lightning rods
+  \item Panel containing:
+  \begin{enumerate}
+    \item One IEC 60320 C14 AC power receptacle
+    \item One AC line filter
+    \item One L-com AL-CAT6AJW CAT6a Lightning Protectors
+    \item One Standard Power SPS 15-5 5V 1.5A Linear Power Supply
+    \item One Condor HB12-1.7-A+ 12V 1.7A Linear Power Supply
+    \item One Condor HBB15-1.5-A+ 15V 1.5A Linear Power Supply
+    \item One Condor HB28-1-A+ 28V Linear 1A Power Supply
+    \item Two Dynatech Microwave M4-413K201L SP4T relay switches
+    \item Two PMA3-14LN+ low noise amplifiers
+  \end{enumerate}
 \end{enumerate}
-These components are connected to eachother through a terminal block similar to the one seen in the RFI shack. The 4 power supplies provide DC power to all of the RF components although only the 12 and 28 volt supplies are used for the LNAs and switches, respectively. The other two power supplies remain from previous iterations of this system and can be used for future upgrades.
+The panel components are connected to eachother through a terminal block similar to the one seen in the RFI shack. The 4 power supplies provide DC power to all of the RF components although only the 12 and 28 volt supplies are used for the LNAs and switches, respectively. The other two power supplies remain from previous iterations of this system and can be used for future upgrades.
 
 \begin{figure}
   \begin{center}
@@ -930,23 +939,89 @@ These components are connected to eachother through a terminal block similar to 
   \caption{RF-EMS Power Connection Diagram.}\label{fig:emsblock}
 \end{figure}
 
-\section{Communications}
+\section{Communications}\label{sec:comms}
 % maybe put pinouts and connections here instead to keep them all together
 The Python program controls communications with all off the necessary instruments but it is still necessary for a user to understand how these communications are facilitated in order to troubleshoot issues. The following sections describe how to open communications with each instrument manually and using the Python program.
 
-\subsection{Spectrum Analyzer}
+\subsection{Spectrum Analyzer}\label{sec:commssa}
 % scpi commands, how it works, etc, explain not to issue commands while program is running
-SCPI commands are issued to the spectrum analyzer via the PyVISA module, this uses an NI-VISA backend and requires it for the program to function. If the user is running the program for the first time, connection should be tested with the NI-VISA Interactive Control program before attempting to use the Python interface. Once a connection is established, issue an identify (\verb|*IDN?|) query to determine what device is connected. Although SCPI commands are relatively universal among instruments, the Python interface is still hard-coded for compatibility with the Keysight N9040B. If a different spectrum analyzer is used, there is no guarantee that it retains the same commands and features as the N9040B, thus some of the issued commands may throw exceptions in the Python interface.
+SCPI commands are issued to the spectrum analyzer via the PyVISA module, this uses an NI-VISA backend and requires it for the program to function. If the user is running the program for the first time, connection should be tested with the NI-VISA Interactive Control program before attempting to use the Python interface. Once a connection is established, issue an identify (\verb|*IDN?|) query to determine that the correct device is connected. Although SCPI commands are relatively universal among instruments, the Python interface is still hard-coded for compatibility with the Keysight N9040B. If a different spectrum analyzer is used, there is no guarantee that it retains the same commands and features as the N9040B, thus some of the issued commands may throw exceptions in the Python interface. 
+
 If the user cannot connect to the spectrum analyzer with NI-VISA, the Python interface will not be able to connect either and they must troubleshoot any errors with hardware connections, drivers, and/or the NI-VISA installation.
 
 Immediately after connecting to an instrument (Described in Section~\ref{sec:usingtheprogram}), the Python interface will attempt to identify the device and display the name above the spectrum plot (See \verb|FrontEnd.initDevice()| in \verb|main.py|). If the connection is successful, the thread running \verb|SpecAn.analyzerDisplayLoop()| in \verb|main.py| will initialize the spectrum plot by issuing \verb|*RST|, querying errors stored on the spectrum analyzer, and querying all values displayed by the widgets to the right of the spectrum plot on the Python interface in Figure~\ref{fig:gui}. If this is successful, The spectrum plot will populate with the same points present on the spectrum analyzer's display and the control panel on the right will populate similarly. Any errors during this process will raise an exception and be output in the terminal.
 
-Care should be taken when issuing SCPI commands either through the terminal, NI-VISA, or the spectrum analyzer's display while the Python program is running in \verb|Continuous| mode as this will likely generate race conditions and raise an exception. When the program is in \verb|Single Sweep| mode, no SCPI commands are issued although the thread running 
-\verb|SpecAn.analyzerDisplayLoop()| will continue to check if a session is open to the device.
+Care should be taken when issuing SCPI commands either through the terminal, NI-VISA, or the spectrum analyzer's display while the Python program is running in \verb|Continuous| mode as this will likely generate race conditions and raise an exception. When the program is in \verb|Single Sweep| mode, no SCPI commands are issued although the thread running \verb|SpecAn.analyzerDisplayLoop()| will continue to check if a session is open to the device.
 
-\subsection{Motor Controller}
-aries command reference stuff here, what bits are used
-\subsection{PLC}
+\subsection{Motor Controller}\label{sec:commsmc}
+% aries command reference stuff here, what bits are used
+Communication with the ACR9000 motor controller is facilitated by serial connection over a DB9 cable from the RFI shack. The computer outputs RS-232 which is converted to 4-wire RS-485 before leaving the shack. The ACR9000 also communicates with the Aries azimuth and elevation servo drives via RS-232/485 but this is not controlled, interrupted, or monitored by the PC or Python program in any way.
+
+The language used when sending commands to the ACR9000 is Parker Hannifin's own AcroBASIC, this is a robust language with lots of functionality although at the cost of user-friendliness. The user should reference Parker Hannifin's \textit{ACR Command Language Reference} when troubleshooting problems and making changes to the codebase.
+
+The user can test communication and function at any time using a serial terminal emulator such as PuTTY, TeraTerm, etc., with the default configuration of 9600 baud, 8 data bits, no parity, 1 stop bit, and no flow control. The same precautions for generating race conditions should be taken as in Section~\ref{sec:commssa}. To control the DFS with a terminal emulator, open a connection to the ACR9000 and send a CRLF (Enter), the response from the ACR9000 will show the \textit{Prompt Level} of the device.\ \verb|SYS| is the highest communication level from which the user can navigate to \verb|PROGx| or \verb|PLCx| by typing the aforementioned level and pressing \verb|Enter|, where \verb|x| is a non-negative integer (usually 0).\ \verb|PROG0| is the communication level from which all of the commands used by the Python program will be sent, some relevant commands are listed in Table~asdf.
+\begin{table}
+  \begin{center}
+    \begin{tabularx}{\linewidth}{l|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X}
+      Command          & Function & Example \\ \hline
+
+      \lstinline|PROG| &
+      This command switches the communication channel to the designated
+      program prompt. &
+      The prompt keeps track of your current program or system level as follows: \newline
+      \lstinline|SYS>PROG3| \newline
+      \lstinline|P03>PROG0| \newline
+      \lstinline|P00>SYS| \newline
+      \lstinline|SYS>_|
+      \\ \hline
+
+      \makecell[lt]{
+        \lstinline|DRIVE| \\
+        \lstinline|DRIVE ON| \\
+        \lstinline|DRIVE OFF| \\
+        \lstinline|DRIVE RES|
+      } &
+      The \lstinline|DRIVE| command provides a report-back of the drive's status, lets you
+      energize/de-energizes a motor/drive combination or reset the drive. &
+      The following example reports the drive status of axis X. \newline
+      \lstinline|P00>DRIVE X| \newline
+      \lstinline|DRIVE OFF| \newline
+      \lstinline|P00>_|
+      \\ \hline
+
+      \makecell[lt]{
+        \lstinline|JOG| \\
+        \lstinline|JOG ABS| \\
+        \lstinline|JOG INC|
+      } &
+      Jogging, used along with a second command, sets up an individual velocity profile for an axis to a given velocity, generating a jog offset. This offset can be absolute or incremental from the current position. &
+      The following example moves the X axis 5 degrees and Y axis 10 degrees, then back. \newline
+      \lstinline|P00>JOG INC X 5| \newline
+      \lstinline|P00>JOG INC Y 10| \newline
+      \lstinline|P00>JOG INC X -5  Y -10| \newline
+      \lstinline|P00>_|
+      \\ \hline
+
+      \makecell[lt]{
+        \lstinline|PRINT| \\
+        \lstinline|PRINT BIT792| \\
+        \lstinline|PRINT BIT824| \\
+        \lstinline|PRINT P6144| \\
+        \lstinline|PRINT P6160|
+      } &
+      This command prints a series of expressions (parameter, bit, and string values) to a device. Bits 792 and 824 return -1 if the X and Y axis are moving and 0 if stationary, respectively. Parameters 6144 and 6160 return the X and Y axis encoder positions, respectively. &
+      The following example checks if the X axis is moving, then checks its encoder position. \newline
+      \lstinline|P00>PRINT BIT792| \newline
+      \lstinline|0| \newline
+      \lstinline|P00>PRINT P6144| \newline
+      \lstinline|-235753513| \newline
+      \lstinline|P00>_|
+    \end{tabularx}
+  \end{center}
+  \caption{ACR9000 Commands Used by the Python Program.}\label{tab:acrcommands}
+\end{table}
+
+\subsection{PLC}\label{sec:commsplc}
 opcodes
 
 \section{Software User Guide}
@@ -1010,15 +1085,15 @@ thread=threading.Thread(target=Vi.openRsrc.write, args=(":SENS:FREQ:STOP 10e9",)
 thread.start()
 \end{lstlisting}  
 
-\newpage
 \section{Appendix}
 \subsection{RF-EMS Conduit Diagram}
-Figure~\ref{fig:oldems} shows a diagram of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagram may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
+Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagrams may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
 \begin{figure}[!h]
   \begin{center}
-    \includegraphics[width=\textwidth]{images/oldems.png}
+    \includegraphics[width=0.8\textwidth]{images/oldems.png}
+    \includegraphics[width=\textwidth]{images/oldems2.png}
   \end{center}
-  \caption{2001 RF-EMS Lightning Protection System Diagram.}\label{fig:oldems}
+  \caption{2001 RF-EMS Lightning Protection System.}\label{fig:oldems}
 \end{figure}
 
 \end{document}
