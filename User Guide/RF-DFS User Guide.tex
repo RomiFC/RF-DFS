@@ -382,13 +382,12 @@
 
 \subsection{What is the RF-DFS and RF-EMS?}
 % copy from readme/wiki/plan or something
-
 The Radio Frequency - Direction Finding System and Environmental Monitoring System are tools utilized by the NRAO-NM Interference Protection Group to identify and locate RF interference at the Very Large Array. The former is a 3-meter dish antenna with azimuth and elevation drives whereas the latter is a 50-foot tower with an omnidirectional club antenna. Both are connected to the RFI shack and controlled by a Python front end. This interface allows a user to control RF switching between both antennas and log data through a spectrum analyzer. 
 
 \subsection{System Overview}
 The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (emsmonpc2).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation. RF switching is controlled by a PLC in the RFI shack (not shown).
 
-\begin{figure}[!ht]
+\begin{figure}[!h]
   \begin{center}
       \begin{circuitikz}
           % Shack
@@ -462,7 +461,7 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
           \draw(emsbox.west) node[anchor=east]{RF - EMS};
           \draw(shackbox.north east) node[anchor=south east]{RFI Shack};
       \end{circuitikz}
-  \caption{System block diagram (not including PLC).}\label{fig:sysblock2}
+  \caption{System Block Diagram.}\label{fig:sysblock2}
   \end{center}
 \end{figure}
 
@@ -475,7 +474,7 @@ The coaxial cables running up the tower and to the dish are Andrew LDF1-50 1/4''
 
 The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wideband low noise MMICs. The boards that house these amplifiers are designed in house and fabricated on OSHPark 4-layer stackups in order to save cost over using prebuilt components. Figure~\ref{fig:pma3} shows the gain and noise figure of an assembled amplifier over the operating frequency.
 
-\begin{figure}[!ht]
+\begin{figure}
     \begin{center}
         \begin{circuitikz}
             % \draw[help lines, dashed] grid (14, 3);
@@ -553,11 +552,11 @@ The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wi
     \caption{Phase 2 Block Diagram}\label{fig:rfblock}
     \end{center}
 \end{figure}
-\begin{figure}[!ht]
+\begin{figure}
   \begin{center}
     \input{figures/pma3-14ln+.pgf}
   \end{center}
-  \caption{PMA3-14LN+ gain and noise figure.}\label{fig:pma3}
+  \caption{PMA3-14LN+ Gain and Noise Figure Measurements.}\label{fig:pma3}
 \end{figure}
 
 \section{Hardware Installation Guide}\label{sec:hig}
@@ -591,10 +590,10 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       RS-485 full-duplex & GND   & GND   \\
     \end{tabular}
   \end{center}
-  \caption{ACR9000 COM1 transmission modes.}\label{tab:acr9000com1}
+  \caption{ACR9000 COM1 Transmission Modes.}\label{tab:acr9000com1}
 \end{table}
 
-\begin{figure}[!ht]
+\begin{figure}
   \begin{center}
     \begin{circuitikz}
       % PC AND MIDDLE ROW
@@ -657,10 +656,10 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 
     \end{circuitikz}
   \end{center}
-  \caption{shack components}\label{fig:shackblock}
+  \caption{RFI-Shack Components and Connections}\label{fig:shackblock}
 \end{figure}
 
-\begin{figure}[!ht]
+\begin{figure}
   \begin{center}
     \begin{tikzpicture}
       % \draw[help lines, dashed] grid (12, 3);
@@ -734,10 +733,10 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 
 \end{tikzpicture}
 \end{center}
-\caption{RS-485 serial wiring diagram for connecting the PC to the ACR9000 motor controller.}\label{fig:serialwiring}
+\caption{RS-485 Serial Wiring Diagram.}\label{fig:serialwiring}
 \end{figure}
 
-\begin{figure}[!ht]
+\begin{figure}
   \begin{center}
     \begin{tikzpicture}
       % \draw[help lines, dashed] grid (12, 3);
@@ -858,7 +857,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 motor controller, motors, serial lps
 \subsection{RF-EMS Components}
 % switching, amplifiers, lps,
-The major components located in the RF-EMS tower are as follows:
+The major components located on the panel in the RF-EMS tower are as follows:
 \begin{enumerate}
   \item One IEC 60320 C14 AC power receptacle
   \item One AC line filter
@@ -870,7 +869,7 @@ The major components located in the RF-EMS tower are as follows:
   \item Two Dynatech Microwave M4-413K201L SP4T relay switches
   \item Two PMA3-14LN+ low noise amplifiers
 \end{enumerate}
-asdffffffffff
+These components are connected to eachother through a terminal block similar to the one seen in the RFI shack. The 4 power supplies provide DC power to all of the RF components although only the 12 and 28 volt supplies are used for the LNAs and switches, respectively. The other two power supplies remain from previous iterations of this system and can be used for future upgrades.
 
 \begin{figure}
   \begin{center}
@@ -917,9 +916,9 @@ asdffffffffff
       \draw(dc2.south)[thick, dashed, orange] -- (dc2.south |- termblocknw);
       \draw(dc3.south)[thick, dashed, yellow!60!orange!100] -- (dc3.south |- termblocknw);
       \draw(dc4.south)[thick, dashed, red] -- (dc4.south |- termblocknw);
-      \draw(dc1.south |- termblocknw) node[anchor=south west, color=brown]{\footnotesize Br};
-      \draw(dc2.south |- termblocknw) node[anchor=south west, color=orange]{\footnotesize Or};
-      \draw(dc3.south |- termblocknw) node[anchor=south west, color=yellow!60!orange!100]{\footnotesize Yw};
+      \draw(dc1.south |- termblocknw) node[anchor=south west, color=brown]{\footnotesize Brown};
+      \draw(dc2.south |- termblocknw) node[anchor=south west, color=orange, inner ysep = 1.5pt]{\footnotesize Orange};
+      \draw(dc3.south |- termblocknw) node[anchor=south west, color=yellow!60!orange!100]{\footnotesize Yellow};
       \draw(dc4.south |- termblocknw) node[anchor=south west, color=red]{\footnotesize Red};
       % LPS
       \path(dc1.south |- termblocknw) -- coordinate[midway](dc1m) (dc1.south);
@@ -928,13 +927,23 @@ asdffffffffff
 
     \end{circuitikz}
   \end{center}
-  \caption{RF-EMS power connection diagram.}\label{fig:emsblock}
+  \caption{RF-EMS Power Connection Diagram.}\label{fig:emsblock}
 \end{figure}
 
 \section{Communications}
-maybe put pinouts and connections here instead to keep them all together
+% maybe put pinouts and connections here instead to keep them all together
+The Python program controls communications with all off the necessary instruments but it is still necessary for a user to understand how these communications are facilitated in order to troubleshoot issues. The following sections describe how to open communications with each instrument manually and using the Python program.
+
 \subsection{Spectrum Analyzer}
-scpi commands, how it works, etc, explain not to issue commands while program is running
+% scpi commands, how it works, etc, explain not to issue commands while program is running
+SCPI commands are issued to the spectrum analyzer via the PyVISA module, this uses an NI-VISA backend and requires it for the program to function. If the user is running the program for the first time, connection should be tested with the NI-VISA Interactive Control program before attempting to use the Python interface. Once a connection is established, issue an identify (\verb|*IDN?|) query to determine what device is connected. Although SCPI commands are relatively universal among instruments, the Python interface is still hard-coded for compatibility with the Keysight N9040B. If a different spectrum analyzer is used, there is no guarantee that it retains the same commands and features as the N9040B, thus some of the issued commands may throw exceptions in the Python interface.
+If the user cannot connect to the spectrum analyzer with NI-VISA, the Python interface will not be able to connect either and they must troubleshoot any errors with hardware connections, drivers, and/or the NI-VISA installation.
+
+Immediately after connecting to an instrument (Described in Section~\ref{sec:usingtheprogram}), the Python interface will attempt to identify the device and display the name above the spectrum plot (See \verb|FrontEnd.initDevice()| in \verb|main.py|). If the connection is successful, the thread running \verb|SpecAn.analyzerDisplayLoop()| in \verb|main.py| will initialize the spectrum plot by issuing \verb|*RST|, querying errors stored on the spectrum analyzer, and querying all values displayed by the widgets to the right of the spectrum plot on the Python interface in Figure~\ref{fig:gui}. If this is successful, The spectrum plot will populate with the same points present on the spectrum analyzer's display and the control panel on the right will populate similarly. Any errors during this process will raise an exception and be output in the terminal.
+
+Care should be taken when issuing SCPI commands either through the terminal, NI-VISA, or the spectrum analyzer's display while the Python program is running in \verb|Continuous| mode as this will likely generate race conditions and raise an exception. When the program is in \verb|Single Sweep| mode, no SCPI commands are issued although the thread running 
+\verb|SpecAn.analyzerDisplayLoop()| will continue to check if a session is open to the device.
+
 \subsection{Motor Controller}
 aries command reference stuff here, what bits are used
 \subsection{PLC}
@@ -950,7 +959,7 @@ In order to use the front-end interface, download the following deployment requi
   \item NI-488.2 if the spectrum analyzer connection is GPIB
 \end{enumerate}
 
-\subsection{Using the Program}
+\subsection{Using the Program}\label{sec:usingtheprogram}
 After starting the program, navigate to \verb|Options>Configure| at the top left banner to connect to the appropriate devices/COM ports. The \verb|Connection Status| window will let you know if a device is connected, however, it is up to the user to ensure that the correct device has been selected in the \verb|Configure| menu. The terminal will output any initialization errors (such as if the wrong device/port is selected).
 
 From here, the user can issue SCPI commands to the spectrum analyzer using the control panel on the right, issue motor commands using the \verb|Antenna Position| panel, or select RF chains using the \verb|PLC Operations| panel on the left. Commands can be issued to the spectrum analyzer by either selecting a button or typing an entry and pressing \verb|Enter|. All entries will be issued in base units for the given parameter (Hz, seconds, etc.), however, shorthand scientific notation is allowed (5e9 will be passed as 5 GHz).
@@ -1000,6 +1009,17 @@ Is equivalent to\dots
 thread=threading.Thread(target=Vi.openRsrc.write, args=(":SENS:FREQ:STOP 10e9",), daemon=True)
 thread.start()
 \end{lstlisting}  
+
+\newpage
+\section{Appendix}
+\subsection{RF-EMS Conduit Diagram}
+Figure~\ref{fig:oldems} shows a diagram of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagram may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
+\begin{figure}[!h]
+  \begin{center}
+    \includegraphics[width=\textwidth]{images/oldems.png}
+  \end{center}
+  \caption{2001 RF-EMS Lightning Protection System Diagram.}\label{fig:oldems}
+\end{figure}
 
 \end{document}
 
