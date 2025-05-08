@@ -959,7 +959,13 @@ Communication with the ACR9000 motor controller is facilitated by serial connect
 
 The language used when sending commands to the ACR9000 is Parker Hannifin's own AcroBASIC, this is a robust language with lots of functionality although at the cost of user-friendliness. The user should reference Parker Hannifin's \textit{ACR Command Language Reference} when troubleshooting problems and making changes to the codebase.
 
-The user can test communication and function at any time using a serial terminal emulator such as PuTTY, TeraTerm, etc., with the default configuration of 9600 baud, 8 data bits, no parity, 1 stop bit, and no flow control. The same precautions for generating race conditions should be taken as in Section~\ref{sec:commssa}. To control the DFS with a terminal emulator, open a connection to the ACR9000 and send a CRLF (Enter), the response from the ACR9000 will show the \textit{Prompt Level} of the device.\ \verb|SYS| is the highest communication level from which the user can navigate to \verb|PROGx| or \verb|PLCx| by typing the aforementioned level and pressing \verb|Enter|, where \verb|x| is a non-negative integer (usually 0).\ \verb|PROG0| is the communication level from which all of the commands used by the Python program will be sent, some relevant commands are listed in Table~asdf.
+The user can test communication and function at any time using a serial terminal emulator such as PuTTY, TeraTerm, etc., with the default configuration of 9600 baud, 8 data bits, no parity, 1 stop bit, and no flow control. The same precautions for generating race conditions should be taken as in Section~\ref{sec:commssa}. To control the DFS with a terminal emulator, open a connection to the ACR9000 and send a CRLF (Enter), the response from the ACR9000 will show the \textit{Prompt Level} of the device.\ \verb|SYS| is the highest communication level from which the user can navigate to \verb|PROGx| or \verb|PLCx| by typing the aforementioned level and pressing \verb|Enter|, where \verb|x| is a non-negative integer (usually 0).\ \verb|PROG0| is the communication level from which all of the commands used by the Python program will be sent, some relevant commands are listed in Table~\ref{tab:acrcommands}.
+
+\subsubsection{Motor Position}
+There is a distinction with how the Python program receives motor position information and how it sends move commands. The ACR9000 initializes its axes to 0 degrees azimuth and 0 degrees elevation when powered on. This causes a problem if the antenna is not parked before being powered down. Because of this, the Python program instead queries encoder position and calculates a vector based on hard-coded encoder positions for x and y axis home in \verb|config.toml| and \verb|defaultconfig.py|. Moving, however, is done by sending \verb|JOG INC| commands in degrees.
+
+The user should regularly calibrate both axes with a level and compass to ensure that the recorded encoder positions for a parked antenna are accurately representative.
+
 \begin{table}
   \begin{center}
     \begin{tabularx}{\linewidth}{l|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X}
@@ -1022,7 +1028,9 @@ The user can test communication and function at any time using a serial terminal
 \end{table}
 
 \subsection{PLC}\label{sec:commsplc}
-opcodes
+The P1AM-100 uses a SAMD21G18 microcontroller and is programmed with the Arduino Framework, the IDE for this is PlatformIO in VSCode. The P1AM family library should be referenced when making changes to the firmware. Additionally, care should be taken when updating opcodes to also make changes in the Python declaration (See \verb|opcodes.h| and \verb|opcodes.py|).
+
+The basic flow of control in the PLC firmware is to wait for information in the serial buffer, then parse it as it arrives. Opcodes will be expected as a string of binary ASCII characters terminated by a newline character. If the opcode is recognized, the PLC will perform the expected operation and write a response to the serial buffer if necessary.
 
 \section{Software User Guide}
 copy everything from github wiki
