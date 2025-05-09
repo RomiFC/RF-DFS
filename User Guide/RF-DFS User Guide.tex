@@ -579,11 +579,11 @@ The major components located in the RFI shack are as follows:
   \end{enumerate}
 \end{enumerate}
 
-The primary IO through the computer is a DB9 serial communication line to the ACR9000 motor controller at the RF-DFS, a GPIB or ethernet line to the Keysight N9040B inside the shack, and a USB line to the P1AM-100 PLC inside the shack. Figure~\ref{fig:shackblock} shows how to connect all of these components. The serial line is output as RS-232 from the computer's COM1 port, then is converted to RS-485 before being routed through the HESP4DR lightning protection system and exiting the shack. Coaxial cables from each system are connected to an RF switch with the common port connected to the N9040B. Lastly, the P1AM-100 PLC's output terminal block is connected to another screw terminal block which feeds RF switching lines to S1 in the shack, and S2 and S3 on the EMS panel via CAT6a cable and lightning protection system. Note that a second CAT6a LPS module is present and intended for us with the RF-DFS but is currently unconnected for reasons listed in Section~\ref{sec:rfchain}.
+The primary IO from the computer is a serial communication line to the ACR9000 motor controller at the RF-DFS, a GPIB or ethernet line to the Keysight N9040B inside the shack, and a USB line to the P1AM-100 PLC inside the shack. Figure~\ref{fig:shackblock} shows how to connect all of these components. The serial line is output as RS-232 from the computer's COM1 port, then is converted to RS-485 before being routed through the HESP4DR lightning protection system and exiting the shack as a CAT6 cable. Coaxial cables from each system are connected to an RF switch with the common port connected to the N9040B. Lastly, the P1AM-100 PLC's output terminal block is connected to another screw terminal block which feeds RF switching lines to S1 in the shack, and S2 and S3 on the EMS panel via CAT6 cable and lightning protection system. This terminal block also feeds a CAT6 cable to the DFS but it is only used for activate the safety warning light.
 
 Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the ACR9000 Hardware Installation Guide for information on this.
 
-Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:rfswitchwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring and pinouts are changed for it.
+Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:shackwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring and pinouts are changed for it.
 
 \begin{table}
   \begin{center}
@@ -778,6 +778,66 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 \end{center}
 \caption{RS-485 Serial Wiring Diagram.}\label{fig:serialwiring}
 \end{figure}
+\begin{figure}
+  \begin{center}
+    \begin{tikzpicture}
+      % \draw[help lines, dashed] grid (12, 3);
+      % \draw[help lines, dashed] grid (12, -7);
+      % CAT6 LIGHTNING PROTECTION SYSTEM
+      \matrix[wire board, wiresboth, matrix anchor=north] (lps) {
+        \scriptsize Wh/Or &   1   &  -----  &  1  & \scriptsize \\
+        \scriptsize Orange&   2   &  -----  &  2  & \scriptsize \\
+        \scriptsize Wh/Gr &   3   &  -----  &  3  & \scriptsize \\
+        \scriptsize Blue  &   4   &  -----  &  4  & \scriptsize Blue\\
+        \scriptsize Wh/Bl &   5   &  -----  &  5  & \scriptsize Wh/Blue\\
+        \scriptsize Green &   6   &  -----  &  6  & \scriptsize \\
+        \scriptsize Wh/Br &   7   &  -----  &  7  & \scriptsize Wh/Br\\
+        \scriptsize Brown &   8   &  -----  &  8  & \scriptsize Brown\\
+      };
+      % Boxing the contents
+      \draw (lps-1-2.north east) rectangle (lps-8-2.south west);
+      \draw (lps-1-4.north east) rectangle (lps-8-4.south west);
+      \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-8-4.south west)+(0cm,-0.5cm)$);
+      \draw (lps-1-3.north)+(0, 0.5) node[anchor=south, font=\bfseries]{CAT6a LPS};
+
+      % SAFETY LIGHT
+      \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (strobe) {
+        \scriptsize Red   &   +  & +28VDC \\
+        \scriptsize Black &   -  & GND \\
+      };
+      \draw (strobe-1-2.north west) rectangle (strobe-2-3.south west);
+      \draw (strobe-1-3.north west)+(2cm,0.5cm) coordinate(p3) rectangle ($(strobe-2-3.south west)+(0,-0.5cm)$);
+      \draw (p3) node[anchor=south east, align=right]{\textbf{Strobe Light}};
+
+      % WIRING 
+      % to lps
+      \draw([xshift=-1pt]lps-1-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-2-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-3-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-4-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-5-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-6-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-7-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-8-1.south east)[<-] -- ++ (-5, 0);
+      % lps to ems switches
+      \path(lps-1-5.south west) -- (strobe-1-1.south east)
+      coordinate[pos=0.25](1q)
+      coordinate[pos=0.375](3e)
+      coordinate[pos=0.5](m)
+      coordinate[pos=0.675](5e)
+      coordinate[pos=0.75](3q);
+      \draw(lps-5-5.south west) -- (lps-5-5.south west -| 3e) -- (strobe-1-1.south east -| 3e) -- (strobe-1-1.south east);
+      \draw(lps-4-5.south west) -- (lps-4-5.south west -| 3e) node[circ=1pt]{};
+      \draw(lps-8-5.south west) -- (lps-8-5.south west -| 5e) -- (strobe-2-1.south east -| 5e) -- (strobe-2-1.south east);
+      \draw(lps-7-5.south west) -- (lps-7-5.south west -| 5e) node[circ=1pt]{};
+      % ellipse
+      \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
+      \draw(lps2midway)+(-4, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
+      \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize DFS -->\\\footnotesize <-- Shack};
+\end{tikzpicture}
+\end{center}
+\caption{RF-DFS CAT5 Wiring Diagram.}\label{fig:dfscat5wiring}
+\end{figure}
 
 \begin{figure}
   \begin{center}
@@ -826,23 +886,10 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw (lps-1-2.north east) rectangle (lps-8-2.south west);
         \draw (lps-1-4.north east) rectangle (lps-8-4.south west);
         \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-8-4.south west)+(0cm,-0.5cm)$);
-        \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{CAT6a LPS};
-
-        % RF SWITCHES 2 AND 3
-        \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (emsswitches) {
-          \scriptsize Red   &   +A  & +28VDC \\
-          \scriptsize Black &   -B  & GND \\
-          \scriptsize Grey  &   1   & Port 1 \\
-          \scriptsize Purple&   2   & Port 2 \\
-          \scriptsize Blue  &   3   & Port 3 \\
-          \scriptsize Green &   4   & Port 4 \\
-        };
-        \draw (emsswitches-1-2.north west) rectangle (emsswitches-6-3.south west);
-        \draw (emsswitches-1-3.north west)+(3cm,0.5cm) coordinate(p3) rectangle ($(emsswitches-6-3.south west)+(0,-0.5cm)$);
-        \draw (p3) node[anchor=south east, align=right]{\textbf{S2 and S3}};
+        \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{CAT6a LPS (x2)};
 
         % RF SWITCHES 1
-        \path (plc.south) -- (plc.south -| emsswitches.south)
+        \path (plc.south) -- ++ (10cm, 0)
         node[matrix, wire board, wiresleft, matrix anchor=south] (shackswitch) {
           \scriptsize Red   &   +A  & +28VDC \\
           \scriptsize Black &   -B  & GND \\
@@ -852,7 +899,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
           \scriptsize Green &   4   & Port 4 \\
         };
         \draw (shackswitch-1-2.north west) rectangle (shackswitch-6-3.south west);
-        \draw (shackswitch-1-3.north west)+(3cm,0.5cm) coordinate(p3) rectangle ($(shackswitch-6-3.south west)+(0,-0.5cm)$);
+        \draw (shackswitch-1-3.north west)+(2cm,0.5cm) coordinate(p3) rectangle ($(shackswitch-6-3.south west)+(0,-0.5cm)$);
         \draw (p3) node[anchor=south east, align=right]{\textbf{S1}};
 
         % WIRING 
@@ -876,24 +923,23 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw(gndnode1) -- (shackswitch-2-1.south east);
         \draw(gndnode1) -- (lps-8-1.south east -| gndnode1) node[circ=1pt](gndnode2){} -- (lps-8-1.south east);
         \draw(gndnode2) |- (lps-7-1.south east);
-        % lps to ems switches
-        \path(lps-1-5.south west) -- (emsswitches-1-1.south east)
-        coordinate[pos=0.25](1q)
-        coordinate[pos=0.375](3e)
-        coordinate[pos=0.5](m)
-        coordinate[pos=0.675](5e)
-        coordinate[pos=0.75](3q);
-        \draw(lps-1-5.south west) -- (lps-1-5.south west -| 3e) -- (emsswitches-3-2 -| 5e) -- (emsswitches-3-1.south east);
-        \draw(lps-2-5.south west) -- (lps-2-5.south west -| 3e) -- (emsswitches-4-2 -| 5e) -- (emsswitches-4-1.south east);
-        \draw(lps-3-5.south west) -- (lps-3-5.south west -| 3e) -- (emsswitches-5-2 -| 5e) -- (emsswitches-5-1.south east);
-        \draw(lps-6-5.south west) -- (emsswitches-6-1.south east);
-        \draw(lps-8-5.south west) -- (lps-8-5.south west -| m) -- (emsswitches-2-1.south east -| m) -- (emsswitches-2-1.south east);
-        \draw(lps-7-5.south west) -- (lps-7-5.south west -| m) node[circ=1pt]{};
-        \draw(emsswitches-1-1.south east)[->] -- (m) -- (m |- emsswitches.north) node[anchor=south]{\scriptsize To EMS PWR};
+        % lps cont
+        \draw(lps-1-5.south west)[->] -- (lps-1-4 -| p3);
+        \draw(lps-2-5.south west)[->] -- (lps-2-4 -| p3);
+        \draw(lps-3-5.south west)[->] -- (lps-3-4 -| p3);
+        \draw(lps-4-5.south west)[->] -- (lps-4-4 -| p3);
+        \draw(lps-5-5.south west)[->] -- (lps-5-4 -| p3);
+        \draw(lps-6-5.south west)[->] -- (lps-6-4 -| p3);
+        \draw(lps-7-5.south west)[->] -- (lps-7-4 -| p3);
+        \draw(lps-8-5.south west)[->] -- (lps-8-4 -| p3);
+        % ellipse
+        \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
+        \draw(lps2midway -| p3)+(-1, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
+        \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable (x2)\\\footnotesize EMS --->\\\footnotesize DFS --->};
         
 \end{tikzpicture}
 \end{center}
-\caption{AAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHH.}\label{fig:rfswitchwiring}
+\caption{AAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHH.}\label{fig:shackwiring}
 \end{figure}
 
 \subsection{RF-DFS Components}\label{sec:higdfs}
@@ -977,6 +1023,73 @@ The panel components are connected to eachother through a terminal block similar
     \end{circuitikz}
   \end{center}
   \caption{RF-EMS Power Connection Diagram.}\label{fig:emsblock}
+\end{figure}
+\begin{figure}
+  \begin{center}
+    \begin{tikzpicture}
+      % \draw[help lines, dashed] grid (12, 3);
+      % \draw[help lines, dashed] grid (12, -7);
+      % CAT6 LIGHTNING PROTECTION SYSTEM
+      \matrix[wire board, wiresboth, matrix anchor=north] (lps) {
+        \scriptsize Wh/Or &   1   &  -----  &  1  & \scriptsize Wh/Or\\
+        \scriptsize Orange&   2   &  -----  &  2  & \scriptsize Orange\\
+        \scriptsize Wh/Gr &   3   &  -----  &  3  & \scriptsize Wh/Gr\\
+        \scriptsize Blue  &   4   &  -----  &  4  & \scriptsize \\
+        \scriptsize Wh/Bl &   5   &  -----  &  5  & \scriptsize \\
+        \scriptsize Green &   6   &  -----  &  6  & \scriptsize Green\\
+        \scriptsize Wh/Br &   7   &  -----  &  7  & \scriptsize Wh/Br\\
+        \scriptsize Brown &   8   &  -----  &  8  & \scriptsize Brown\\
+      };
+      % Boxing the contents
+      \draw (lps-1-2.north east) rectangle (lps-8-2.south west);
+      \draw (lps-1-4.north east) rectangle (lps-8-4.south west);
+      \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-8-4.south west)+(0cm,-0.5cm)$);
+      \draw (lps-1-3.north)+(0, 0.5) node[anchor=south, font=\bfseries]{CAT6a LPS};
+
+      % RF SWITCHES 2 AND 3
+      \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (emsswitches) {
+        \scriptsize Red   &   +A  & +28VDC \\
+        \scriptsize Black &   -B  & GND \\
+        \scriptsize Grey  &   1   & Port 1 \\
+        \scriptsize Purple&   2   & Port 2 \\
+        \scriptsize Blue  &   3   & Port 3 \\
+        \scriptsize Green &   4   & Port 4 \\
+      };
+      \draw (emsswitches-1-2.north west) rectangle (emsswitches-6-3.south west);
+      \draw (emsswitches-1-3.north west)+(2cm,0.5cm) coordinate(p3) rectangle ($(emsswitches-6-3.south west)+(0,-0.5cm)$);
+      \draw (p3) node[anchor=south east, align=right]{\textbf{S2 and S3}};
+
+      % WIRING 
+      % to lps
+      \draw([xshift=-1pt]lps-1-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-2-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-3-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-4-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-5-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-6-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-7-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-8-1.south east)[<-] -- ++ (-5, 0);
+      % lps to ems switches
+      \path(lps-1-5.south west) -- (emsswitches-1-1.south east)
+      coordinate[pos=0.25](1q)
+      coordinate[pos=0.375](3e)
+      coordinate[pos=0.5](m)
+      coordinate[pos=0.675](5e)
+      coordinate[pos=0.75](3q);
+      \draw(lps-1-5.south west) -- (lps-1-5.south west -| 3e) -- (emsswitches-3-2 -| 5e) -- (emsswitches-3-1.south east);
+      \draw(lps-2-5.south west) -- (lps-2-5.south west -| 3e) -- (emsswitches-4-2 -| 5e) -- (emsswitches-4-1.south east);
+      \draw(lps-3-5.south west) -- (lps-3-5.south west -| 3e) -- (emsswitches-5-2 -| 5e) -- (emsswitches-5-1.south east);
+      \draw(lps-6-5.south west) -- (emsswitches-6-1.south east);
+      \draw(lps-8-5.south west) -- (lps-8-5.south west -| m) -- (emsswitches-2-1.south east -| m) -- (emsswitches-2-1.south east);
+      \draw(lps-7-5.south west) -- (lps-7-5.south west -| m) node[circ=1pt]{};
+      \draw(emsswitches-1-1.south east)[->] -- (m) -- (m |- emsswitches.north) node[anchor=south]{\scriptsize To HB28-1-A+};
+      % ellipse
+      \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
+      \draw(lps2midway)+(-4, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
+      \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize EMS -->\\\footnotesize <-- Shack};
+\end{tikzpicture}
+\end{center}
+\caption{RF-EMS CAT5 Wiring Diagram.}\label{fig:emscat5wiring}
 \end{figure}
 
 \section{Communications}\label{sec:comms}
