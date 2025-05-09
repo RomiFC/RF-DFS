@@ -386,7 +386,7 @@
 The Radio Frequency - Direction Finding System and Environmental Monitoring System are tools utilized by the NRAO-NM Interference Protection Group to identify and locate RF interference at the Very Large Array. The former is a 3-meter dish antenna with azimuth and elevation drives whereas the latter is a 50-foot tower with an omnidirectional club antenna. Both are connected to the RFI shack and controlled by a Python front end. This interface allows a user to control RF switching between both antennas and log data through a spectrum analyzer. 
 
 \subsection{System Overview}
-The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (emsmonpc2).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation. RF switching is controlled by a PLC in the RFI shack (not shown).
+The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (\verb|EMSMONPC2|).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation. RF switching is controlled by a PLC in the RFI shack (not shown).
 
 \begin{figure}[!h]
   \begin{center}
@@ -550,7 +550,7 @@ The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wi
             % \draw(emsref1.north |- sw1plclabel) node[anchor=south]{PMA3-14LN+};
             % \draw(dfsref1.north) ++ (0.8, 0.2) node[anchor=south]{PMA3-14LN+};
         \end{circuitikz}
-    \caption{Phase 2 Block Diagram}\label{fig:rfblock}
+    \caption{RF Block Diagram with Phase 3 Upgrades Shown.}\label{fig:rfblock}
     \end{center}
 \end{figure}
 \begin{figure}
@@ -746,7 +746,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         coordinate[pos=0.25](1quarter)
         coordinate[pos=0.375](3eighth)
         coordinate[pos=0.5](m)
-        coordinate[pos=0.675](5eighth)
+        coordinate[pos=0.625](5eighth)
         coordinate[pos=0.75](3quarter);
 
         \draw(lps-1-5.south west)[->] -- (lps-1-4 -| p3);
@@ -824,7 +824,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       coordinate[pos=0.25](1q)
       coordinate[pos=0.375](3e)
       coordinate[pos=0.5](m)
-      coordinate[pos=0.675](5e)
+      coordinate[pos=0.625](5e)
       coordinate[pos=0.75](3q);
       \draw(lps-5-5.south west) -- (lps-5-5.south west -| 3e) -- (strobe-1-1.south east -| 3e) -- (strobe-1-1.south east);
       \draw(lps-4-5.south west) -- (lps-4-5.south west -| 3e) node[circ=1pt]{};
@@ -833,7 +833,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       % ellipse
       \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
       \draw(lps2midway)+(-4, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
-      \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize DFS -->\\\footnotesize <-- Shack};
+      \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize <-- Shack\\\footnotesize DFS --->};
 \end{tikzpicture}
 \end{center}
 \caption{RF-DFS CAT5 Wiring Diagram.}\label{fig:dfscat5wiring}
@@ -846,24 +846,24 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       % \draw[help lines, dashed] grid (12, -7);
       % PLC
       \matrix[wire board, wiresright] (plc) {
-        1   &  V1  &   \scriptsize D-001   \\
-        2   &  1   &   \scriptsize D-001   \\
-        3   &  2   &   \scriptsize D-002   \\
-        4   &  3   &   \scriptsize D-003   \\
-        5   &  4   &   \scriptsize D-004   \\
-        6   &  5   &   \scriptsize Black   \\
-        7   &  6   &   \scriptsize Black   \\
-        8   &  7   &   \scriptsize Black   \\
-        9   &  8   &   \scriptsize Black   \\
-        10  &  V2  &   \scriptsize D-001   \\
-        11  &  9   &   \scriptsize D-001   \\
-        12  &  10  &   \scriptsize D-002   \\
-        13  &  11  &   \scriptsize D-003   \\
-        14  &  12  &   \scriptsize D-004   \\
-        15  &  13  &   \scriptsize Black   \\
-        16  &  14  &   \scriptsize Black   \\
-        17  &  15  &   \scriptsize Black   \\
-        18  &  0V  &   \scriptsize Black   \\
+        1   &  V1  &   \scriptsize \\
+        2   &  1   &   \scriptsize Grey \\
+        3   &  2   &   \scriptsize Purple \\
+        4   &  3   &   \scriptsize Blue \\
+        5   &  4   &   \scriptsize Green \\
+        6   &  5   &   \scriptsize \\
+        7   &  6   &   \scriptsize \\
+        8   &  7   &   \scriptsize \\
+        9   &  8   &   \scriptsize \\
+        10  &  V2  &   \scriptsize Red \\
+        11  &  9   &   \scriptsize Grey \\
+        12  &  10  &   \scriptsize Purple \\
+        13  &  11  &   \scriptsize \\
+        14  &  12  &   \scriptsize \\
+        15  &  13  &   \scriptsize \\
+        16  &  14  &   \scriptsize \\
+        17  &  15  &   \scriptsize \\
+        18  &  0V  &   \scriptsize Black \\
         };
         \draw (plc-1-2.north east) rectangle (plc-9-1.south east);
         \draw (plc-10-2.north east) rectangle (plc-17-1.south east);
@@ -908,12 +908,14 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         coordinate[pos=0.25](1q)
         coordinate[pos=0.375](3e)
         coordinate[pos=0.5](m)
-        coordinate[pos=0.675](5e)
+        coordinate[pos=0.625](5e)
         coordinate[pos=0.75](3q);
         \draw(plc-2-3.south west) -- (plc-2-1 -| 3e) -- (lps-1-2 -| 5e) -- (lps-1-1.south east);
         \draw(plc-3-3.south west) -- (plc-3-1 -| 3e) -- (lps-2-2 -| 5e) -- (lps-2-1.south east);
         \draw(plc-4-3.south west) -- (plc-4-1 -| 3e) -- (lps-3-2 -| 5e) -- (lps-3-1.south east);
         \draw(plc-5-3.south west) -- (plc-5-1 -| 3e) -- (lps-6-2 -| 5e) -- (lps-6-1.south east);
+        \draw(plc-6-3.south west) -- (plc-6-1 -| 3e) -- (lps-5-2 -| 5e) node[circ](asdf){} -- (lps-5-1.south east);
+        \draw(asdf) -- (lps-4-2 -| 5e) -- (lps-4-1.south east);
         % plc to shack switch
         \draw(plc-10-3.south west) -- (plc-10-3.south west -| m) -- (shackswitch-1-1.south east -| m) -- (shackswitch-1-1.south east);
         \draw(plc-11-3.south west) -- (plc-11-3.south west -| lps.west) -- (shackswitch-3-1.south east -| lps.east) -- (shackswitch-3-1.south east);
@@ -943,7 +945,21 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 \end{figure}
 
 \subsection{RF-DFS Components}\label{sec:higdfs}
-motor controller, motors, serial lps
+% motor controller, motors, serial lps
+The major components located at the RF-DFS are as follows:
+\begin{enumerate}
+  \item One Parker Hannifin ACR9000 Motor Controller
+  \item Two Parker Hannifin Aries AR-04AE Motor Drivers
+  \item One 24VDC Linear Power Supply
+  \item One DIN-mounted Advantech BB-HESP4DR RS-422/485 dataline surge suppressor
+  \item One L-com AL-CAT6AJW CAT6a Lightning Protector
+  \item One Global Industrial 12-110VDC Forklift Strobe Light
+\end{enumerate}
+Most of these components are located at the base of the pedestal, with the exception of the forklift strobe light which is mounted at the breaker panel inside the DFS fence. All serial, control, and RF lines are run from the shack to a horizontal conduit box at the base of the pedestal. From here, it splits with one conduit line going into the pedestal and another going to the breaker panel.
+
+There should be three cables coming from the shack as shown in Figure~\ref{fig:shackblock} -- one coaxial cable and two CAT6 lines. One CAT6 line carries the RS-485 motor control signal and the other is wired directly to the PLC for controlling the strobe light and reserved for RF-switching upgrades. Refer to Figures~\ref{fig:serialwiring} and~\ref{fig:dfscat5wiring} to ensure correct wiring of these components.
+
+Inside the pedestal, the ACR9000 and Aries drives are connected as referenced in the \textit{ACR9000 Hardware Installation Guide}.
 
 \subsection{RF-EMS Components}\label{sec:higems}
 % switching, amplifiers, lps,
@@ -964,9 +980,8 @@ The major components located on the RF-EMS tower are as follows:
     \item Two PMA3-14LN+ low noise amplifiers
   \end{enumerate}
 \end{enumerate}
-The panel components are connected to eachother through a terminal block similar to the one seen in the RFI shack. The 4 power supplies provide DC power to all of the RF components although only the 12 and 28 volt supplies are used for the LNAs and switches, respectively. The other two power supplies remain from previous iterations of this system and can be used for future upgrades.
-
-\begin{figure}
+The panel components are connected to eachother through a terminal block similar to the one seen in the RFI shack. The 4 power supplies provide DC power to all of the RF components although only the 12 and 28 volt supplies are used for the LNAs and switches, respectively. The other two power supplies remain from previous iterations of this system and can be used for future upgrades. This terminal block also connects the CAT6 LPS and its lines from the shack to RF switches S2 and S3 as shown in Figure~\ref{fig:emscat5wiring}
+\begin{figure}[ht]
   \begin{center}
     \begin{circuitikz}
       % AC power
@@ -998,7 +1013,7 @@ The panel components are connected to eachother through a terminal block similar
       \foreach \x in {0,1,...,15} {
         \draw([xshift=0.25cm]termblocknw) ++ (\x*0.5cm, 0) coordinate(here) -- (here |- termblocksw);
         }
-      \foreach \x in {0,1,...,14} {
+        \foreach \x in {0,1,...,14} {
         \path([xshift=0.50cm]termblocknw) ++ (\x*0.5cm, 0) coordinate(here) -- (here |- termblocksw) node[ocirc, midway](term\x){};
       }
       \draw(termblocknw |- term0) node[anchor=east](termlabel){Terminal Block};
@@ -1019,11 +1034,12 @@ The panel components are connected to eachother through a terminal block similar
       \path(dc1.south |- termblocknw) -- coordinate[midway](dc1m) (dc1.south);
       \draw(ac |- dc1m)[blue] node[ocirc](cat6){} to[tmultiwire=8] (dc1m -| term0) -- (termblocknw -| term0);
       \draw(cat6.west) node[anchor=east, blue]{CAT6a};
-
+      
     \end{circuitikz}
   \end{center}
   \caption{RF-EMS Power Connection Diagram.}\label{fig:emsblock}
 \end{figure}
+
 \begin{figure}
   \begin{center}
     \begin{tikzpicture}
@@ -1074,7 +1090,7 @@ The panel components are connected to eachother through a terminal block similar
       coordinate[pos=0.25](1q)
       coordinate[pos=0.375](3e)
       coordinate[pos=0.5](m)
-      coordinate[pos=0.675](5e)
+      coordinate[pos=0.625](5e)
       coordinate[pos=0.75](3q);
       \draw(lps-1-5.south west) -- (lps-1-5.south west -| 3e) -- (emsswitches-3-2 -| 5e) -- (emsswitches-3-1.south east);
       \draw(lps-2-5.south west) -- (lps-2-5.south west -| 3e) -- (emsswitches-4-2 -| 5e) -- (emsswitches-4-1.south east);
