@@ -60,6 +60,7 @@
   urlcolor     = blue,  % Color for linked urls
 }
 \usepackage{caption}    % Changes figure/table caption color and size
+\usepackage{subcaption} % Allows multiple figures side by side
 \definecolor{captioncolor}{RGB}{79,129,189}
 \captionsetup{font={
     small, 
@@ -471,9 +472,9 @@ Each system has a single 50-10000 MHz receiver but the framework is in place to 
 
 All switches are Dynatech Microwave M4-413K201L SP4T relay switches. Switches S2 and S3 are already installed in the EMS tower to make adding a receiver as streamlined as possible. The reason there are no switches at the DFS is because it requires either a redesign of the LNA housing to fit relay switches or solid state switches that are integrated on a board with the other RF components.
 
-The coaxial cables running up the tower and to the dish are Andrew LDF1-50 1/4'' heliax cables with an upper frequency limit of 15800 MHz. The loss is around 21 dB/100ft at 16 GHz, as such, it may be required to build a downconverting stage for any higher frequency receivers, especially with the relatively long cable runs present in these systems.
+The coaxial cables running up the tower and to the dish are Andrew LDF1-50 1/4'' heliax cables with an upper frequency limit of 15800 MHz. The loss is around 21 dB/100ft at 16 GHz, as such, it may be required to build a downconverting stage for any higher frequency receivers, especially with the relatively long cable runs present in these systems. For reference, the mule tape measurement from conduit box to conduit box at the shack and RF-DFS is 120ft; the cable length from the shack to the RF-EMS was not measured but is noted to be 62ft in the 2001 RF-EMS senior design report.
 
-The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wideband low noise MMICs. The boards that house these amplifiers are designed in house and fabricated on OSHPark 4-layer stackups in order to save cost over using prebuilt components. Figure~\ref{fig:pma3} shows the gain and noise figure of an assembled amplifier over the operating frequency.
+The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wideband low noise MMICs. The boards that house these amplifiers are designed in house and fabricated on OSHPark 4-layer stackups in order to save cost over using prebuilt components. Figure~\ref{fig:pma3} shows the measured gain of an assembled amplifier over the operating frequency.
 
 \begin{figure}
     \begin{center}
@@ -555,9 +556,9 @@ The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wi
 \end{figure}
 \begin{figure}
   \begin{center}
-    \input{figures/pma3-14ln+.pgf}
+      \input{figures/pma3-14ln+.pgf}
   \end{center}
-  \caption{PMA3-14LN+ Gain and Noise Figure Measurements.}\label{fig:pma3}
+  \caption{PMA3-14LN+ Scattering Parameters.}\label{fig:pma3}
 \end{figure}
 
 \section{Hardware Installation Guide}\label{sec:hig}
@@ -575,7 +576,7 @@ The major components located in the RFI shack are as follows:
     \item One DIN-mounted AutomationDirect P1AM-100 PLC with an attached P1-15TD2 output module and P1-01AC power supply
     \item One DIN-mounted Advantech BB-HESP4DR RS-422/485 dataline surge suppressor
     \item One SerialComm RS-232 to 4 wire RS-422/485 converter
-    \item Two L-com AL-CAT6AJW CAT6a Lightning Protectors
+    \item Two L-com AL-CAT6AJW CAT6a lightning protectors
   \end{enumerate}
 \end{enumerate}
 
@@ -665,181 +666,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
   \end{center}
   \caption{RFI-Shack Components and Connections}\label{fig:shackblock}
 \end{figure}
-
-\begin{figure}
-  \begin{center}
-    \begin{tikzpicture}
-      % \draw[help lines, dashed] grid (12, 3);
-      % \draw[help lines, dashed] grid (12, -7);
-      % CONVERTER
-      \matrix[wire board, wiresright] (converter) {
-        Tx-   &  1   &   \scriptsize D-001   \\
-        Tx+   &  2   &   \scriptsize D-002   \\
-        Rx+   &  3   &   \scriptsize D-003   \\
-        Rx-   &  4   &   \scriptsize D-004   \\
-        GND   &  5   &   \scriptsize Black   \\
-        };
-        \draw (converter-1-2.north east) rectangle (converter-5-2.south west);
-        \draw (converter-1-2.north west)+(-1.5cm,0.5cm) coordinate(p1) rectangle ($(converter-5-2.south west)+(0,-0.5cm)$);
-        \draw (p1) node[anchor=south west, align=left]{to PC COM1\\\textbf{RS-232 to RS-485}};
-
-        % LIGHTNING PROTECTION SYSTEM
-        \matrix[wire board, wiresboth, matrix anchor=north, right=5cm of converter.north] (lps) {
-          \scriptsize D-006 &   M   &  -----  &  A  & \scriptsize Wh/Red\\
-          \scriptsize D-004 &   L   &  -----  &  B  & \scriptsize Red\\
-          \scriptsize aaaaa &   K   &  -----  &  C  & \scriptsize Green\\
-          \scriptsize asdf  &   J   &  -----  &  D  & \scriptsize Wh/Gr\\
-          \scriptsize       &   G   &  -----  &  F  & \scriptsize \\
-          \scriptsize Black &   H   &  GND    &  E  & \scriptsize Wh/Br, Br\\
-        };
-        % Boxing the contents
-        \draw (lps-1-2.north east) rectangle (lps-6-2.south west);
-        \draw (lps-1-4.north east) rectangle (lps-6-4.south west);
-        \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-6-4.south west)+(0cm,-0.5cm)$);
-        \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{HESP4DR};
-        % LIGHTNING PROTECTION SYSTEM 2
-        \matrix[wire board, wiresboth, matrix anchor=lps2-1-3.north, anchor=north, below=3cm of lps-5-3.south] (lps2) {
-          \scriptsize Wh/Red &   A   &  -----  &  M  & \scriptsize Wh/Gr\\
-          \scriptsize Red    &   B   &  -----  &  L  & \scriptsize Green\\
-          \scriptsize Green  &   C   &  -----  &  K  & \scriptsize Orange\\
-          \scriptsize Wh/Gr  &   D   &  -----  &  J  & \scriptsize Wh/Or\\
-          \scriptsize        &   F   &  -----  &  G  & \scriptsize \\
-          \scriptsize Wh/Br, Br& E   &  GND    &  H  & \scriptsize Black\\
-        };
-        % Boxing the contents
-        \draw (lps2-1-2.north east) rectangle (lps2-6-2.south west);
-        \draw (lps2-1-4.north east) rectangle (lps2-6-4.south west);
-        \draw (lps2-1-2.north east)+(0cm,0.5cm) rectangle ($(lps2-6-4.south west)+(0cm,-0.5cm)$);
-        \draw (lps2-1-3.north)+(0, 0.5) node[anchor=south, font=\bfseries]{HESP4DR};
-
-        % DB9 CONNECTOR
-        \matrix[wire board, wiresleft, matrix anchor=south, right=5.5cm of lps2.south] (db9) {
-          \scriptsize Wh/Red &   1   &   RX485- \\
-          \scriptsize Red   &   2   &   RX232/RX485 \\
-          \scriptsize Green &   3   &   TX232/TX485- \\
-          \scriptsize Wh/Gr &   4   &   TX485+ \\
-          \scriptsize Black &   5   &   GND  \\
-          \scriptsize       &   6   &   NC \\
-          \scriptsize Grey  &   7   &   See Table~\ref{tab:acr9000com1} \\
-          \scriptsize       &   8   &   NC \\
-          \scriptsize Grey  &   9   &   See Table~\ref{tab:acr9000com1} \\
-        };
-        \draw (db9-1-2.north east) rectangle (db9-9-2.south west);
-        \draw (db9-1-2.north east)+(3cm,0.5cm) coordinate(p3) rectangle ($(db9-9-2.south east)+(0,-0.5cm)$);
-        \draw (p3) node[anchor=south east, align=right]{\textbf{ACR9000 COM1}};
-
-        % WIRING this is the most hellish thing i've ever done never make a wiring diagram in tikz it isnt worth it
-        \path(converter-1-3.south west) -- (lps-1-1.south east)
-        coordinate[pos=0.25](1quarter)
-        coordinate[pos=0.375](3eighth)
-        coordinate[pos=0.5](m)
-        coordinate[pos=0.675](5eighth)
-        coordinate[pos=0.75](3quarter);
-        
-        \draw(converter-1-3.south west) -- (3eighth) -- (lps-3-2 -| 5eighth) -- (lps-3-1.south east);
-        \draw(converter-2-3.south west) -- (converter-2-2 -| 3eighth) -- (lps-4-2 -| 5eighth) -- (lps-4-1.south east);
-        \draw(converter-3-3.south west) -- (converter-3-2 -| 3eighth) -- (5eighth) -- (lps-1-1.south east);
-        \draw(converter-4-3.south west) -- (converter-4-2 -| 3eighth) -- (lps-2-2 -| 5eighth) -- (lps-2-1.south east);
-        \draw(converter-5-2) -- (converter-5-2 -| m) |- (lps-6-2);
-
-        \path(lps2-1-5.south west) -- (db9-4-1.south east)
-        coordinate[pos=0.25](1quarter)
-        coordinate[pos=0.375](3eighth)
-        coordinate[pos=0.5](m)
-        coordinate[pos=0.625](5eighth)
-        coordinate[pos=0.75](3quarter);
-
-        \draw(lps-1-5.south west)[->] -- (lps-1-4 -| p3);
-        \draw(lps-2-5.south west)[->] -- (lps-2-4 -| p3);
-        \draw(lps-3-5.south west)[->] -- (lps-3-4 -| p3);
-        \draw(lps-4-5.south west)[->] -- (lps-4-4 -| p3);
-        \draw(lps-6-5.south west)[->] -- (lps-6-4 -| m) -- (lps-5-4 -| m) -- (lps-5-4 -| p3);
-
-        \draw([xshift=-1pt]lps2-1-1.south east)[<-] -- (lps2-1-2 -| p1);
-        \draw([xshift=-1pt]lps2-2-1.south east)[<-] -- (lps2-2-2 -| p1);
-        \draw([xshift=-1pt]lps2-3-1.south east)[<-] -- (lps2-3-2 -| p1);
-        \draw([xshift=-1pt]lps2-4-1.south east)[<-] -- (lps2-4-2 -| p1);
-        \draw([xshift=-1pt]lps2-6-1.south east)[<-] -- (lps2-6-2 -| p1);
-
-        \path(lps2-3-3) -- (lps2-4-3) coordinate[pos=0.5](lps2midway);
-        \draw(lps2midway -| converter-1-1.east) ellipse(0.5 and 2) coordinate(ellipse);
-        \draw(ellipse |- lps2-1-3)+(0, 0.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize <-- Shack\\\footnotesize DFS --->};
-        
-        \draw(lps2-1-5.south west) -- (lps2-1-4 -| 3eighth) -- (db9-1-2 -| 5eighth) -- (db9-1-2);
-        \draw(lps2-2-5.south west) -- (lps2-2-4 -| 3eighth) -- (db9-2-2 -| 5eighth) -- (db9-2-2);
-        \draw(lps2-3-5.south west) -- (lps2-3-4 -| 3eighth) -- (db9-3-2 -| 5eighth) -- (db9-3-2);
-        \draw(lps2-4-5.south west) -- (lps2-4-4 -| 3eighth) -- (db9-4-2 -| 5eighth) -- (db9-4-2);
-        \draw(lps2-6-5.south west) -- (lps2-6-4 -| 5eighth) node[circ=1pt](gndm){};
-        \draw(gndm) -- (db9-9-1.south east);
-        \draw(gndm) -- (db9-7-2 -| gndm) node[circ=1pt](gndm2){} -- (db9-7-1.south east);
-        \draw(gndm2) |- (db9-5-1.south east);
-
-\end{tikzpicture}
-\end{center}
-\caption{RS-485 Serial Wiring Diagram.}\label{fig:serialwiring}
-\end{figure}
-\begin{figure}
-  \begin{center}
-    \begin{tikzpicture}
-      % \draw[help lines, dashed] grid (12, 3);
-      % \draw[help lines, dashed] grid (12, -7);
-      % CAT6 LIGHTNING PROTECTION SYSTEM
-      \matrix[wire board, wiresboth, matrix anchor=north] (lps) {
-        \scriptsize Wh/Or &   1   &  -----  &  1  & \scriptsize \\
-        \scriptsize Orange&   2   &  -----  &  2  & \scriptsize \\
-        \scriptsize Wh/Gr &   3   &  -----  &  3  & \scriptsize \\
-        \scriptsize Blue  &   4   &  -----  &  4  & \scriptsize Blue\\
-        \scriptsize Wh/Bl &   5   &  -----  &  5  & \scriptsize Wh/Blue\\
-        \scriptsize Green &   6   &  -----  &  6  & \scriptsize \\
-        \scriptsize Wh/Br &   7   &  -----  &  7  & \scriptsize Wh/Br\\
-        \scriptsize Brown &   8   &  -----  &  8  & \scriptsize Brown\\
-      };
-      % Boxing the contents
-      \draw (lps-1-2.north east) rectangle (lps-8-2.south west);
-      \draw (lps-1-4.north east) rectangle (lps-8-4.south west);
-      \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-8-4.south west)+(0cm,-0.5cm)$);
-      \draw (lps-1-3.north)+(0, 0.5) node[anchor=south, font=\bfseries]{CAT6a LPS};
-
-      % SAFETY LIGHT
-      \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (strobe) {
-        \scriptsize Red   &   +  & +28VDC \\
-        \scriptsize Black &   -  & GND \\
-      };
-      \draw (strobe-1-2.north west) rectangle (strobe-2-3.south west);
-      \draw (strobe-1-3.north west)+(2cm,0.5cm) coordinate(p3) rectangle ($(strobe-2-3.south west)+(0,-0.5cm)$);
-      \draw (p3) node[anchor=south east, align=right]{\textbf{Strobe Light}};
-
-      % WIRING 
-      % to lps
-      \draw([xshift=-1pt]lps-1-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-2-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-3-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-4-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-5-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-6-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-7-1.south east)[<-] -- ++ (-5, 0);
-      \draw([xshift=-1pt]lps-8-1.south east)[<-] -- ++ (-5, 0);
-      % lps to ems switches
-      \path(lps-1-5.south west) -- (strobe-1-1.south east)
-      coordinate[pos=0.25](1q)
-      coordinate[pos=0.375](3e)
-      coordinate[pos=0.5](m)
-      coordinate[pos=0.625](5e)
-      coordinate[pos=0.75](3q);
-      \draw(lps-5-5.south west) -- (lps-5-5.south west -| 3e) -- (strobe-1-1.south east -| 3e) -- (strobe-1-1.south east);
-      \draw(lps-4-5.south west) -- (lps-4-5.south west -| 3e) node[circ=1pt]{};
-      \draw(lps-8-5.south west) -- (lps-8-5.south west -| 5e) -- (strobe-2-1.south east -| 5e) -- (strobe-2-1.south east);
-      \draw(lps-7-5.south west) -- (lps-7-5.south west -| 5e) node[circ=1pt]{};
-      % ellipse
-      \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
-      \draw(lps2midway)+(-4, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
-      \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize <-- Shack\\\footnotesize DFS --->};
-\end{tikzpicture}
-\end{center}
-\caption{RF-DFS CAT5 Wiring Diagram.}\label{fig:dfscat5wiring}
-\end{figure}
-
-\begin{figure}
+\begin{figure}[h]
   \begin{center}
     \begin{tikzpicture}
       % \draw[help lines, dashed] grid (12, 3);
@@ -941,7 +768,180 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         
 \end{tikzpicture}
 \end{center}
-\caption{AAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHH.}\label{fig:shackwiring}
+\caption{RFI Shack PLC Wiring Diagram.}\label{fig:shackwiring}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \begin{tikzpicture}
+      % \draw[help lines, dashed] grid (12, 3);
+      % \draw[help lines, dashed] grid (12, -7);
+      % CONVERTER
+      \matrix[wire board, wiresright] (converter) {
+        Tx-   &  1   &   \scriptsize D-001   \\
+        Tx+   &  2   &   \scriptsize D-002   \\
+        Rx+   &  3   &   \scriptsize D-003   \\
+        Rx-   &  4   &   \scriptsize D-004   \\
+        GND   &  5   &   \scriptsize Black   \\
+        };
+        \draw (converter-1-2.north east) rectangle (converter-5-2.south west);
+        \draw (converter-1-2.north west)+(-1.5cm,0.5cm) coordinate(p1) rectangle ($(converter-5-2.south west)+(0,-0.5cm)$);
+        \draw (p1) node[anchor=south west, align=left]{to PC COM1\\\textbf{RS-232 to RS-485}};
+
+        % LIGHTNING PROTECTION SYSTEM
+        \matrix[wire board, wiresboth, matrix anchor=north, right=5cm of converter.north] (lps) {
+          \scriptsize D-006 &   M   &  -----  &  A  & \scriptsize Wh/Gr\\
+          \scriptsize D-004 &   L   &  -----  &  B  & \scriptsize Green\\
+          \scriptsize aaaaa &   K   &  -----  &  C  & \scriptsize Orange\\
+          \scriptsize asdf  &   J   &  -----  &  D  & \scriptsize Wh/Or\\
+          \scriptsize       &   G   &  -----  &  F  & \scriptsize \\
+          \scriptsize Black &   H   &  GND    &  E  & \scriptsize Wh/Br, Br\\
+        };
+        % Boxing the contents
+        \draw (lps-1-2.north east) rectangle (lps-6-2.south west);
+        \draw (lps-1-4.north east) rectangle (lps-6-4.south west);
+        \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-6-4.south west)+(0cm,-0.5cm)$);
+        \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{HESP4DR};
+        % LIGHTNING PROTECTION SYSTEM 2
+        \matrix[wire board, wiresboth, matrix anchor=lps2-1-3.north, anchor=north, below=3cm of lps-5-3.south] (lps2) {
+          \scriptsize Wh/Gr  &   A   &  -----  &  M  & \scriptsize Wh/Red\\
+          \scriptsize Green  &   B   &  -----  &  L  & \scriptsize Red\\
+          \scriptsize Orange &   C   &  -----  &  K  & \scriptsize Green\\
+          \scriptsize Wh/Or  &   D   &  -----  &  J  & \scriptsize Wh/Gr\\
+          \scriptsize        &   F   &  -----  &  G  & \scriptsize \\
+          \scriptsize Wh/Br, Br& E   &  GND    &  H  & \scriptsize Black\\
+        };
+        % Boxing the contents
+        \draw (lps2-1-2.north east) rectangle (lps2-6-2.south west);
+        \draw (lps2-1-4.north east) rectangle (lps2-6-4.south west);
+        \draw (lps2-1-2.north east)+(0cm,0.5cm) rectangle ($(lps2-6-4.south west)+(0cm,-0.5cm)$);
+        \draw (lps2-1-3.north)+(0, 0.5) node[anchor=south, font=\bfseries]{HESP4DR};
+
+        % DB9 CONNECTOR
+        \matrix[wire board, wiresleft, matrix anchor=south, right=5.5cm of lps2.south] (db9) {
+          \scriptsize Wh/Red &   1   &   RX485- \\
+          \scriptsize Red   &   2   &   RX232/RX485 \\
+          \scriptsize Green &   3   &   TX232/TX485- \\
+          \scriptsize Wh/Gr &   4   &   TX485+ \\
+          \scriptsize Black &   5   &   GND  \\
+          \scriptsize       &   6   &   NC \\
+          \scriptsize Grey  &   7   &   See Table~\ref{tab:acr9000com1} \\
+          \scriptsize       &   8   &   NC \\
+          \scriptsize Grey  &   9   &   See Table~\ref{tab:acr9000com1} \\
+        };
+        \draw (db9-1-2.north east) rectangle (db9-9-2.south west);
+        \draw (db9-1-2.north east)+(3cm,0.5cm) coordinate(p3) rectangle ($(db9-9-2.south east)+(0,-0.5cm)$);
+        \draw (p3) node[anchor=south east, align=right]{\textbf{ACR9000 COM1}};
+
+        % WIRING this is the most hellish thing i've ever done never make a wiring diagram in tikz it isnt worth it
+        \path(converter-1-3.south west) -- (lps-1-1.south east)
+        coordinate[pos=0.25](1quarter)
+        coordinate[pos=0.375](3eighth)
+        coordinate[pos=0.5](m)
+        coordinate[pos=0.675](5eighth)
+        coordinate[pos=0.75](3quarter);
+        
+        \draw(converter-1-3.south west) -- (3eighth) -- (lps-3-2 -| 5eighth) -- (lps-3-1.south east);
+        \draw(converter-2-3.south west) -- (converter-2-2 -| 3eighth) -- (lps-4-2 -| 5eighth) -- (lps-4-1.south east);
+        \draw(converter-3-3.south west) -- (converter-3-2 -| 3eighth) -- (5eighth) -- (lps-1-1.south east);
+        \draw(converter-4-3.south west) -- (converter-4-2 -| 3eighth) -- (lps-2-2 -| 5eighth) -- (lps-2-1.south east);
+        \draw(converter-5-2) -- (converter-5-2 -| m) |- (lps-6-2);
+
+        \path(lps2-1-5.south west) -- (db9-4-1.south east)
+        coordinate[pos=0.25](1quarter)
+        coordinate[pos=0.375](3eighth)
+        coordinate[pos=0.5](m)
+        coordinate[pos=0.625](5eighth)
+        coordinate[pos=0.75](3quarter);
+
+        \draw(lps-1-5.south west)[->] -- (lps-1-4 -| p3);
+        \draw(lps-2-5.south west)[->] -- (lps-2-4 -| p3);
+        \draw(lps-3-5.south west)[->] -- (lps-3-4 -| p3);
+        \draw(lps-4-5.south west)[->] -- (lps-4-4 -| p3);
+        \draw(lps-6-5.south west)[->] -- (lps-6-4 -| m) -- (lps-5-4 -| m) -- (lps-5-4 -| p3);
+
+        \draw([xshift=-1pt]lps2-1-1.south east)[<-] -- (lps2-1-2 -| p1);
+        \draw([xshift=-1pt]lps2-2-1.south east)[<-] -- (lps2-2-2 -| p1);
+        \draw([xshift=-1pt]lps2-3-1.south east)[<-] -- (lps2-3-2 -| p1);
+        \draw([xshift=-1pt]lps2-4-1.south east)[<-] -- (lps2-4-2 -| p1);
+        \draw([xshift=-1pt]lps2-6-1.south east)[<-] -- (lps2-6-2 -| p1);
+
+        \path(lps2-3-3) -- (lps2-4-3) coordinate[pos=0.5](lps2midway);
+        \draw(lps2midway -| converter-1-1.east) ellipse(0.5 and 2) coordinate(ellipse);
+        \draw(ellipse |- lps2-1-3)+(0, 0.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize <-- Shack\\\footnotesize DFS --->};
+        
+        \draw(lps2-1-5.south west) -- (lps2-1-4 -| 3eighth) -- (db9-1-2 -| 5eighth) -- (db9-1-2);
+        \draw(lps2-2-5.south west) -- (lps2-2-4 -| 3eighth) -- (db9-2-2 -| 5eighth) -- (db9-2-2);
+        \draw(lps2-3-5.south west) -- (lps2-3-4 -| 3eighth) -- (db9-3-2 -| 5eighth) -- (db9-3-2);
+        \draw(lps2-4-5.south west) -- (lps2-4-4 -| 3eighth) -- (db9-4-2 -| 5eighth) -- (db9-4-2);
+        \draw(lps2-6-5.south west) -- (lps2-6-4 -| 5eighth) node[circ=1pt](gndm){};
+        \draw(gndm) -- (db9-9-1.south east);
+        \draw(gndm) -- (db9-7-2 -| gndm) node[circ=1pt](gndm2){} -- (db9-7-1.south east);
+        \draw(gndm2) |- (db9-5-1.south east);
+
+\end{tikzpicture}
+\end{center}
+\caption{Shack to DFS Serial Wiring Diagram.}\label{fig:serialwiring}
+\end{figure}
+\begin{figure}
+  \begin{center}
+    \begin{tikzpicture}
+      % \draw[help lines, dashed] grid (12, 3);
+      % \draw[help lines, dashed] grid (12, -7);
+      % CAT6 LIGHTNING PROTECTION SYSTEM
+      \matrix[wire board, wiresboth, matrix anchor=north] (lps) {
+        \scriptsize Wh/Or &   1   &  -----  &  1  & \scriptsize \\
+        \scriptsize Orange&   2   &  -----  &  2  & \scriptsize \\
+        \scriptsize Wh/Gr &   3   &  -----  &  3  & \scriptsize \\
+        \scriptsize Blue  &   4   &  -----  &  4  & \scriptsize Blue\\
+        \scriptsize Wh/Bl &   5   &  -----  &  5  & \scriptsize Wh/Blue\\
+        \scriptsize Green &   6   &  -----  &  6  & \scriptsize \\
+        \scriptsize Wh/Br &   7   &  -----  &  7  & \scriptsize Wh/Br\\
+        \scriptsize Brown &   8   &  -----  &  8  & \scriptsize Brown\\
+      };
+      % Boxing the contents
+      \draw (lps-1-2.north east) rectangle (lps-8-2.south west);
+      \draw (lps-1-4.north east) rectangle (lps-8-4.south west);
+      \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-8-4.south west)+(0cm,-0.5cm)$);
+      \draw (lps-1-3.north)+(0, 0.5) node[anchor=south, font=\bfseries]{CAT6a LPS};
+
+      % SAFETY LIGHT
+      \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (strobe) {
+        \scriptsize Red   &   +  & +28VDC \\
+        \scriptsize Black &   -  & GND \\
+      };
+      \draw (strobe-1-2.north west) rectangle (strobe-2-3.south west);
+      \draw (strobe-1-3.north west)+(2cm,0.5cm) coordinate(p3) rectangle ($(strobe-2-3.south west)+(0,-0.5cm)$);
+      \draw (p3) node[anchor=south east, align=right]{\textbf{Strobe Light}};
+
+      % WIRING 
+      % to lps
+      \draw([xshift=-1pt]lps-1-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-2-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-3-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-4-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-5-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-6-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-7-1.south east)[<-] -- ++ (-5, 0);
+      \draw([xshift=-1pt]lps-8-1.south east)[<-] -- ++ (-5, 0);
+      % lps to ems switches
+      \path(lps-1-5.south west) -- (strobe-1-1.south east)
+      coordinate[pos=0.25](1q)
+      coordinate[pos=0.375](3e)
+      coordinate[pos=0.5](m)
+      coordinate[pos=0.625](5e)
+      coordinate[pos=0.75](3q);
+      \draw(lps-5-5.south west) -- (lps-5-5.south west -| 3e) -- (strobe-1-1.south east -| 3e) -- (strobe-1-1.south east);
+      \draw(lps-4-5.south west) -- (lps-4-5.south west -| 3e) node[circ=1pt]{};
+      \draw(lps-8-5.south west) -- (lps-8-5.south west -| 5e) -- (strobe-2-1.south east -| 5e) -- (strobe-2-1.south east);
+      \draw(lps-7-5.south west) -- (lps-7-5.south west -| 5e) node[circ=1pt]{};
+      % ellipse
+      \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
+      \draw(lps2midway)+(-4, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
+      \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize <-- Shack\\\footnotesize DFS --->};
+\end{tikzpicture}
+\end{center}
+\caption{RF-DFS PLC Line Wiring Diagram.}\label{fig:dfscat5wiring}
 \end{figure}
 
 \subsection{RF-DFS Components}\label{sec:higdfs}
@@ -950,16 +950,20 @@ The major components located at the RF-DFS are as follows:
 \begin{enumerate}
   \item One Parker Hannifin ACR9000 Motor Controller
   \item Two Parker Hannifin Aries AR-04AE Motor Drivers
-  \item One 24VDC Linear Power Supply
+  \item One 24VDC linear power supply
   \item One DIN-mounted Advantech BB-HESP4DR RS-422/485 dataline surge suppressor
-  \item One L-com AL-CAT6AJW CAT6a Lightning Protector
-  \item One Global Industrial 12-110VDC Forklift Strobe Light
+  \item One L-com AL-CAT6AJW CAT6a lightning protector
+  \item One Global Industrial 12-110VDC forklift strobe light
+  \item Two PMA3-14LN+ low noise amplifiers
+  \item One 1.7ft lightning rod
 \end{enumerate}
 Most of these components are located at the base of the pedestal, with the exception of the forklift strobe light which is mounted at the breaker panel inside the DFS fence. All serial, control, and RF lines are run from the shack to a horizontal conduit box at the base of the pedestal. From here, it splits with one conduit line going into the pedestal and another going to the breaker panel.
 
-There should be three cables coming from the shack as shown in Figure~\ref{fig:shackblock} -- one coaxial cable and two CAT6 lines. One CAT6 line carries the RS-485 motor control signal and the other is wired directly to the PLC for controlling the strobe light and reserved for RF-switching upgrades. Refer to Figures~\ref{fig:serialwiring} and~\ref{fig:dfscat5wiring} to ensure correct wiring of these components.
+There are three cables coming from the shack as shown in Figure~\ref{fig:shackblock} -- one coaxial cable and two CAT6 lines. One CAT6 line carries the RS-485 motor control signal and the other is wired directly to the PLC for controlling the strobe light and reserved for RF-switching upgrades. Refer to Figures~\ref{fig:serialwiring} and~\ref{fig:dfscat5wiring} to ensure correct wiring of these components.
 
 Inside the pedestal, the ACR9000 and Aries drives are connected as referenced in the \textit{ACR9000 Hardware Installation Guide}.
+
+The feed and LNA housing are mounted at the apex of the dish with four all-thread rods in a square pattern. The lightning rod is mounted above this using the same all-thread.
 
 \subsection{RF-EMS Components}\label{sec:higems}
 % switching, amplifiers, lps,
@@ -971,11 +975,11 @@ The major components located on the RF-EMS tower are as follows:
   \begin{enumerate}
     \item One IEC 60320 C14 AC power receptacle
     \item One AC line filter
-    \item One L-com AL-CAT6AJW CAT6a Lightning Protectors
-    \item One Standard Power SPS 15-5 5V 1.5A Linear Power Supply
-    \item One Condor HB12-1.7-A+ 12V 1.7A Linear Power Supply
-    \item One Condor HBB15-1.5-A+ 15V 1.5A Linear Power Supply
-    \item One Condor HB28-1-A+ 28V Linear 1A Power Supply
+    \item One L-com AL-CAT6AJW CAT6a lightning protectors
+    \item One Standard Power SPS 15-5 5V 1.5A linear power supply
+    \item One Condor HB12-1.7-A+ 12V 1.7A linear power supply
+    \item One Condor HBB15-1.5-A+ 15V 1.5A linear power supply
+    \item One Condor HB28-1-A+ 28V 1A linear power supply
     \item Two Dynatech Microwave M4-413K201L SP4T relay switches
     \item Two PMA3-14LN+ low noise amplifiers
   \end{enumerate}
@@ -1105,7 +1109,7 @@ The panel components are connected to eachother through a terminal block similar
       \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize EMS -->\\\footnotesize <-- Shack};
 \end{tikzpicture}
 \end{center}
-\caption{RF-EMS CAT5 Wiring Diagram.}\label{fig:emscat5wiring}
+\caption{RF-EMS PLC Line Wiring Diagram.}\label{fig:emscat5wiring}
 \end{figure}
 
 \section{Communications}\label{sec:comms}
@@ -1135,7 +1139,7 @@ There is a distinction with how the Python program receives motor position infor
 
 The user should regularly calibrate both axes with a level and compass to ensure that the recorded encoder positions for a parked antenna are accurately representative.
 
-\begin{table}
+\begin{table}[ht]
   \begin{center}
     \begin{tabularx}{\linewidth}{l|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X}
       Command          & Function & Example \\ \hline
@@ -1202,32 +1206,30 @@ The P1AM-100 uses a SAMD21G18 microcontroller and is programmed with the Arduino
 The basic flow of control in the PLC firmware is to wait for information in the serial buffer, then parse it as it arrives. Opcodes will be expected as a string of binary ASCII characters terminated by a newline character. If the opcode is recognized, the PLC will perform the expected operation and write a response to the serial buffer if necessary.
 
 \section{Software User Guide}
-copy everything from github wiki
+The following section describes how to use the Python interface to connect to and control each instrument. Refer to Figure~\ref{fig:gui} for an image of the root GUI window.
+
 \subsection{Getting Started}
 % software installation stuff, ni-visa, other requirements
 In order to use the front-end interface, download the following deployment requirements and the latest release on \verb|EMSMONPC2|, then run the executable.
 \begin{enumerate}
   \item NI-VISA
-  \item NI-488.2 if the spectrum analyzer connection is GPIB
+  \item NI-488.2 if the spectrum analyzer is connected via GPIB
 \end{enumerate}
 
 \subsection{Using the Program}\label{sec:usingtheprogram}
 After starting the program, navigate to \verb|Options>Configure| at the top left banner to connect to the appropriate devices/COM ports. The \verb|Connection Status| window will let you know if a device is connected, however, it is up to the user to ensure that the correct device has been selected in the \verb|Configure| menu. The terminal will output any initialization errors (such as if the wrong device/port is selected).
 
-From here, the user can issue SCPI commands to the spectrum analyzer using the control panel on the right, issue motor commands using the \verb|Antenna Position| panel, or select RF chains using the \verb|PLC Operations| panel on the left. Commands can be issued to the spectrum analyzer by either selecting a button or typing an entry and pressing \verb|Enter|. All entries will be issued in base units for the given parameter (Hz, seconds, etc.), however, shorthand scientific notation is allowed (5e9 will be passed as 5 GHz).
-
+From here, the user can issue SCPI commands to the spectrum analyzer using the control panel on the right, issue motor commands using the \verb|Antenna Position| panel, or select RF chains using the \verb|PLC Operations| panel on the left. Commands can be issued to the spectrum analyzer by either selecting a button or typing an entry and pressing \verb|Enter|. All entries will be issued in base units for the given parameter (Hz, seconds, etc.), however, shorthand scientific notation is allowed (\verb|5e9| will be passed as 5 GHz).
 \begin{figure}
   \begin{center}
     \includegraphics[width=\textwidth]{images/3gui.png}
   \end{center}
-  \caption{asdf}\label{fig:gui}
+  \caption{Python Graphical User Interface.}\label{fig:gui}
 \end{figure}
 
-\subsubsection{Header}
-\subsubsection{Control Panel}
-\subsubsection{Antenna Position}
-\subsubsection{Spectrum Analyzer Controls}
 \subsubsection{Terminal}
+The terminal at the bottom of the window will be the primary means of communicating information and exceptions to the user. Exceptions are not unconditionally fatal, but they should be noted to investigate if the problem lies in hardware or software. The user should consider saving a log of the terminal under \verb|File>Save log| if necessary. Up and down arrow keys can be used to access previously issued commands to the terminal.
+
 Python commands can also be evaluated or executed in the terminal, the difference between both commands is described in the Python documentation. It is highly recommended to reference the source code when issuing terminal commands, as this has the potential for deadlock, race conditions, and other undefined scenarios if care is not taken. Instances, their attributes, and methods, can all be accessed using the terminal although all commands will be generated in the main thread. As a result, most IO calls will be blocking for the duration of their execution. This can be avoided by using a thread handler, if it exists in the appropriate scope, or generating a thread for the given IO call. See:
 
 \verb|SpecAn.setAnalyzerThreadHandler|:
