@@ -582,9 +582,9 @@ The major components located in the RFI shack are as follows:
 
 The primary IO from the computer is a serial communication line to the ACR9000 motor controller at the RF-DFS, a GPIB or ethernet line to the Keysight N9040B inside the shack, and a USB line to the P1AM-100 PLC inside the shack. Figure~\ref{fig:shackblock} shows how to connect all of these components. The serial line is output as RS-232 from the computer's COM1 port, then is converted to RS-485 before being routed through the HESP4DR lightning protection system and exiting the shack as a CAT6 cable. Coaxial cables from each system are connected to an RF switch with the common port connected to the N9040B. Lastly, the P1AM-100 PLC's output terminal block is connected to another screw terminal block which feeds RF switching lines to S1 in the shack, and S2 and S3 on the EMS panel via CAT6 cable and lightning protection system. This terminal block also feeds a CAT6 cable to the DFS but it is only used for activate the safety warning light.
 
-Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the ACR9000 Hardware Installation Guide for information on this.
+Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the \textit{ACR9000 Hardware Installation Guide} for information on this.
 
-Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:shackwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring and pinouts are changed for it.
+Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:shackwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring is adjusted for it.
 
 \begin{table}
   \begin{center}
@@ -1210,7 +1210,7 @@ The following section describes how to use the Python interface to connect to an
 
 \subsection{Getting Started}
 % software installation stuff, ni-visa, other requirements
-In order to use the front-end interface, download the following deployment requirements and the latest release on \verb|EMSMONPC2|, then run the executable.
+In order to use the front-end interface, download the following deployment requirements and the latest release on \verb|EMSMONPC2|, then run the executable. Releases are located at the following link: \url{https://github.com/RomiFC/RF-DFS/releases}.
 \begin{enumerate}
   \item NI-VISA
   \item NI-488.2 if the spectrum analyzer is connected via GPIB
@@ -1265,15 +1265,72 @@ thread.start()
 \end{lstlisting}  
 
 \section{Appendix}
+\subsection{Development}
+Design files are located in the git repository hosted at \url{https://github.com/RomiFC/RF-DFS}. The wiki and \verb|README.md| files contain instructions for setting up a development environment for the Python software and PLC firmware. Functions, methods, and classes, should all be documented with a Python docstring or C/C++ Doxygen brief. Constants and global variables should be declared at the top of each file, below the header and library imports.
+
+Board files are also located in this repository with instructions for importing libraries to the local project directory. Each board contains a changelog located in the \verb|README.md| which contains vital information for distinguishing flaws and fixes between revisions. Each print with a change from the last print should iterate the revision and be documented in the changelog.
+
+\subsection{RF Receiver Upgrades}
+As stated in Section~\ref{sec:rfchain}, this upgrade provides the framework to add additional receivers relatively easily. The Mini-Circuits PMA-183PLN+ was picked as an initial LNA for a 6--18 GHz receiver although downconverting components would still need to be sourced. Figure~\ref{fig:pma183} shows the measured s-parameters for this amplifier which prove reasonable. Mini-Circuits also claims a nominal 1.4 dB noise figure within the operating frequency which is comparable to the PMA3-14LN+ at a nominal 1.8 dB.
+\begin{figure}[!ht]
+  \begin{center}
+    \input{figures/pma-183pln+.pgf}
+  \end{center}
+  \caption{asdfasdfasdfasdf}\label{fig:pma183}
+\end{figure}
+
+It may also be wise to put a switchable power amplifier at the RFI shack as shown in Figure~\ref{fig:poweramplifier}, this would improve the sensitivity of the receiver without causing compression or intermodulation distortion products. Additionally, if a sufficiently wideband PA was chosen, it could be used in conjunction with any of the signal chains after the downconverting stage as opposed to developing PAs for each receiver. The Mini-Circuits PMA5-83-LV+ could be a good candidate for this although boards have not been developed for it. This MMIC is also pin-compatible with the PMA5-83-2W+, a more expensive, higher power, amplifier.
+
+Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifiers with typical values for operating frequency, gain, noise figure, output power at 1 dB compression, output third order intercept, and output power at saturation.
+\begin{figure}
+  \begin{center}
+    \begin{circuitikz}
+      \draw(0, 0) node[bnc](port1){N9040b};
+      \draw(port1.hot) -- ++ (1, 0)
+      node[rotary switch = 4 in 60 wiper 60, anchor=in](sw4){};
+      \draw(sw4.out 1) -| ++ (1, 0.5) -- ++ (3, 0) |- ++ (1, -0.5)
+      node[rotary switch = 4 in 60 wiper 60, anchor=out 1, xscale=-1](sw5){};
+      \draw(sw4.out 2) to[amp, invert, t=\ctikzflipx{\small PA}] (sw5.out 2);
+      \draw(sw5.in) -- ++ (1, 0)
+      node[rotary switch = 4 in 60 wiper 60, anchor=in](sw1){};
+      \draw(sw1.out 1)[->] -- ++ (1.5, 0) coordinate(emsnode);
+      \draw(sw1.out 2)[->] -- (current subpath start -| emsnode) coordinate(dfsnode);
+
+      % LABELS
+      \draw(sw1.north) node[anchor=south]{S1};
+      \draw(sw4.north) node[anchor=south]{S4};
+      \draw(sw5.north) node[anchor=south]{S5};
+      \draw(emsnode.east) node[anchor=west]{To EMS};
+      \draw(dfsnode.east) node[anchor=west]{To DFS};
+    \end{circuitikz}
+  \end{center}
+  \caption{awetuh asdg }\label{fig:poweramplifier}
+\end{figure}
+\begin{table}
+  \begin{center}
+    \begin{tabular}{l|l|l|l|l|l|l}
+      MMIC        & Freq (GHz) & Gain (dB) & NF (dB) & P1dB (dBm) & OIP3 (dBm) & P\textsubscript{SAT} (dBm)\\ \hline
+      PMA3-14LN+  & 0.01--10   & 22.6      & 1.8     & +22        & +30.4      & \\
+      PMA-183PLN+ & 6--18      & 26.3      & 1.2     & +8.6       & +22        & \\
+      PMA5-83-LV+ & 0.01--10   & 12.9      & 2.6     & +28.7      & +40.8      & +31.2\\
+      PMA5-83-2W+ & 0.01--10   & 11.9      & 3.5     & +31        & +43.5      & +33
+    \end{tabular}
+  \end{center}
+  \caption{Amplifier Comparison with Typical Values.}\label{tab:amplifiercomparison}
+\end{table}
+
 \subsection{RF-EMS Conduit Diagram}
 Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagrams may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
-\begin{figure}[!h]
+\begin{figure}[!ht]
   \begin{center}
     \includegraphics[width=0.8\textwidth]{images/oldems.png}
     \includegraphics[width=\textwidth]{images/oldems2.png}
   \end{center}
   \caption{2001 RF-EMS Lightning Protection System.}\label{fig:oldems}
 \end{figure}
+
+\subsection{DRIFT Integration}
+
 
 \end{document}
 
