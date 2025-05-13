@@ -67,7 +67,6 @@
     color=captioncolor,
     bf,
 }}
- 
 
 % Changes font from Computer Modern to Gill Sans MT
 % This requires XeLaTeX or LuaTeX to function
@@ -84,7 +83,6 @@
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
-
 \lstdefinestyle{mystyle}{
     backgroundcolor=\color{backcolour},   
     commentstyle=\color{codegreen},
@@ -370,7 +368,7 @@
           &          &           &     &               \\ \hline
           &          &           &     &               \\ \hline
     \end{tabular}
-\renewcommand{\arraystretch}{1}
+\renewcommand{\arraystretch}{1} % Row separation for tables in the rest of document
 \end{center}
 
 \newpage
@@ -386,7 +384,7 @@
 % copy from readme/wiki/plan or something
 The Radio Frequency - Direction Finding System and Environmental Monitoring System are tools utilized by the NRAO-NM Interference Protection Group to identify and locate RF interference at the Very Large Array. The former is a 3-meter dish antenna with azimuth and elevation drives whereas the latter is a 50-foot tower with an omnidirectional club antenna. Both are connected to the RFI shack and controlled by a Python front end. This interface allows a user to control RF switching between both antennas and log data through a spectrum analyzer. 
 
-\subsection{System Overview}
+\subsection{Overview}
 The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (\verb|EMSMONPC2|).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation. RF switching is controlled by a PLC in the RFI shack (not shown).
 
 \begin{figure}[!h]
@@ -466,6 +464,9 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
   \caption{System Block Diagram.}\label{fig:sysblock2}
   \end{center}
 \end{figure}
+
+\subsection{System Use Cases}
+how we use this thing
 
 \subsection{RF Signal Chain}\label{sec:rfchain}
 Each system has a single 50-10000 MHz receiver but the framework is in place to add additional receivers relatively easily. Figure~\ref{fig:rfblock} shows an RF block diagram of existing components and the plan for an additional 6-18 GHz receiver on the EMS tower.
@@ -1140,8 +1141,8 @@ There is a distinction with how the Python program receives motor position infor
 The user should regularly calibrate both axes with a level and compass to ensure that the recorded encoder positions for a parked antenna are accurately representative.
 
 \begin{table}[ht]
-  \begin{center}
-    \begin{tabularx}{\linewidth}{l|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X}
+  \begin{center}\rowcolors{1}{lightgray!30}{white}
+    \begin{tabularx}{\linewidth}{p{2cm}|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X}
       Command          & Function & Example \\ \hline
 
       \lstinline|PROG| &
@@ -1152,42 +1153,39 @@ The user should regularly calibrate both axes with a level and compass to ensure
       \lstinline|P03>PROG0| \newline
       \lstinline|P00>SYS| \newline
       \lstinline|SYS>_|
-      \\ \hline
+      \\
 
-      \makecell[lt]{
-        \lstinline|DRIVE| \\
-        \lstinline|DRIVE ON| \\
-        \lstinline|DRIVE OFF| \\
-        \lstinline|DRIVE RES|
-      } &
+      \lstinline|DRIVE| \newline
+      \lstinline|DRIVE ON| \newline
+      \lstinline|DRIVE OFF| \newline
+      \lstinline|DRIVE RES|
+      &
       The \lstinline|DRIVE| command provides a report-back of the drive's status, lets you
       energize/de-energizes a motor/drive combination or reset the drive. &
       The following example reports the drive status of axis X. \newline
       \lstinline|P00>DRIVE X| \newline
       \lstinline|DRIVE OFF| \newline
       \lstinline|P00>_|
-      \\ \hline
+      \\
 
-      \makecell[lt]{
-        \lstinline|JOG| \\
-        \lstinline|JOG ABS| \\
-        \lstinline|JOG INC|
-      } &
+      \lstinline|JOG| \newline
+      \lstinline|JOG ABS| \newline
+      \lstinline|JOG INC| &
+
       Jogging, used along with a second command, sets up an individual velocity profile for an axis to a given velocity, generating a jog offset. This offset can be absolute or incremental from the current position. &
       The following example moves the X axis 5 degrees and Y axis 10 degrees, then back. \newline
       \lstinline|P00>JOG INC X 5| \newline
       \lstinline|P00>JOG INC Y 10| \newline
       \lstinline|P00>JOG INC X -5  Y -10| \newline
       \lstinline|P00>_|
-      \\ \hline
+      \\
 
-      \makecell[lt]{
-        \lstinline|PRINT| \\
-        \lstinline|PRINT BIT792| \\
-        \lstinline|PRINT BIT824| \\
-        \lstinline|PRINT P6144| \\
-        \lstinline|PRINT P6160|
-      } &
+      \lstinline|PRINT| \newline
+      \lstinline|PRINT BIT792| \newline
+      \lstinline|PRINT BIT824| \newline
+      \lstinline|PRINT P6144| \newline
+      \lstinline|PRINT P6160|
+      &
       This command prints a series of expressions (parameter, bit, and string values) to a device. Bits 792 and 824 return -1 if the X and Y axis are moving and 0 if stationary, respectively. Parameters 6144 and 6160 return the X and Y axis encoder positions, respectively. &
       The following example checks if the X axis is moving, then checks its encoder position. \newline
       \lstinline|P00>PRINT BIT792| \newline
@@ -1196,7 +1194,7 @@ The user should regularly calibrate both axes with a level and compass to ensure
       \lstinline|-235753513| \newline
       \lstinline|P00>_|
     \end{tabularx}
-  \end{center}
+  \end{center}\rowcolors{1}{white}{white}
   \caption{ACR9000 Commands Used by the Python Program.}\label{tab:acrcommands}
 \end{table}
 
@@ -1306,7 +1304,7 @@ Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifie
   \end{center}
   \caption{awetuh asdg }\label{fig:poweramplifier}
 \end{figure}
-\begin{table}
+\begin{table}\rowcolors{1}{lightgray!30}{white}
   \begin{center}
     \begin{tabular}{l|l|l|l|l|l|l}
       MMIC        & Freq (GHz) & Gain (dB) & NF (dB) & P1dB (dBm) & OIP3 (dBm) & P\textsubscript{SAT} (dBm)\\ \hline
@@ -1317,7 +1315,57 @@ Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifie
     \end{tabular}
   \end{center}
   \caption{Amplifier Comparison with Typical Values.}\label{tab:amplifiercomparison}
-\end{table}
+\end{table}\rowcolors{1}{white}{white}
+
+\subsection{DRIFT Integration}
+The Dynamic Radio Interference Finding Tool (DRIFT) is an Electromagnetic Spectrum Management project intended to be an external-facing, web-based interface to visualize RFI data from various sites including VLA, GBT, VLBA, CHIME, ASM-2, and the RF-DFS/EMS.\@
+
+Sweeps collected in \verb|AUTO| mode will also be automatically uploaded to the DRIFT database whereas \verb|MANUAL| sweeps can only be saved to the local machine. These sweeps are saved in a csv format that mimics those saved locally on the N9040B, containing lines of parameters with their values separated by commas as followed:
+\begin{lstlisting}[belowskip=0pt]
+Trace,
+Swept SA,
+A.33.03,N9040B
+Number of Points,1001
+Sweep Time,0.020066667
+Start Frequency,10000000
+Stop Frequency,12000000000
+\end{lstlisting}
+\begin{lstlisting}[aboveskip=0pt, belowskip=0pt, numbers=none]
+...
+\end{lstlisting}
+\begin{lstlisting}[aboveskip=0pt, belowskip=0pt, firstnumber=43]
+X Axis Units,Hz
+Y Axis Units,dBm
+DATA
+10000000,-71.1912847253302
+21990000,-105.183861324451
+33980000,-72.2399984094122
+\end{lstlisting}
+\begin{lstlisting}[aboveskip=0pt, numbers=none]
+...
+\end{lstlisting}
+Note that these csv files are first converted to a file with a format compatible for DRIFT processing by removing extraneous data and performing unit conversions. The most important of which is normalizing power spectral density to dBm/Hz and frequency to MHz. For the sake of consistency with DRIFT nomenclature, a \textit{scan} is equivalent to a spectrum analyzer sweep whereas a \textit{reading} refers to a single pair of x-y points. Table~\ref{tab:driftdata} shows what fields are stored by DRIFT.\@
+\begin{table}\rowcolors{1}{lightgray!30}{white}
+  \begin{center}
+    \begin{tabularx}{\linewidth}{l|l|X}
+      Field       & Required  & Description \\ \hline
+      \lstinline|instrument|    & Yes & Unique identifier for instrument or device (VLA, VLBA-PT, RF-DFS, etc.).\\
+      \lstinline|receiver|      & Yes & DRIFT will have a separate list of receivers for each instrument (DFS1, EMS1, etc.). \\
+      \lstinline|polarization|  & Yes & Hardcoded for NM spectrum monitoring devices (EMS is linear vertical, DFS is unknown.)\\
+      \lstinline|intensity_unit|& Yes & Hardcoded for NM spectrum monitoring devices (dBm/Hz). \\
+      \lstinline|scan_name|     & Yes & Unique string to represent the scan, will be displayed to the end user.\\
+      \lstinline|scan_datetime| & Yes & One UTC time, isoformat, with timezone attached, to represent the entire scan.\\
+      \lstinline|scan_az|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, only relevant for the DFS.\\
+      \lstinline|scan_el|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, only relevant for the DFS.\\
+      \lstinline|configuration| & No  & Selected from hardcoded list (VLA configurations, not relevant to NM spectrum monitoring devices).\\
+      \lstinline|instrument_lat|& No  & ASM-2 devices only, other instruments have their locations hardcoded.\\
+      \lstinline|instrument_long|&No  & ASM-2 devices only, other instruments have their locations hardcoded.\\
+      \lstinline|frequency|     & Yes & Array of primary independent variables, supplied in MHz.\\
+      \lstinline|intensity|     & Yes & Array of primary dependent variables, supplied in \lstinline|intensity_unit|.\\
+    \end{tabularx}
+  \end{center}
+  \caption{DRIFT Unified Fields. Not all fields are used by all sites.}\label{tab:driftdata}
+\end{table}\rowcolors{1}{white}{white}
 
 \subsection{RF-EMS Conduit Diagram}
 Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagrams may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
@@ -1328,9 +1376,6 @@ Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection syste
   \end{center}
   \caption{2001 RF-EMS Lightning Protection System.}\label{fig:oldems}
 \end{figure}
-
-\subsection{DRIFT Integration}
-
 
 \end{document}
 
