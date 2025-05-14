@@ -5,6 +5,7 @@
 % chktex-file 3
 % chktex-file 8
 % chktex-file 10
+% chktex-file 11
 % chktex-file 17
 % chktex-file 24
 % chktex-file 26
@@ -18,6 +19,10 @@
 \usetikzlibrary{positioning}
 \usetikzlibrary{intersections}
 \usetikzlibrary{matrix}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{patterns}
+\usetikzlibrary{3d}
+\usetikzlibrary{arrows}
 \usepackage{pgf}        % Used to import pgf figures with \input
 \def\mathdefault#1{#1}  % Fixes 'Undefined control sequence \mathdefault' in imported pgf files
 \usepackage{pgfplots}
@@ -112,6 +117,26 @@
 \ctikzset{amplifiers/fill=yellow!30}
 \tikzset{amp/.append style={fill=yellow!30}}
 \tikzset{twoport/.append style={fill=cyan!20}}
+% TikZ hatch pattern used in trace cross section
+\tikzset{
+        hatch distance/.store in=\hatchdistance,
+        hatch distance=3.5pt,
+        hatch thickness/.store in=\hatchthickness,
+        hatch thickness=0pt
+    }
+\makeatletter
+\pgfdeclarepatternformonly[\hatchdistance,\hatchthickness]{flexible hatch}
+    {\pgfqpoint{0pt}{0pt}}
+    {\pgfqpoint{\hatchdistance}{\hatchdistance}}
+    {\pgfpoint{\hatchdistance-1pt}{\hatchdistance-1pt}}%
+    {
+        \pgfsetcolor{\tikz@pattern@color}
+        \pgfsetlinewidth{\hatchthickness}
+        \pgfpathmoveto{\pgfqpoint{0.5pt}{0.5pt}}
+        \pgfpathlineto{\pgfqpoint{\hatchdistance}{\hatchdistance}}
+        \pgfusepath{stroke}
+    }
+\makeatother
 % TikZ node[server] symbol
 \makeatletter
 \pgfkeys{/pgf/.cd,
@@ -374,6 +399,7 @@
 \newpage
 \tableofcontents
 \listoffigures
+\listoftables
 \thispagestyle{fancy}
 \newpage
 
@@ -384,7 +410,7 @@
 % copy from readme/wiki/plan or something
 The Radio Frequency - Direction Finding System and Environmental Monitoring System are tools utilized by the NRAO-NM Interference Protection Group to identify and locate RF interference at the Very Large Array. The former is a 3-meter dish antenna with azimuth and elevation drives whereas the latter is a 50-foot tower with an omnidirectional club antenna. Both are connected to the RFI shack and controlled by a Python front end. This interface allows a user to control RF switching between both antennas and log data through a spectrum analyzer. 
 
-\subsection{Overview}
+\subsection{System Overview}
 The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS tower. A block diagram which shows the breakdown of major components and their connections is shown in Figure~\ref{fig:sysblock2}. The user will be able to control all IO functions through the Python application run on the PC (\verb|EMSMONPC2|).  SCPI commands issued over GPIB allow the user to control and view the spectrum analyzer display on the PC and a serial connection facilitates the same function with the motor controller. This motor controller is a Parker Hannifin ACR9000 which drives 2 Aries AR-04AE servos; one each for azimuth and elevation. RF switching is controlled by a PLC in the RFI shack (not shown).
 
 \begin{figure}[!h]
@@ -465,8 +491,10 @@ The three locations of note are the RFI shack, the RF-DFS dish, and the RF-EMS t
   \end{center}
 \end{figure}
 
-\subsection{System Use Cases}
-how we use this thing
+\subsection{Proactive and Reactive Spectrum Monitoring}
+There are two primary use cases for this system, the first is to proactively make records of the spectrum on a regular basis. These will be uploaded to DRIFT (described in Section~\ref{sec:drift}) and can be configured to be recorded at a time basis of the operator's will. The goal of this is to provide a substantial repository of spectral information that can be referenced at a later date when RFI in the VLA science data needs to be investigated.
+
+When RFI needs to be examined at greater granularity, either in time, frequency, spectral resolution, or otherwise, the operator can manually configure spectrum analyzer parameters and save traces to the local machine. If the user is inside the RFI shack and not accessing the system remotely, they will also have full access to the spectrum analyzer features beyond those implemented in the Python interface.
 
 \subsection{RF Signal Chain}\label{sec:rfchain}
 Each system has a single 50-10000 MHz receiver but the framework is in place to add additional receivers relatively easily. Figure~\ref{fig:rfblock} shows an RF block diagram of existing components and the plan for an additional 6-18 GHz receiver on the EMS tower.
@@ -477,7 +505,7 @@ The coaxial cables running up the tower and to the dish are Andrew LDF1-50 1/4''
 
 The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wideband low noise MMICs. The boards that house these amplifiers are designed in house and fabricated on OSHPark 4-layer stackups in order to save cost over using prebuilt components. Figure~\ref{fig:pma3} shows the measured gain of an assembled amplifier over the operating frequency.
 
-\begin{figure}
+\begin{figure}[ht]
     \begin{center}
         \begin{circuitikz}
             % \draw[help lines, dashed] grid (14, 3);
@@ -559,7 +587,7 @@ The LNAs in these initial 50-10000 MHz receivers are Mini-Circuits PMA3-14LN+ wi
   \begin{center}
       \input{figures/pma3-14ln+.pgf}
   \end{center}
-  \caption{PMA3-14LN+ Scattering Parameters.}\label{fig:pma3}
+  \caption{Assembled PMA3-14LN+ Scattering Parameters.}\label{fig:pma3}
 \end{figure}
 
 \section{Hardware Installation Guide}\label{sec:hig}
@@ -586,17 +614,6 @@ The primary IO from the computer is a serial communication line to the ACR9000 m
 Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the \textit{ACR9000 Hardware Installation Guide} for information on this.
 
 Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:shackwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring is adjusted for it.
-
-\begin{table}
-  \begin{center}
-    \begin{tabular}{c|c|c}
-      Interface          & Pin 7 & Pin 9 \\ \hline
-      RS-232             & Open  & Open  \\
-      RS-485 full-duplex & GND   & GND   \\
-    \end{tabular}
-  \end{center}
-  \caption{ACR9000 COM1 Transmission Modes.}\label{tab:acr9000com1}
-\end{table}
 
 \begin{figure}
   \begin{center}
@@ -667,7 +684,19 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
   \end{center}
   \caption{RFI-Shack Components and Connections}\label{fig:shackblock}
 \end{figure}
-\begin{figure}[h]
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{c|c|c}
+      Interface          & Pin 7 & Pin 9 \\ \hline
+      RS-232             & Open  & Open  \\
+      RS-485 full-duplex & GND   & GND   \\
+    \end{tabular}
+  \end{center}
+  \caption{ACR9000 COM1 Transmission Modes.}\label{tab:acr9000com1}
+\end{table}
+
+\begin{figure}[ht]
   \begin{center}
     \begin{tikzpicture}
       % \draw[help lines, dashed] grid (12, 3);
@@ -765,8 +794,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         % ellipse
         \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
         \draw(lps2midway -| p3)+(-1, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
-        \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable (x2)\\\footnotesize EMS --->\\\footnotesize DFS --->};
-        
+        \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable (x2)\\\footnotesize EMS --->\\\footnotesize DFS --->};    
 \end{tikzpicture}
 \end{center}
 \caption{RFI Shack PLC Wiring Diagram.}\label{fig:shackwiring}
@@ -951,7 +979,7 @@ The major components located at the RF-DFS are as follows:
 \begin{enumerate}
   \item One Parker Hannifin ACR9000 Motor Controller
   \item Two Parker Hannifin Aries AR-04AE Motor Drivers
-  \item One 24VDC linear power supply
+  \item One DIN-mounted Sola SDN 2.5-24-100P 24V 2.5A linear power supply
   \item One DIN-mounted Advantech BB-HESP4DR RS-422/485 dataline surge suppressor
   \item One L-com AL-CAT6AJW CAT6a lightning protector
   \item One Global Industrial 12-110VDC forklift strobe light
@@ -1217,7 +1245,8 @@ In order to use the front-end interface, download the following deployment requi
 \subsection{Using the Program}\label{sec:usingtheprogram}
 After starting the program, navigate to \verb|Options>Configure| at the top left banner to connect to the appropriate devices/COM ports. The \verb|Connection Status| window will let you know if a device is connected, however, it is up to the user to ensure that the correct device has been selected in the \verb|Configure| menu. The terminal will output any initialization errors (such as if the wrong device/port is selected).
 
-From here, the user can issue SCPI commands to the spectrum analyzer using the control panel on the right, issue motor commands using the \verb|Antenna Position| panel, or select RF chains using the \verb|PLC Operations| panel on the left. Commands can be issued to the spectrum analyzer by either selecting a button or typing an entry and pressing \verb|Enter|. All entries will be issued in base units for the given parameter (Hz, seconds, etc.), however, shorthand scientific notation is allowed (\verb|5e9| will be passed as 5 GHz).
+From here, the user can issue SCPI commands to the spectrum analyzer using the control panel on the right, issue motor commands using the \verb|Antenna Position| panel, or select RF chains using the \verb|PLC Operations| panel on the left if it has been initialized. Commands can be issued to the spectrum analyzer by either selecting a button or typing an entry and pressing \verb|Enter|. All entries will be issued in base units for the given parameter (Hz, seconds, etc.), however, shorthand scientific notation is allowed (\verb|5e9| will be passed as 5 GHz).
+
 \begin{figure}
   \begin{center}
     \includegraphics[width=\textwidth]{images/3gui.png}
@@ -1268,18 +1297,20 @@ Design files are located in the git repository hosted at \url{https://github.com
 
 Board files are also located in this repository with instructions for importing libraries to the local project directory. Each board contains a changelog located in the \verb|README.md| which contains vital information for distinguishing flaws and fixes between revisions. Each print with a change from the last print should iterate the revision and be documented in the changelog.
 
-\subsection{RF Receiver Upgrades}
-As stated in Section~\ref{sec:rfchain}, this upgrade provides the framework to add additional receivers relatively easily. The Mini-Circuits PMA-183PLN+ was picked as an initial LNA for a 6--18 GHz receiver although downconverting components would still need to be sourced. Figure~\ref{fig:pma183} shows the measured s-parameters for this amplifier which prove reasonable. Mini-Circuits also claims a nominal 1.4 dB noise figure within the operating frequency which is comparable to the PMA3-14LN+ at a nominal 1.8 dB.
+\subsection{Receiver Upgrades}
+As stated in Section~\ref{sec:rfchain}, this upgrade provides the framework to add additional receivers relatively easily. The Mini-Circuits PMA-183PLN+ was picked as an input stage LNA for a 6--18 GHz receiver although downconverting components would still need to be sourced. Figure~\ref{fig:pma183} shows the measured s-parameters for a designed and assembled amplifier which prove reasonable. Mini-Circuits also claims a nominal 1.4 dB noise figure within the operating frequency which is comparable to the PMA3-14LN+ at a nominal 1.8 dB.
+
 \begin{figure}[!ht]
   \begin{center}
     \input{figures/pma-183pln+.pgf}
   \end{center}
-  \caption{asdfasdfasdfasdf}\label{fig:pma183}
+  \caption{Assembled PMA-183PLN+ Scattering Parameters}\label{fig:pma183}
 \end{figure}
 
 It may also be wise to put a switchable power amplifier at the RFI shack as shown in Figure~\ref{fig:poweramplifier}, this would improve the sensitivity of the receiver without causing compression or intermodulation distortion products. Additionally, if a sufficiently wideband PA was chosen, it could be used in conjunction with any of the signal chains after the downconverting stage as opposed to developing PAs for each receiver. The Mini-Circuits PMA5-83-LV+ could be a good candidate for this although boards have not been developed for it. This MMIC is also pin-compatible with the PMA5-83-2W+, a more expensive, higher power, amplifier.
 
 Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifiers with typical values for operating frequency, gain, noise figure, output power at 1 dB compression, output third order intercept, and output power at saturation.
+
 \begin{figure}
   \begin{center}
     \begin{circuitikz}
@@ -1302,7 +1333,7 @@ Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifie
       \draw(dfsnode.east) node[anchor=west]{To DFS};
     \end{circuitikz}
   \end{center}
-  \caption{awetuh asdg }\label{fig:poweramplifier}
+  \caption{Optional Power Amplifier Inside Shack.}\label{fig:poweramplifier}
 \end{figure}
 \begin{table}\rowcolors{1}{lightgray!30}{white}
   \begin{center}
@@ -1317,11 +1348,146 @@ Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifie
   \caption{Amplifier Comparison with Typical Values.}\label{tab:amplifiercomparison}
 \end{table}\rowcolors{1}{white}{white}
 
-\subsection{DRIFT Integration}
+Another potential upgrade would be a calibrated noise source at both the EMS and DFS antennas. This would be connected with a directional coupler or RF switch in front of the receivers to allow the operator to characterize gain and noise figure of the system and ensure that all receivers are working properly.
+
+\subsection{RF Component Design}
+This section serves to supplement the information in Section~\ref{sec:rfchain} and the git repository with lessons learned in PCB design.
+
+The decision to design PCBs was done as a cost saving measure, considering a connectorized power amplifier may cost \$2000 as opposed to \$200 or less for one built in-house. It also means the footprints, trace dimensions, components, etc., could be reused in future designs so long as the supplier (OSHPark) and stackup remains the same. The most difficult part of this process was testing trace dimensions and SMA launch footprints for a combination that provides an effective wideband impedance match. Early revisions of amplifiers suffered from oscillations, instability, and poor return loss due to large SMA landing pads and center conductors.
+
+\begin{figure}[ht]
+  \begin{center}
+    \begin{tikzpicture}
+      \draw (0,0) node[name=sw]{} -- ++ (6,0) node[name=se]{};
+      \draw[
+          draw = none,
+          decoration = {border, segment length=9, amplitude=5, angle = -135},
+          postaction = {decorate, draw}
+      ] (0,0) -- ++ (6.5,0);
+      \draw (0, 2) node[name=nw]{} -- ++ (6, 0) node[name=ne]{};
+      \draw (6, 2)[dashed] -- ++ (30: 1);
+      \draw (6, 0)[dashed] -- ++ (30: 1);
+      % Trace (Width = 1.2)
+      \draw[pattern = flexible hatch] (2.4, 2) node[name=ms-sw]{} rectangle (3.6, 2.5) node[name=ms-ne]{};
+      \draw (3.6, 2)[dashed] -- ++ (30: 0.3);
+      \draw (2.4, 2.5)[dashed] -- ++ (30: 0.3);
+      \draw (3.6, 2.5)[dashed] -- ++ (30: 0.3);
+      % Coplanar GND (Width = 2.6)
+      \draw (0, 2) rectangle ++ (1.6, 0.5);
+      \draw (4.4, 2) rectangle ++ (1.6, 0.5);
+      \draw (0, 2.5)[dashed] -- ++ (30: 0.9);
+      \draw (6, 2.5)[dashed] -- ++ (30: 1);
+      \draw (1.6, 2)[dashed] -- ++ (30: 0.3);
+      \draw (1.6, 2.5)[dashed] -- ++ (30: 0.3);
+      \draw (4.4, 2.5)[dashed] -- ++ (30: 0.3);
+      % Gap (Width = 0.8)
+      \draw (3.6, 2.8)[|<->|] -- (4.4, 2.8);
+      \draw (4, 3.1) node{$s$ = 0.2mm};
+      % Height
+      \draw (-0.5, 1) node[name = height]{$h$ = 0.2021mm};
+      \draw (height.north)[->|] -- (-0.5,2);
+      \draw (height.south)[->|] -- (-0.5,0);
+      % Width
+      \draw (2.4, 1.8)[|<->|] -- (3.6, 1.8);
+      \draw (3, 1.4) node{$w$ = 0.37mm};
+      % Thickness
+      \draw (height.north) ++ (1.3, 0)[->|] -- (0.8, 2);
+      \draw (0.8, 2.5)[|<-] -- ++ (0, 0.7) node[name=t]{};
+      \draw (t.north) node{$t$ = 35$\upmu$m};
+      % Dielectric Constant
+      \draw (5, 0.25) node[name = er]{$\varepsilon_r$ = 3.6};
+    \end{tikzpicture}
+  \end{center}
+  \caption{Grounded Coplanar Waveguide Dimensions.}\label{fig:gcpw}
+\end{figure}
+
+The best-performing design as of date uses Mueller BU-1420761881 connectors with the footprint shown in Figure~\ref{fig:sma}. This footprint is also present in the repository, but the layer 2 ground cutout needs to be generated manually for each connector. The layer 1 ground cutout may also perform better with its right angles smoothed although the dimensions for this are not strict. A grounded coplanar waveguide (Shown in Figure~\ref{fig:gcpw}) extends in a straight line from the SMA center conductor to the MMIC input pin. The dimensions were chosen as a compromise between easy of soldering components, where a larger trace width is better, and impedance matching the trace to MMIC pins, where a smaller trace width is better. As a result, only 0402 components will fit directly on the trace and SMA connectors with a center pin larger than 10 mils will likely incur problems as well.
+
+For the best performance and stability, each RF trace should be fenced by two rows of plated through-hole vias on each side, with plenty of vias underneath and around MMIC components as well. One set of rows placed 1.2mm from the center of the trace with 1.2mm of via spacing, combined with another set of rows at 2.4mm from the center of the trace and the same via spacing worked well, however, the exact dimensions of this do not seem to be strict with the general rule of too many vias being preferable to not enough vias.
+
+\colorlet{pcbcopper}{orange!30}
+\colorlet{pcbother}{lightgray!30}
+\begin{figure}
+  \begin{center}
+    \begin{tikzpicture}[x=1cm, y=1cm, z=0.6cm]
+      \foreach \y in {0, 1, 2, 3} {\coordinate(ne\y) at (4.5, \y, 5);}
+      \begin{scope}[canvas is xz plane at y=0]
+        \draw(0, 0) node[anchor=north west]{Layer 4};
+        \draw(0, 0) [fill=pcbother]rectangle (ne0);
+      \end{scope}
+      \begin{scope}[canvas is xz plane at y=1]
+        \draw(0, 0) node[anchor=north west, fill=white]{Layer 3};
+        \draw(0, 0) [fill=pcbother]rectangle (ne1);
+      \end{scope}
+      \begin{scope}[canvas is xz plane at y=2]
+        \draw(0, 0) node[anchor=north west, fill=white]{Layer 2};
+        \draw(0, 0) [fill=pcbother]rectangle (ne2);
+        \path(0, 0) -- coordinate[pos=0.5](midpointsouth) (current subpath start -| ne2);
+        \draw([xshift=-0.35cm]midpointsouth) coordinate(rectanglesw) [fill=white]rectangle ++ (0.7, 2) coordinate(rectanglene);
+      \end{scope}
+      \begin{scope}[canvas is xz plane at y=3]
+        \draw(0, 0) node[anchor=north west, fill=white]{Layer 1};
+        \draw(0, 0) [fill=white]rectangle (ne3);
+        \fill[pcbcopper](0, 0) -- (0, 5) -- (1.7, 5) -- (1.7, 2) -- (1.25, 2) -- (1.25, 0) -- cycle;
+        \fill[pcbcopper](4.5, 0) -- (4.5, 5) -- (2.8, 5) -- (2.8, 2) -- (3.25, 2) -- (3.25, 0) -- cycle;
+        \draw(0, 0) rectangle (ne3);
+        \path(0, 0) -- coordinate[pos=0.5](midpointsouth) (current subpath start -| ne3);
+        \draw([xshift=-1cm]midpointsouth) -- ++ (0, 2) -- ++ (0.45, 0) to (\tikztostart |- ne3);
+        \draw([xshift=1cm]midpointsouth) -- ++ (0, 2) -- ++ (-0.45, 0) to (\tikztostart |- ne3);
+
+        \draw([xshift=-0.25cm]midpointsouth) coordinate(tracesw) -- (current subpath start |- ne3);
+        \draw([xshift=0.25cm]midpointsouth) -- (current subpath start |- ne3) coordinate(tracene);
+        \fill[pcbcopper]([xshift=-0.25cm]midpointsouth) rectangle (tracene);
+
+
+        \pgflowlevelsynccm % Makes arrows transform on plane but only works with explicit coords (no names)
+        \draw[dotted](1.25, 2) -- ++ (-0.5, 0);
+        \draw[<->|](0.75, 0) -- node[pos=0.5, fill=pcbcopper]{5.08} (0.75, 2);
+        \draw[dotted](1.25, 2) -- ++ (0, 0.5);
+        \draw[dotted](3.25, 2) -- ++ (0, 0.5);
+        \draw[|<-](1.25, 2.5) -- ++ (-0.25, 0);
+        \draw[|<-](3.25, 2.5) -- ++ (0.25, 0);
+        \draw(4, 2.5) node[fill=pcbcopper]{1.41};
+        \draw(2.25, 1) node[rotate=90]{\small Trace};
+        \draw(2.25, 4) node[rotate=90]{\small Trace};
+      \end{scope}
+
+      \tikzset{xshift=7cm}
+      \foreach \y in {0, 1, 2, 3} {\coordinate(ne\y) at (4.5, \y, 5);}
+      \begin{scope}[canvas is xz plane at y=0]
+        \draw(0, 0) node[anchor=north west]{Layer 4};
+        \draw(0, 0) [fill=pcbother]rectangle (ne0);
+      \end{scope}
+      \begin{scope}[canvas is xz plane at y=1]
+        \draw(0, 0) node[anchor=north west, fill=white]{Layer 3};
+        \draw(0, 0) [fill=pcbother]rectangle (ne1);
+      \end{scope}
+      \begin{scope}[canvas is xz plane at y=2]
+        \draw(0, 0) node[anchor=north west, fill=white]{Layer 2};
+        \draw(0, 0) [fill=pcbcopper]rectangle (ne2);
+        \path(0, 0) -- coordinate[pos=0.5](midpointsouth) (current subpath start -| ne2);
+        \draw([xshift=-0.35cm]midpointsouth) coordinate(rectanglesw) [fill=white]rectangle ++ (0.7, 2) coordinate(rectanglene);
+        
+        \draw[dotted](rectanglesw |- rectanglene) -- ++ (0, 0.5);
+        \draw[dotted](rectanglene) -- ++ (0, 0.5);
+        \pgflowlevelsynccm % Makes arrows transform on plane but only works with explicit coords (no names)
+        \draw[<->|](1.4, 0) -- node[pos=0.5, fill=pcbcopper]{5.08} (1.4, 2);
+        \draw[dotted](1.5, 2) -- (2, 2);
+        \draw[|<->|](1.9, 2.5) -- (2.6, 2.5);
+        \draw(2.25, 3) node[fill=pcbcopper]{0.5};
+      \end{scope}
+    \end{tikzpicture}
+  \end{center}
+  \caption{Ground Clearance Dimensions for SMA Landings in mm.}\label{fig:sma}
+\end{figure}
+
+\subsection{DRIFT Integration}\label{sec:drift}
 The Dynamic Radio Interference Finding Tool (DRIFT) is an Electromagnetic Spectrum Management project intended to be an external-facing, web-based interface to visualize RFI data from various sites including VLA, GBT, VLBA, CHIME, ASM-2, and the RF-DFS/EMS.\@
 
-Sweeps collected in \verb|AUTO| mode will also be automatically uploaded to the DRIFT database whereas \verb|MANUAL| sweeps can only be saved to the local machine. These sweeps are saved in a csv format that mimics those saved locally on the N9040B, containing lines of parameters with their values separated by commas as followed:
-\begin{lstlisting}[belowskip=0pt]
+Sweeps collected in \verb|AUTO| mode will also be automatically uploaded to the DRIFT database whereas \verb|MANUAL| sweeps can only be saved to the local machine. These sweeps are saved in a csv format that mimics those saved locally on the N9040B, containing lines of parameters with their values separated by commas as shown in Figure~\ref{fig:csvexample}.
+
+\begin{figure}[ht]
+\begin{lstlisting}[aboveskip=0pt, belowskip=0pt]
 Trace,
 Swept SA,
 A.33.03,N9040B
@@ -1341,27 +1507,33 @@ DATA
 21990000,-105.183861324451
 33980000,-72.2399984094122
 \end{lstlisting}
-\begin{lstlisting}[aboveskip=0pt, numbers=none]
+\begin{lstlisting}[aboveskip=0pt, belowskip=0pt, numbers=none]
 ...
 \end{lstlisting}
-Note that these csv files are first converted to a file with a format compatible for DRIFT processing by removing extraneous data and performing unit conversions. The most important of which is normalizing power spectral density to dBm/Hz and frequency to MHz. For the sake of consistency with DRIFT nomenclature, a \textit{scan} is equivalent to a spectrum analyzer sweep whereas a \textit{reading} refers to a single pair of x-y points. Table~\ref{tab:driftdata} shows what fields are stored by DRIFT.\@
+\caption{Example Trace CSV.}\label{fig:csvexample}
+\end{figure}
+
+Note that these csv files are first converted to a file with a format compatible for DRIFT processing by removing extraneous data and performing unit conversions. The most important of which is normalizing power spectral density to dBm/Hz and frequency to MHz. For the sake of consistency with DRIFT nomenclature, a \textit{scan} is equivalent to a spectrum analyzer sweep whereas a \textit{reading} refers to a single pair of x-y points. Table~\ref{tab:driftdata} shows what fields are stored by DRIFT;\@ all fields are assumed to be scan-level metadata unless otherwise specified.
+
 \begin{table}\rowcolors{1}{lightgray!30}{white}
   \begin{center}
     \begin{tabularx}{\linewidth}{l|l|X}
       Field       & Required  & Description \\ \hline
-      \lstinline|instrument|    & Yes & Unique identifier for instrument or device (VLA, VLBA-PT, RF-DFS, etc.).\\
+      \lstinline|instrument|    & Yes & Unique identifier for instrument or device (VLA, VLBA-PT, VLBA-LA, RF-DFS, RF-EMS, etc.) per scan.\\
       \lstinline|receiver|      & Yes & DRIFT will have a separate list of receivers for each instrument (DFS1, EMS1, etc.). \\
       \lstinline|polarization|  & Yes & Hardcoded for NM spectrum monitoring devices (EMS is linear vertical, DFS is unknown.)\\
       \lstinline|intensity_unit|& Yes & Hardcoded for NM spectrum monitoring devices (dBm/Hz). \\
       \lstinline|scan_name|     & Yes & Unique string to represent the scan, will be displayed to the end user.\\
       \lstinline|scan_datetime| & Yes & One UTC time, isoformat, with timezone attached, to represent the entire scan.\\
-      \lstinline|scan_az|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, only relevant for the DFS.\\
-      \lstinline|scan_el|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, only relevant for the DFS.\\
+      \lstinline|scan_az|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, not relevant for the EMS.\\
+      \lstinline|scan_el|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, not relevant for the EMS.\\
       \lstinline|configuration| & No  & Selected from hardcoded list (VLA configurations, not relevant to NM spectrum monitoring devices).\\
       \lstinline|instrument_lat|& No  & ASM-2 devices only, other instruments have their locations hardcoded.\\
       \lstinline|instrument_long|&No  & ASM-2 devices only, other instruments have their locations hardcoded.\\
-      \lstinline|frequency|     & Yes & Array of primary independent variables, supplied in MHz.\\
-      \lstinline|intensity|     & Yes & Array of primary dependent variables, supplied in \lstinline|intensity_unit|.\\
+      \lstinline|frequency|     & Yes & Primary independent variable (reading-level), supplied in MHz.\\
+      \lstinline|intensity|     & Yes & Primary dependent variable (reading-level), supplied in \lstinline|intensity_unit|.\\
+      \lstinline|reading_az|    & No  & Azimuth for a specific reading in decimal degrees (ASM-2 only).\\
+      \lstinline|reading_el|    & No  & Elevation for a specific reading in decimal degrees (ASM-2 only).\\
     \end{tabularx}
   \end{center}
   \caption{DRIFT Unified Fields. Not all fields are used by all sites.}\label{tab:driftdata}
