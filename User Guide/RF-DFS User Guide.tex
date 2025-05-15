@@ -1348,7 +1348,7 @@ Table~\ref{tab:amplifiercomparison} shows a comparison of the discussed amplifie
   \caption{Amplifier Comparison with Typical Values.}\label{tab:amplifiercomparison}
 \end{table}\rowcolors{1}{white}{white}
 
-Another potential upgrade would be a calibrated noise source at both the EMS and DFS antennas. This would be connected with a directional coupler or RF switch in front of the receivers to allow the operator to characterize gain and noise figure of the system and ensure that all receivers are working properly.
+Another potential upgrade is a calibrated noise source at both the EMS and DFS antennas. This would be connected with a directional coupler or RF switch in front of the receivers to allow the operator to characterize gain and noise figure of the system and ensure that all receivers are working properly.
 
 \subsection{RF Component Design}
 This section serves to supplement the information in Section~\ref{sec:rfchain} and the git repository with lessons learned in PCB design.
@@ -1401,32 +1401,34 @@ The decision to design PCBs was done as a cost saving measure, considering a con
   \caption{Grounded Coplanar Waveguide Dimensions.}\label{fig:gcpw}
 \end{figure}
 
-The best-performing design as of date uses Mueller BU-1420761881 connectors with the footprint shown in Figure~\ref{fig:sma}. This footprint is also present in the repository, but the layer 2 ground cutout needs to be generated manually for each connector. The layer 1 ground cutout may also perform better with its right angles smoothed although the dimensions for this are not strict. A grounded coplanar waveguide (Shown in Figure~\ref{fig:gcpw}) extends in a straight line from the SMA center conductor to the MMIC input pin. The dimensions were chosen as a compromise between easy of soldering components, where a larger trace width is better, and impedance matching the trace to MMIC pins, where a smaller trace width is better. As a result, only 0402 components will fit directly on the trace and SMA connectors with a center pin larger than 10 mils will likely incur problems as well.
+The best-performing design as of date uses Mueller BU-1420761881 connectors with the footprint shown in Figure~\ref{fig:sma}. This footprint is also present in the repository, but the layer 2 ground cutout needs to be generated manually for each connector. The layer 1 ground cutout may also perform better with its right angles smoothed although the dimensions for this are not strict. Layers 3 and 4 are continuous ground planes. A grounded coplanar waveguide (Shown in Figure~\ref{fig:gcpw}) extends in a straight line from the SMA center conductor to the MMIC input pin. The dimensions were chosen as a compromise between ease of soldering components, where a larger trace width is better, and impedance matching the trace to MMIC pins, where a smaller trace width is better. As a result, only 0402 components will fit directly on the trace and SMA connectors with a center pin larger than 10 mils will likely incur problems.
 
 For the best performance and stability, each RF trace should be fenced by two rows of plated through-hole vias on each side, with plenty of vias underneath and around MMIC components as well. One set of rows placed 1.2mm from the center of the trace with 1.2mm of via spacing, combined with another set of rows at 2.4mm from the center of the trace and the same via spacing worked well, however, the exact dimensions of this do not seem to be strict with the general rule of too many vias being preferable to not enough vias.
 
 \colorlet{pcbcopper}{orange!30}
 \colorlet{pcbother}{lightgray!30}
+\colorlet{pcbother2}{cyan!25}
 \begin{figure}
   \begin{center}
-    \begin{tikzpicture}[x=1cm, y=1cm, z=0.6cm]
-      \foreach \y in {0, 1, 2, 3} {\coordinate(ne\y) at (4.5, \y, 5);}
+    \begin{tikzpicture}[z={(3.85mm, 6.5mm)}]
+      \def\yfactor{0.75}
+      \foreach \y in {0, 1, 2, 3} {\coordinate(ne\y) at (4.5, \yfactor*\y, 5);}
       \begin{scope}[canvas is xz plane at y=0]
-        \draw(0, 0) node[anchor=north west]{Layer 4};
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 4};
         \draw(0, 0) [fill=pcbother]rectangle (ne0);
       \end{scope}
-      \begin{scope}[canvas is xz plane at y=1]
-        \draw(0, 0) node[anchor=north west, fill=white]{Layer 3};
+      \begin{scope}[canvas is xz plane at y=\yfactor*1]
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 3};
         \draw(0, 0) [fill=pcbother]rectangle (ne1);
       \end{scope}
-      \begin{scope}[canvas is xz plane at y=2]
-        \draw(0, 0) node[anchor=north west, fill=white]{Layer 2};
+      \begin{scope}[canvas is xz plane at y=\yfactor*2]
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 2};
         \draw(0, 0) [fill=pcbother]rectangle (ne2);
         \path(0, 0) -- coordinate[pos=0.5](midpointsouth) (current subpath start -| ne2);
         \draw([xshift=-0.35cm]midpointsouth) coordinate(rectanglesw) [fill=white]rectangle ++ (0.7, 2) coordinate(rectanglene);
       \end{scope}
-      \begin{scope}[canvas is xz plane at y=3]
-        \draw(0, 0) node[anchor=north west, fill=white]{Layer 1};
+      \begin{scope}[canvas is xz plane at y=\yfactor*3]
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 1};
         \draw(0, 0) [fill=white]rectangle (ne3);
         \fill[pcbcopper](0, 0) -- (0, 5) -- (1.7, 5) -- (1.7, 2) -- (1.25, 2) -- (1.25, 0) -- cycle;
         \fill[pcbcopper](4.5, 0) -- (4.5, 5) -- (2.8, 5) -- (2.8, 2) -- (3.25, 2) -- (3.25, 0) -- cycle;
@@ -1438,8 +1440,6 @@ For the best performance and stability, each RF trace should be fenced by two ro
         \draw([xshift=-0.25cm]midpointsouth) coordinate(tracesw) -- (current subpath start |- ne3);
         \draw([xshift=0.25cm]midpointsouth) -- (current subpath start |- ne3) coordinate(tracene);
         \fill[pcbcopper]([xshift=-0.25cm]midpointsouth) rectangle (tracene);
-
-
         \pgflowlevelsynccm % Makes arrows transform on plane but only works with explicit coords (no names)
         \draw[dotted](1.25, 2) -- ++ (-0.5, 0);
         \draw[<->|](0.75, 0) -- node[pos=0.5, fill=pcbcopper]{5.08} (0.75, 2);
@@ -1453,17 +1453,17 @@ For the best performance and stability, each RF trace should be fenced by two ro
       \end{scope}
 
       \tikzset{xshift=7cm}
-      \foreach \y in {0, 1, 2, 3} {\coordinate(ne\y) at (4.5, \y, 5);}
+      \foreach \y in {0, 1, 2, 3} {\coordinate(ne\y) at (4.5, \yfactor*\y, 5);}
       \begin{scope}[canvas is xz plane at y=0]
-        \draw(0, 0) node[anchor=north west]{Layer 4};
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 4};
         \draw(0, 0) [fill=pcbother]rectangle (ne0);
       \end{scope}
-      \begin{scope}[canvas is xz plane at y=1]
-        \draw(0, 0) node[anchor=north west, fill=white]{Layer 3};
+      \begin{scope}[canvas is xz plane at y=\yfactor*1]
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 3};
         \draw(0, 0) [fill=pcbother]rectangle (ne1);
       \end{scope}
-      \begin{scope}[canvas is xz plane at y=2]
-        \draw(0, 0) node[anchor=north west, fill=white]{Layer 2};
+      \begin{scope}[canvas is xz plane at y=\yfactor*2]
+        \draw(0, 0) node[anchor=north west, fill=pcbother2]{Layer 2};
         \draw(0, 0) [fill=pcbcopper]rectangle (ne2);
         \path(0, 0) -- coordinate[pos=0.5](midpointsouth) (current subpath start -| ne2);
         \draw([xshift=-0.35cm]midpointsouth) coordinate(rectanglesw) [fill=white]rectangle ++ (0.7, 2) coordinate(rectanglene);
@@ -1515,7 +1515,7 @@ DATA
 
 Note that these csv files are first converted to a file with a format compatible for DRIFT processing by removing extraneous data and performing unit conversions. The most important of which is normalizing power spectral density to dBm/Hz and frequency to MHz. For the sake of consistency with DRIFT nomenclature, a \textit{scan} is equivalent to a spectrum analyzer sweep whereas a \textit{reading} refers to a single pair of x-y points. Table~\ref{tab:driftdata} shows what fields are stored by DRIFT;\@ all fields are assumed to be scan-level metadata unless otherwise specified.
 
-\begin{table}\rowcolors{1}{lightgray!30}{white}
+\begin{table}[ht]\rowcolors{1}{lightgray!30}{white}
   \begin{center}
     \begin{tabularx}{\linewidth}{l|l|X}
       Field       & Required  & Description \\ \hline
