@@ -607,6 +607,7 @@ The major components located in the RFI shack are as follows:
     \item One SerialComm RS-232 to 4 wire RS-422/485 converter
     \item Two L-com AL-CAT6AJW CAT6a lightning protectors
   \end{enumerate}
+  \item One Lockout-Tagout Switch
 \end{enumerate}
 
 The primary IO from the computer is a serial communication line to the ACR9000 motor controller at the RF-DFS, a GPIB or ethernet line to the Keysight N9040B inside the shack, and a USB line to the P1AM-100 PLC inside the shack. Figure~\ref{fig:shackblock} shows how to connect all of these components. The serial line is output as RS-232 from the computer's COM1 port, then is converted to RS-485 before being routed through the HESP4DR lightning protection system and exiting the shack as a CAT6 cable. Coaxial cables from each system are connected to an RF switch with the common port connected to the N9040B. Lastly, the P1AM-100 PLC's output terminal block is connected to another screw terminal block which feeds RF switching lines to S1 in the shack, and S2 and S3 on the EMS panel via CAT6 cable and lightning protection system. This terminal block also feeds a CAT6 cable to the DFS but it is only used for activate the safety warning light.
@@ -638,7 +639,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       node[ocirc](dfsnode){};
       
       % BOTTOM ROW
-      \draw(spec) ++ (0, -2) node[qfpchip, external pins width=0, hide numbers, name=plc, scale=0.8, align=center]{PLC};
+      \draw(spec) ++ (0, -3) node[qfpchip, external pins width=0, hide numbers, name=plc, scale=0.8, align=center]{PLC};
       \draw(computer.south) |- (plc.west);
       \path(computer.south) -- (computer.south |- plc.west) node[anchor=south west]{USB};
       \path(shackswitch) -- (shackswitch |- plc)
@@ -653,9 +654,10 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       \draw([yshift=-10pt]terminalblock.east)[color=blue] -- ++ (1.5, 0) node[tmultiwireshape]{} -- ++ (0.75, 0) |- ++ (0.75, -1) node[american gas filled surge arrestershape, anchor=west](lps2){};
       \draw(lps.east)[color=blue] -- (lps.east -| emsnode) node[ocirc](cat6node){};
       \draw(lps2.east)[color=blue] -- (lps2.east -| emsnode) node[ocirc](cat6node2){};
-      \draw(terminalblock.north)[color=red] to[tmultiwire, invert] (shackswitch.south);
-      \path(terminalblock.north) -- coordinate[midway](m) (shackswitch.south);
-      \draw([xshift=7pt]m.east) node[anchor=west, color=red]{\footnotesize Power/Switching};
+      \path(terminalblock.north) -- coordinate[pos=0.5](m) (shackswitch.south);
+      \draw(terminalblock.north)[color=red] -- (m) to[tmultiwire, invert] (shackswitch.south);
+      \path([xshift=12pt]m.east) -- node[anchor=west, color=red, pos=0.5]{\footnotesize Power/Switching} (shackswitch.south);
+      \draw(terminalblock.south)[color=magenta, ->] to[switch, name=switch] ++ (0, -1.5) -- ++ (0, -0.5);
 
       % TOP ROW
       \draw(spec) ++ (0, 2) node[twoportsplitshape, circuitikz/bipoles/twoportsplit/width=1.5, t1=\footnotesize RS-232, t2=\footnotesize RS-485](converter){};
@@ -665,17 +667,29 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       node[american gas filled surge arrestershape, color=magenta](seriallps){};
       \draw(converter.east)[color=magenta] to[tmultiwire] (seriallps.west){};
       \draw(seriallps.east)[color=magenta] -- (seriallps.east -| emsnode) node[ocirc](serialnode){};
+      \draw(seriallps.west)[color=magenta, ->] ++ (-1, 0) node[circ]{} -- ++ (0, 1.5);
 
       % LABELS
-      \draw(terminalblock.south) node[anchor=north]{\footnotesize Terminal Block};
-      \path(lps) (lps |- terminalblock.south) node[anchor=north, color=blue]{\footnotesize CAT6 LPS};
-      \draw(seriallps.north) node[anchor=south, color=magenta]{\footnotesize RS-485 LPS};
-      \draw(lps.north) node[anchor=south, color=blue]{\footnotesize CAT6 LPS};
-      \draw(serialnode.east) node[anchor=west]{CAT6 to DFS};
+      % \draw(terminalblock.south) node[anchor=north]{\footnotesize Terminal Block};
+      \path(lps) (lps |- terminalblock.south) node[anchor=north, color=blue](lpslabel){\footnotesize CAT6 LPS};
+      \draw(seriallps.north) node[anchor=south, color=magenta](seriallpslabel){\footnotesize RS-485 LPS};
+      \draw(lps.north) node[anchor=south, color=blue](lps2label){\footnotesize CAT6 LPS};
+      \draw(serialnode.east) node[anchor=west](serialnodelabel){CAT6 to DFS};
       \draw(emsnode.east) node[anchor=south west]{Coax to DFS};
       \draw(dfsnode.east) node[anchor=north west]{Coax to EMS};
-      \draw(cat6node.east) node[anchor=west]{CAT6 to EMS};
-      \draw(cat6node2.east) node[anchor=west]{CAT6 to DFS};
+      \draw(cat6node.east) node[anchor=west](cat6nodelabel){CAT6 to EMS};
+      \draw(cat6node2.east) node[anchor=west](cat6node2label){CAT6 to DFS};
+      \draw(switch.north) node[anchor=west, color=magenta]{\footnotesize LOTO};
+
+      % BOXES
+      \node[draw, rectangle, dashed, fit=(converter) (seriallps) (seriallpslabel) (serialnodelabel), inner sep=8](serialbox){};
+      \draw(serialbox.north west) node[anchor=north west]{Figure~\ref{fig:serialwiring}};
+      \node[draw, rectangle, dashed, fit=(plc) (lps) (lps2) (lpslabel) (lps2label), inner sep=8](shackplcbox){};
+      \draw(shackplcbox.south west) node[anchor=south west]{Figure~\ref{fig:shackwiring}};
+      \node[draw, rectangle, dashed, fit=(cat6node) (cat6nodelabel), inner sep=4](cat6toemsbox){};
+      \draw(cat6toemsbox.north) node[anchor=south]{Figure~\ref{fig:emscat5wiring}};
+      \node[draw, rectangle, dashed, fit=(cat6node2) (cat6node2label), inner sep=4](cat6todfsbox){};
+      \draw(cat6todfsbox.north) node[anchor=south]{Figure~\ref{fig:dfscat5wiring}};
 
       % extends the image size bc the pc node is bigger than its drawing for some reason
       % \draw(emsnode) ++ (3.5, 0);
@@ -749,7 +763,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \path (plc.south) -- ++ (10cm, 0)
         node[matrix, wire board, wiresleft, matrix anchor=south] (shackswitch) {
           \scriptsize Red   &   +A  & +28VDC \\
-          \scriptsize Black &   -B  & GND \\
+          \scriptsize Black & $-$B  & GND \\
           \scriptsize Grey  &   1   & Port 1 \\
           \scriptsize Purple&   2   & Port 2 \\
           \scriptsize Blue  &   3   & Port 3 \\
@@ -774,9 +788,9 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw(plc-6-3.south west) -- (plc-6-1 -| 3e) -- (lps-5-2 -| 5e) node[circ](asdf){} -- (lps-5-1.south east);
         \draw(asdf) -- (lps-4-2 -| 5e) -- (lps-4-1.south east);
         % plc to shack switch
-        \draw(plc-10-3.south west) -- (plc-10-3.south west -| m) -- (shackswitch-1-1.south east -| m) -- (shackswitch-1-1.south east);
-        \draw(plc-11-3.south west) -- (plc-11-3.south west -| lps.west) -- (shackswitch-3-1.south east -| lps.east) -- (shackswitch-3-1.south east);
-        \draw(plc-12-3.south west) -- (plc-12-3.south west -| lps.west) -- (shackswitch-4-1.south east -| lps.east) -- (shackswitch-4-1.south east);
+        \draw(plc-10-3.south west) -- (plc-10-3.south west -| m) node[circ](v2circ){} -- (shackswitch-1-1.south east -| m) -- (shackswitch-1-1.south east);
+        \draw(plc-11-3.south west) -- (plc-11-3.south west -| 5e) -- (shackswitch-3-1.south east -| 5e) -- (shackswitch-3-1.south east);
+        \draw(plc-12-3.south west) -- (plc-12-3.south west -| 3q) -- (shackswitch-4-1.south east -| 3q) -- (shackswitch-4-1.south east);
         % plc ground wires
         \draw(plc-18-3.south west) -- (plc-18-3.south west -| 3e) -- (shackswitch-2-1.south east -| 3e) node[circ=1pt](gndnode1){};
         \draw(gndnode1) -- (shackswitch-2-1.south east);
@@ -794,10 +808,14 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         % ellipse
         \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
         \draw(lps2midway -| p3)+(-1, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
-        \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable (x2)\\\footnotesize EMS --->\\\footnotesize DFS --->};    
+        \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable (x2)\\\footnotesize EMS --->\\\footnotesize DFS --->};
+        % plc to loto
+        \draw(v2circ)[->] -- (v2circ -| lps.east) to[switch, name=loto] ++ (2, 0) -- (v2circ -| p3);
+        \draw(loto.south) node[anchor=north]{\footnotesize LOTO};
+        \draw(v2circ -| ellipse) node[anchor=south]{\footnotesize See Fig.~\ref{fig:serialwiring}};
 \end{tikzpicture}
 \end{center}
-\caption{RFI Shack PLC Wiring Diagram.}\label{fig:shackwiring}
+\caption{RFI Shack PLC Line Wiring Diagram.}\label{fig:shackwiring}
 \end{figure}
 
 \begin{figure}
@@ -807,10 +825,10 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       % \draw[help lines, dashed] grid (12, -7);
       % CONVERTER
       \matrix[wire board, wiresright] (converter) {
-        Tx-   &  1   &   \scriptsize D-001   \\
+        Tx$-$ &  1   &   \scriptsize D-001   \\
         Tx+   &  2   &   \scriptsize D-002   \\
         Rx+   &  3   &   \scriptsize D-003   \\
-        Rx-   &  4   &   \scriptsize D-004   \\
+        Rx$-$ &  4   &   \scriptsize D-004   \\
         GND   &  5   &   \scriptsize Black   \\
         };
         \draw (converter-1-2.north east) rectangle (converter-5-2.south west);
@@ -823,7 +841,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
           \scriptsize D-004 &   L   &  -----  &  B  & \scriptsize Green\\
           \scriptsize aaaaa &   K   &  -----  &  C  & \scriptsize Orange\\
           \scriptsize asdf  &   J   &  -----  &  D  & \scriptsize Wh/Or\\
-          \scriptsize       &   G   &  -----  &  F  & \scriptsize \\
+          \scriptsize       &   G   &  -----  &  F  & \scriptsize Wh/Bl, Bl\\
           \scriptsize Black &   H   &  GND    &  E  & \scriptsize Wh/Br, Br\\
         };
         % Boxing the contents
@@ -832,12 +850,12 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw (lps-1-2.north east)+(0cm,0.5cm) rectangle ($(lps-6-4.south west)+(0cm,-0.5cm)$);
         \draw (p1) (current subpath start -| lps-1-3) node[anchor=south, font=\bfseries]{HESP4DR};
         % LIGHTNING PROTECTION SYSTEM 2
-        \matrix[wire board, wiresboth, matrix anchor=lps2-1-3.north, anchor=north, below=3cm of lps-5-3.south] (lps2) {
+        \matrix[wire board, wiresboth, matrix anchor=lps2-1-3.north, anchor=north, below=4cm of lps-5-3.south] (lps2) {
           \scriptsize Wh/Gr  &   A   &  -----  &  M  & \scriptsize Wh/Red\\
           \scriptsize Green  &   B   &  -----  &  L  & \scriptsize Red\\
           \scriptsize Orange &   C   &  -----  &  K  & \scriptsize Green\\
           \scriptsize Wh/Or  &   D   &  -----  &  J  & \scriptsize Wh/Gr\\
-          \scriptsize        &   F   &  -----  &  G  & \scriptsize \\
+          \scriptsize Wh/Bl, Bl& F   &  -----  &  G  & \scriptsize Red\\
           \scriptsize Wh/Br, Br& E   &  GND    &  H  & \scriptsize Black\\
         };
         % Boxing the contents
@@ -848,33 +866,37 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 
         % DB9 CONNECTOR
         \matrix[wire board, wiresleft, matrix anchor=south, right=5.5cm of lps2.south] (db9) {
-          \scriptsize Wh/Red &   1   &   RX485- \\
+          \scriptsize Wh/Red &   1   &   RX485$-$ \\
           \scriptsize Red   &   2   &   RX232/RX485 \\
-          \scriptsize Green &   3   &   TX232/TX485- \\
+          \scriptsize Green &   3   &   TX232/TX485$-$ \\
           \scriptsize Wh/Gr &   4   &   TX485+ \\
           \scriptsize Black &   5   &   GND  \\
           \scriptsize       &   6   &   NC \\
           \scriptsize Grey  &   7   &   See Table~\ref{tab:acr9000com1} \\
           \scriptsize       &   8   &   NC \\
           \scriptsize Grey  &   9   &   See Table~\ref{tab:acr9000com1} \\
+          \scriptsize Red   &   \tiny10   &   Enable + \\
+          \scriptsize Black &   \tiny11   &   Enable $-$ \\
         };
         \draw (db9-1-2.north east) rectangle (db9-9-2.south west);
-        \draw (db9-1-2.north east)+(3cm,0.5cm) coordinate(p3) rectangle ($(db9-9-2.south east)+(0,-0.5cm)$);
-        \draw (p3) node[anchor=south east, align=right]{\textbf{ACR9000 COM1}};
+        \draw (db9-10-2.north east) rectangle (db9-11-2.south west);
+        \draw (db9-1-2.north east)+(3cm,0.5cm) coordinate(p3) rectangle ($(db9-11-2.south east)+(0,-0.5cm)$);
+        \draw (p3) node[anchor=south east, align=right]{\textbf{ACR9000}};
 
         % WIRING this is the most hellish thing i've ever done never make a wiring diagram in tikz it isnt worth it
         \path(converter-1-3.south west) -- (lps-1-1.south east)
         coordinate[pos=0.25](1quarter)
         coordinate[pos=0.375](3eighth)
         coordinate[pos=0.5](m)
-        coordinate[pos=0.675](5eighth)
+        coordinate[pos=0.625](5eighth)
         coordinate[pos=0.75](3quarter);
         
         \draw(converter-1-3.south west) -- (3eighth) -- (lps-3-2 -| 5eighth) -- (lps-3-1.south east);
         \draw(converter-2-3.south west) -- (converter-2-2 -| 3eighth) -- (lps-4-2 -| 5eighth) -- (lps-4-1.south east);
         \draw(converter-3-3.south west) -- (converter-3-2 -| 3eighth) -- (5eighth) -- (lps-1-1.south east);
         \draw(converter-4-3.south west) -- (converter-4-2 -| 3eighth) -- (lps-2-2 -| 5eighth) -- (lps-2-1.south east);
-        \draw(converter-5-2) -- (converter-5-2 -| m) |- (lps-6-2);
+        \draw(converter-5-3.south west) -- (converter-5-2 -| 3eighth) -- (lps-6-2 -| 5eighth) -- (lps-6-1.south east);
+        \draw(lps-5-1.south east)[->] -- (lps-5-2 -| m) -- ++ (0, -1) node[anchor=north]{\scriptsize To LOTO};
 
         \path(lps2-1-5.south west) -- (db9-4-1.south east)
         coordinate[pos=0.25](1quarter)
@@ -887,12 +909,14 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw(lps-2-5.south west)[->] -- (lps-2-4 -| p3);
         \draw(lps-3-5.south west)[->] -- (lps-3-4 -| p3);
         \draw(lps-4-5.south west)[->] -- (lps-4-4 -| p3);
-        \draw(lps-6-5.south west)[->] -- (lps-6-4 -| m) -- (lps-5-4 -| m) -- (lps-5-4 -| p3);
+        \draw(lps-5-5.south west)[->] -- (lps-5-4 -| p3);
+        \draw(lps-6-5.south west)[->] -- ++ (3, 0);
 
         \draw([xshift=-1pt]lps2-1-1.south east)[<-] -- (lps2-1-2 -| p1);
         \draw([xshift=-1pt]lps2-2-1.south east)[<-] -- (lps2-2-2 -| p1);
         \draw([xshift=-1pt]lps2-3-1.south east)[<-] -- (lps2-3-2 -| p1);
         \draw([xshift=-1pt]lps2-4-1.south east)[<-] -- (lps2-4-2 -| p1);
+        \draw([xshift=-1pt]lps2-5-1.south east)[<-] -- (lps2-5-2 -| p1);
         \draw([xshift=-1pt]lps2-6-1.south east)[<-] -- (lps2-6-2 -| p1);
 
         \path(lps2-3-3) -- (lps2-4-3) coordinate[pos=0.5](lps2midway);
@@ -903,14 +927,15 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw(lps2-2-5.south west) -- (lps2-2-4 -| 3eighth) -- (db9-2-2 -| 5eighth) -- (db9-2-2);
         \draw(lps2-3-5.south west) -- (lps2-3-4 -| 3eighth) -- (db9-3-2 -| 5eighth) -- (db9-3-2);
         \draw(lps2-4-5.south west) -- (lps2-4-4 -| 3eighth) -- (db9-4-2 -| 5eighth) -- (db9-4-2);
+        \draw(lps2-5-5.south west) -- (db9-10-2);
         \draw(lps2-6-5.south west) -- (lps2-6-4 -| 5eighth) node[circ=1pt](gndm){};
-        \draw(gndm) -- (db9-9-1.south east);
-        \draw(gndm) -- (db9-7-2 -| gndm) node[circ=1pt](gndm2){} -- (db9-7-1.south east);
-        \draw(gndm2) |- (db9-5-1.south east);
-
+        \draw(gndm) -- (db9-11-2);
+        \draw(gndm) -- (db9-7-2 -| gndm) node[circ=1pt](gndm2){} -- (db9-7-2);
+        \draw(gndm2) |- (db9-5-2);
+        \draw(db9-9-2) -- (db9-9-2 -| gndm) node[circ]{};
 \end{tikzpicture}
 \end{center}
-\caption{Shack to DFS Serial Wiring Diagram.}\label{fig:serialwiring}
+\caption{Shack to DFS Serial and LOTO Line Wiring Diagram.}\label{fig:serialwiring}
 \end{figure}
 \begin{figure}
   \begin{center}
@@ -937,7 +962,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       % SAFETY LIGHT
       \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (strobe) {
         \scriptsize Red   &   +  & +28VDC \\
-        \scriptsize Black &   -  & GND \\
+        \scriptsize Black &  $-$ & GND \\
       };
       \draw (strobe-1-2.north west) rectangle (strobe-2-3.south west);
       \draw (strobe-1-3.north west)+(2cm,0.5cm) coordinate(p3) rectangle ($(strobe-2-3.south west)+(0,-0.5cm)$);
@@ -968,6 +993,8 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       \path(lps-4-3) -- (lps-5-3) coordinate[pos=0.5](lps2midway);
       \draw(lps2midway)+(-4, 0) ellipse(0.5 and 2.5) coordinate(ellipse);
       \draw(ellipse)+(0, 2.5) node[anchor=south, align=center]{\footnotesize CAT6 Cable\\\footnotesize <-- Shack\\\footnotesize DFS --->};
+      % shift the picture left a bit so it lines up with the figure before
+      \path(p3) -- ++ (0.35, 0);
 \end{tikzpicture}
 \end{center}
 \caption{RF-DFS PLC Line Wiring Diagram.}\label{fig:dfscat5wiring}
@@ -988,9 +1015,9 @@ The major components located at the RF-DFS are as follows:
 \end{enumerate}
 Most of these components are located at the base of the pedestal, with the exception of the forklift strobe light which is mounted at the breaker panel inside the DFS fence. All serial, control, and RF lines are run from the shack to a horizontal conduit box at the base of the pedestal. From here, it splits with one conduit line going into the pedestal and another going to the breaker panel.
 
-There are three cables coming from the shack as shown in Figure~\ref{fig:shackblock} -- one coaxial cable and two CAT6 lines. One CAT6 line carries the RS-485 motor control signal and the other is wired directly to the PLC for controlling the strobe light and reserved for RF-switching upgrades. Refer to Figures~\ref{fig:serialwiring} and~\ref{fig:dfscat5wiring} to ensure correct wiring of these components.
+There are three cables coming from the shack as shown in Figure~\ref{fig:shackblock} -- one coaxial cable and two CAT6 lines. One CAT6 line carries the RS-485 motor control signal and drive enable signal, the other is wired directly to the PLC for controlling the strobe light and reserved for RF-switching upgrades. Refer to Figures~\ref{fig:serialwiring} and~\ref{fig:dfscat5wiring} to ensure correct wiring of these components.
 
-Inside the pedestal, the ACR9000 and Aries drives are connected as referenced in the \textit{ACR9000 Hardware Installation Guide}.
+Inside the pedestal, the ACR9000 and Aries drives are connected as referenced in the \textit{ACR9000 Hardware Installation Guide}. The ACR9000's 5-24 volt \textit{Drive Enable} signal is connected to the lockout-tagout switch in the shack.
 
 The feed and LNA housing are mounted at the apex of the dish with four all-thread rods in a square pattern. The lightning rod is mounted above this using the same all-thread.
 
@@ -1098,7 +1125,7 @@ The panel components are connected to eachother through a terminal block similar
       % RF SWITCHES 2 AND 3
       \matrix[wire board, wiresleft, matrix anchor=north, right=5cm of lps.north] (emsswitches) {
         \scriptsize Red   &   +A  & +28VDC \\
-        \scriptsize Black &   -B  & GND \\
+        \scriptsize Black & $-$B  & GND \\
         \scriptsize Grey  &   1   & Port 1 \\
         \scriptsize Purple&   2   & Port 2 \\
         \scriptsize Blue  &   3   & Port 3 \\
@@ -1204,7 +1231,7 @@ The user should regularly calibrate both axes with a level and compass to ensure
       The following example moves the X axis 5 degrees and Y axis 10 degrees, then back. \newline
       \lstinline|P00>JOG INC X 5| \newline
       \lstinline|P00>JOG INC Y 10| \newline
-      \lstinline|P00>JOG INC X -5  Y -10| \newline
+      \lstinline|P00>JOG ABS X 0 Y 0| \newline
       \lstinline|P00>_|
       \\
 
@@ -1447,7 +1474,7 @@ For the best performance and stability, each RF trace should be fenced by two ro
         \draw[dotted](3.25, 2) -- ++ (0, 0.5);
         \draw[|<-](1.25, 2.5) -- ++ (-0.25, 0);
         \draw[|<-](3.25, 2.5) -- ++ (0.25, 0);
-        \draw(4, 2.5) node[fill=pcbcopper]{1.41};
+        \draw(3.5, 2.5) node[fill=pcbcopper, anchor=west]{1.41};
         \draw(2.25, 1) node[rotate=90]{\small Trace};
         \draw(2.25, 4) node[rotate=90]{\small Trace};
       \end{scope}
@@ -1513,7 +1540,7 @@ DATA
 \caption{Example Trace CSV.}\label{fig:csvexample}
 \end{figure}
 
-Note that these csv files are first converted to a file with a format compatible for DRIFT processing by removing extraneous data and performing unit conversions. The most important of which is normalizing power spectral density to dBm/Hz and frequency to MHz. For the sake of consistency with DRIFT nomenclature, a \textit{scan} is equivalent to a spectrum analyzer sweep whereas a \textit{reading} refers to a single pair of x-y points. Table~\ref{tab:driftdata} shows what fields are stored by DRIFT;\@ all fields are assumed to be scan-level metadata unless otherwise specified.
+Note that these csv files are first converted to a file with a format compatible for DRIFT processing by removing extraneous data and performing frequency unit conversions to MHz. For the sake of consistency with DRIFT nomenclature, a \textit{scan} is equivalent to a spectrum analyzer sweep whereas a \textit{reading} refers to a single pair of x-y points. Table~\ref{tab:driftdata} shows what fields are stored by DRIFT;\@ all fields are assumed to be scan-level metadata unless otherwise specified.
 
 \begin{table}[ht]\rowcolors{1}{lightgray!30}{white}
   \begin{center}
@@ -1522,7 +1549,7 @@ Note that these csv files are first converted to a file with a format compatible
       \lstinline|instrument|    & Yes & Unique identifier for instrument or device (VLA, VLBA-PT, VLBA-LA, RF-DFS, RF-EMS, etc.) per scan.\\
       \lstinline|receiver|      & Yes & DRIFT will have a separate list of receivers for each instrument (DFS1, EMS1, etc.). \\
       \lstinline|polarization|  & Yes & Hardcoded for NM spectrum monitoring devices (EMS is linear vertical, DFS is unknown.)\\
-      \lstinline|intensity_unit|& Yes & Hardcoded for NM spectrum monitoring devices (dBm/Hz). \\
+      \lstinline|intensity_unit|& Yes & Hardcoded for NM spectrum monitoring devices (dBm). \\
       \lstinline|scan_name|     & Yes & Unique string to represent the scan, will be displayed to the end user.\\
       \lstinline|scan_datetime| & Yes & One UTC time, isoformat, with timezone attached, to represent the entire scan.\\
       \lstinline|scan_az|       & No  & Where the device is pointed in decimal degrees, one value to represent the entire scan, not relevant for the EMS.\\
@@ -1538,6 +1565,21 @@ Note that these csv files are first converted to a file with a format compatible
   \end{center}
   \caption{DRIFT Unified Fields. Not all fields are used by all sites.}\label{tab:driftdata}
 \end{table}\rowcolors{1}{white}{white}
+
+DRIFT's upload format requires that csv files have their top row populated with the fields relevant to the given site, followed by a row of values or multiple rows in the case of reading-specific metadata. See Figure~\ref{fig:driftcsvexample} for an example of a csv that would be uploaded to DRIFT.\@ DRIFT does not save these files for a substantial amount of time once they are processed and neither does \verb|EMSMONPC2|. They are converted from the trace format in Figure~\ref{fig:csvexample} to the DRIFT compatible format in Figure~\ref{fig:driftcsvexample}, then uploaded. The Python script which handles this conversion will regularly clean these cached files at an arbitrary time interval. Additionally, DRIFT assumes that if a file with the same \verb|scan_name| is uploaded twice, then the initial table linked to \verb|scan_name| should be replaced. Because of this, it is imperative that scan names are not changed and contain at least a date and an iterating integer for that day.
+
+\begin{figure}[ht]
+\begin{lstlisting}[aboveskip=0pt, belowskip=0pt]
+instrument,receiver,polarization,intensity_unit,scan_name,scan_datetime,frequency,intensity
+ems,ems1,l,dbm,ems1-2025-03-28-0002,2025-03-28T11:49:55.199981+00:00,10000000,-71.1912847253302
+,,,,,,21990000,-105.183861324451
+,,,,,,33980000,-72.2399984094122
+\end{lstlisting}
+\begin{lstlisting}[aboveskip=0pt, belowskip=0pt, numbers=none]
+...
+\end{lstlisting}
+\caption{Example DRIFT Upload CSV.}\label{fig:driftcsvexample}
+\end{figure}
 
 \subsection{RF-EMS Conduit Diagram}
 Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagrams may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
