@@ -106,9 +106,10 @@
     showtabs=false,                  
     tabsize=2
 }
-
 \lstset{style=mystyle}
+
 % Global TikZ parameters
+\ctikzset{blocks dc segments=3}
 \tikzset{every picture/.style={/utils/exec={\fontfamily{lmr}}}}
 \ctikzset{sources/fill=red!20}
 \ctikzset{chips/fill=cyan!20}
@@ -222,6 +223,7 @@
   },
 }
 % Adds key for current tikz coordinate
+% nvm maybe i dont think this works
 \newcommand\currentpos{\the\tikz@lastxsaved,\the\tikz@lastysaved}
 % Wiring diagram matrix stuff (syntax for jumping lines and block styles)
 \tikzset{
@@ -398,6 +400,7 @@
 
 \newpage
 \tableofcontents
+\newpage
 \listoffigures
 \listoftables
 \thispagestyle{fancy}
@@ -614,7 +617,7 @@ The primary IO from the computer is a serial communication line to the ACR9000 m
 
 Wiring from the RS-232 to RS-485 serial converter to the serial lightning protection system is shown in Figure~\ref{fig:serialwiring}. Note that the ACR9000 is capable of both RS-232 and RS-485 full-duplex operation depending on how its COM1 port pins are wired. Reference Table~\ref{tab:acr9000com1} or the \textit{ACR9000 Hardware Installation Guide} for information on this.
 
-Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:shackwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring is adjusted for it.
+Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire as shown in Figure~\ref{fig:shackwiring}, however, a CAT6 cable must be spliced to connect the LPS to the terminal block. This installation assumes all CAT6 cables are using the T568B standard, although T568A could work if the wiring is adjusted for it. The PLC's power supply also drives the ACR9000 \textit{Enable} port through a lockout/tagout switch. When this port is disconnected, the ACR9000 will remain powered and respond to IO, however, the motor will not be driven. This allows an operator to conduct maintenance and upgrades safely without killing power to the entire system. 
 
 \begin{figure}
   \begin{center}
@@ -632,7 +635,6 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       \draw(spec.south) node[anchor=north]{N9040b};
       \draw(spec.in 1) node[ocirc, scale=0.7]{};
       \draw(spec.in 2) node[ocirc, scale=0.7]{};
-      \draw(spec.east) ++ (0.6, 0) node[anchor=south, color=orange]{\footnotesize Coax};
       \draw([yshift=5pt]shackswitch.east)[color=orange] -- ++ (5, 0)
       node[ocirc](emsnode){};
       \draw([yshift=-5pt]shackswitch.east)[color=orange] -- ++ (5, 0)
@@ -656,7 +658,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       \draw(lps2.east)[color=blue] -- (lps2.east -| emsnode) node[ocirc](cat6node2){};
       \path(terminalblock.north) -- coordinate[pos=0.5](m) (shackswitch.south);
       \draw(terminalblock.north)[color=red] -- (m) to[tmultiwire, invert] (shackswitch.south);
-      \path([xshift=12pt]m.east) -- node[anchor=west, color=red, pos=0.5]{\footnotesize Power/Switching} (shackswitch.south);
+      \path([xshift=12pt]m.east) -- node[anchor=west, color=red, pos=0.5](pwrswlabel){\footnotesize Power/Switching} (shackswitch.south);
       \draw(terminalblock.south)[color=magenta, ->] to[switch, name=switch] ++ (0, -1.5) -- ++ (0, -0.5);
 
       % TOP ROW
@@ -684,7 +686,9 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
       % BOXES
       \node[draw, rectangle, dashed, fit=(converter) (seriallps) (seriallpslabel) (serialnodelabel), inner sep=8](serialbox){};
       \draw(serialbox.north west) node[anchor=north west]{Figure~\ref{fig:serialwiring}};
-      \node[draw, rectangle, dashed, fit=(plc) (lps) (lps2) (lpslabel) (lps2label), inner sep=8](shackplcbox){};
+      \node[rectangle, fit=(plc) (lps) (lps2) (lpslabel) (lps2label), inner sep=8](shackplcbox){};
+      \node[rectangle, fit=(shackswitch) (pwrswlabel), inner sep=8](swbox){};
+      \draw[dashed](shackplcbox.south west) -- (shackplcbox.north west) -- (shackplcbox.north west -| swbox.north west) -- (swbox.north west) -- (swbox.north east) -- (swbox.north east |- shackplcbox.north east) -- (shackplcbox.north east) -- (shackplcbox.south east) -- cycle;
       \draw(shackplcbox.south west) node[anchor=south west]{Figure~\ref{fig:shackwiring}};
       \node[draw, rectangle, dashed, fit=(cat6node) (cat6nodelabel), inner sep=4](cat6toemsbox){};
       \draw(cat6toemsbox.north) node[anchor=south]{Figure~\ref{fig:emscat5wiring}};
@@ -789,8 +793,8 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
         \draw(asdf) -- (lps-4-2 -| 5e) -- (lps-4-1.south east);
         % plc to shack switch
         \draw(plc-10-3.south west) -- (plc-10-3.south west -| m) node[circ](v2circ){} -- (shackswitch-1-1.south east -| m) -- (shackswitch-1-1.south east);
-        \draw(plc-11-3.south west) -- (plc-11-3.south west -| 5e) -- (shackswitch-3-1.south east -| 5e) -- (shackswitch-3-1.south east);
-        \draw(plc-12-3.south west) -- (plc-12-3.south west -| 3q) -- (shackswitch-4-1.south east -| 3q) -- (shackswitch-4-1.south east);
+        \draw(plc-11-3.south west) -- (plc-11-3.south west -| 5e) -- (shackswitch-3-1.south east -| lps.east) -- (shackswitch-3-1.south east);
+        \draw(plc-12-3.south west) -- (plc-12-3.south west -| 5e) -- (shackswitch-4-1.south east -| lps.east) -- (shackswitch-4-1.south east);
         % plc ground wires
         \draw(plc-18-3.south west) -- (plc-18-3.south west -| 3e) -- (shackswitch-2-1.south east -| 3e) node[circ=1pt](gndnode1){};
         \draw(gndnode1) -- (shackswitch-2-1.south east);
@@ -937,6 +941,7 @@ Wiring from the P1AM-100 PLC to the terminal block is done with non-bundled wire
 \end{center}
 \caption{Shack to DFS Serial and LOTO Line Wiring Diagram.}\label{fig:serialwiring}
 \end{figure}
+
 \begin{figure}
   \begin{center}
     \begin{tikzpicture}
@@ -1191,9 +1196,9 @@ The language used when sending commands to the ACR9000 is Parker Hannifin's own 
 The user can test communication and function at any time using a serial terminal emulator such as PuTTY, TeraTerm, etc., with the default configuration of 9600 baud, 8 data bits, no parity, 1 stop bit, and no flow control. The same precautions for generating race conditions should be taken as in Section~\ref{sec:commssa}. To control the DFS with a terminal emulator, open a connection to the ACR9000 and send a CRLF (Enter), the response from the ACR9000 will show the \textit{Prompt Level} of the device.\ \verb|SYS| is the highest communication level from which the user can navigate to \verb|PROGx| or \verb|PLCx| by typing the aforementioned level and pressing \verb|Enter|, where \verb|x| is a non-negative integer (usually 0).\ \verb|PROG0| is the communication level from which all of the commands used by the Python program will be sent, some relevant commands are listed in Table~\ref{tab:acrcommands}.
 
 \subsubsection{Motor Position}
-There is a distinction with how the Python program receives motor position information and how it sends move commands. The ACR9000 initializes its axes to 0 degrees azimuth and 0 degrees elevation when powered on. This causes a problem if the antenna is not parked before being powered down. Because of this, the Python program instead queries encoder position and calculates a vector based on hard-coded encoder positions for x and y axis home in \verb|config.toml| and \verb|defaultconfig.py|. Moving, however, is done by sending \verb|JOG INC| commands in degrees.
+There is a distinction with how the Python program receives motor position information and how it sends move commands. The ACR9000 initializes its axes to 0 degrees azimuth and 0 degrees elevation when powered on. This causes a problem if the antenna is not parked before being powered down. Because of this, the Python program instead queries encoder position and calculates a vector in degrees based on hard-coded encoder positions for x and y axis home in \verb|config.toml| and \verb|defaultconfig.py|. Moving, however, is done by sending \verb|JOG INC| commands in degrees.
 
-The user should regularly calibrate both axes with a level and compass to ensure that the recorded encoder positions for a parked antenna are accurately representative.
+The user should regularly calibrate both axes with a level and compass to ensure that the recorded encoder positions for a parked antenna are accurate.
 
 \begin{table}[ht]
   \begin{center}\rowcolors{1}{lightgray!30}{white}
@@ -1252,6 +1257,7 @@ The user should regularly calibrate both axes with a level and compass to ensure
   \end{center}\rowcolors{1}{white}{white}
   \caption{ACR9000 Commands Used by the Python Program.}\label{tab:acrcommands}
 \end{table}
+
 
 \subsection{PLC}\label{sec:commsplc}
 The P1AM-100 uses a SAMD21G18 microcontroller and is programmed with the Arduino Framework, the IDE for this is PlatformIO in VSCode. The P1AM family library should be referenced when making changes to the firmware. Additionally, care should be taken when updating opcodes to also make changes in the Python declaration (See \verb|opcodes.h| and \verb|opcodes.py|).
@@ -1582,7 +1588,8 @@ ems,ems1,l,dbm,ems1-2025-03-28-0002,2025-03-28T11:49:55.199981+00:00,10000000,-7
 \end{figure}
 
 \subsection{RF-EMS Conduit Diagram}
-Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection system from the 2001 NMT Senior Design report of the EMS (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagrams may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
+Figure~\ref{fig:oldems} shows two diagrams of the EMS lightning protection system from the 2001 NMT Senior Design report (VLA/VLBA Interference Memo \#19). This iteration had some notable differences such as an azimuth and elevation rotator, serial control lines, and metal-oxide varistors for lightning protection. None of these are used in this upgrade project but the diagrams may still be useful for characterizing conduit lines. Note that STS refers to the previous name for the RF-DFS - the Satellite Tracking System.
+
 \begin{figure}[!ht]
   \begin{center}
     \includegraphics[width=0.8\textwidth]{images/oldems.png}
