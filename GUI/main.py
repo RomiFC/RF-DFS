@@ -148,6 +148,8 @@ BwRatioType     = Parameter('Auto VBW:RBW Ratio', ':SENS:BAND:VID:RATIO', log=Fa
 RbwFilterShape  = Parameter('RBW Filter', ':SENS:BAND:SHAP')
 RbwFilterType   = Parameter('RBW Filter BW', ':SENS:BAND:TYPE')
 AttenType       = Parameter('Auto Attenuateion', ':SENS:POWER:ATT:AUTO', log=False)
+XAxisUnit       = Parameter('X Axis Units', None)
+XAxisUnit.update(value='Hz')
 YAxisUnit       = Parameter('Y Axis Units', ':UNIT:POW')
 
 # real code starts here
@@ -1053,6 +1055,8 @@ class SpecAn(FrontEnd):
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
         with visaLock:
             for parameter in _list:
+                if parameter.command is None:
+                    continue
                 # Issue command with argument
                 if parameter.arg is not None:
                     self.Vi.openRsrc.write(f'{parameter.command} {parameter.arg}')
@@ -1629,21 +1633,8 @@ def checkbuttonStateHandler():
 
 def openSaveDialog(type):
     if type == 'trace':
-        with specPlotLock:
-            data = Spec_An.ax.lines[0].get_data()
-            xdata = data[0]
-            ydata = data[1]
-            buffer = ''
-        file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text File (Tab delimited)', '*.txt'), ('Comma separated variables', '*.csv'), ('All Files', '*.*')), defaultextension='.txt')
-        if '.csv' in file.name:
-            delimiter = ','
-        else:
-            delimiter = '\t'
-        for index in range(len(data[0])):
-            buffer = buffer + str(xdata[index]) + delimiter + str(ydata[index]) + '\n'
-        if file is not None:
-            file.write(buffer)
-            file.close()
+        file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Comma separated variables', '*.csv'), ('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.csv')
+        saveTrace(file)
     elif type == 'log':
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
         if file is not None:
@@ -1654,6 +1645,37 @@ def openSaveDialog(type):
         if filename != '':
             with specPlotLock:
                 Spec_An.fig.savefig(filename)
+
+def saveTrace(file):
+    with specPlotLock:
+        data = Spec_An.ax.lines[0].get_data()
+        xdata = data[0]
+        ydata = data[1]
+        buffer = ''
+    if '.txt' in file.name:
+        delimiter = '\t'
+    else:
+        delimiter = ','
+
+    for parameter in Parameter.instances:
+        if parameter.log == False:
+            continue
+        if isinstance(parameter.value, (list,)):
+            try:
+                value = parameter.value[0].strip("[]{}()#* \n\t")
+            except:
+                value = str(parameter.value).strip("[]{}()#* \n\t")
+        else:
+            value = str(parameter.value).strip("[]{}()#* \n\t")
+
+        buffer = buffer + parameter.name + delimiter + value + '\n'
+
+    buffer = buffer + 'DATA\n'
+    for index in range(len(data[0])):
+        buffer = buffer + str(xdata[index]) + delimiter + str(ydata[index]) + '\n'
+    if file is not None:
+        file.write(buffer)
+        file.close()
 
 def generateConfigDialog():
     if messagebox.askokcancel(
