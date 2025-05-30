@@ -32,7 +32,7 @@ from tkinter import colorchooser
 from tkinter import font
 from tkinter.ttk import *
 from ttkthemes import ThemedTk
- 
+
 # CONSTANTS
 IDLE_DELAY = 1.0
 ANALYZER_LOOP_DELAY = 0.5
@@ -94,7 +94,63 @@ plcLock = threading.RLock()         # For PLC
 specPlotLock = threading.RLock()    # For matplotlib spectrum plot
 bearingPlotLock = threading.RLock() # For matplotlib antenna direction plot
 
+# SPECTRUM ANALYZER PARAMETERS
+class Parameter:
+    instances = []
+    def __init__(self, name, command, log = True):
+        """Spectrum analyzer parameter and associated SCPI command.
 
+        Args:
+            name (string): Full name to be used in trace csv.
+            command (string): SCPI command used to query/set parameter.
+            log (bool): Determines whether or not to save the parameter to trace csv. Defaults to True.
+        """
+        Parameter.instances.append(self)
+        self.name = name
+        self.command = command
+        self.log = log
+        self.arg = None
+        self.widget = None
+        self.value = None
+
+    def update(self, arg = None, widget = None, value=None):
+        """Update the argument/value and tkinter widget associated with the parameter.
+
+        Args:
+            arg (any, optional): Parameter argument. Defaults to None.
+            widget (ttk.Widget or Tkinter_variable, optional): Associated tkinter widget. Defaults to None.
+            value(any, optional): Parameter value. Defaults to None.
+        """
+        if arg is not None:
+            self.arg = arg
+        if widget is not None:
+            self.widget = widget
+        if value is not None:
+            self.value = value
+
+CenterFreq      = Parameter('Center Frequency', ':SENS:FREQ:CENTER', log=False)
+Span            = Parameter('Span', ':SENS:FREQ:SPAN', log=False)
+StartFreq       = Parameter('Start Frequency', ':SENS:FREQ:START')
+StopFreq        = Parameter('Stop Frequency', ':SENS:FREQ:STOP')
+SweepTime       = Parameter('Sweep Time', ':SWE:TIME')
+Rbw             = Parameter('RBW', ':SENS:BANDWIDTH:RESOLUTION')
+Vbw             = Parameter('VBW', ':SENS:BANDWIDTH:VIDEO')
+BwRatio         = Parameter('VBW:3 dB RBW', ':SENS:BANDWIDTH:VIDEO:RATIO', log=False)
+Ref             = Parameter('Ref Level', ':DISP:WINDOW:TRACE:Y:RLEVEL', log=False)
+NumDiv          = Parameter('Number of Divisions', ':DISP:WINDOW:TRACE:Y:NDIV', log=False)
+YScale          = Parameter('Scale/Div', ':DISP:WINDOW:TRACE:Y:PDIV', log=False)
+Atten           = Parameter('Attenuation', ':SENS:POWER:RF:ATTENUATION')
+SpanType        = Parameter('Swept Span', ':SENS:FREQ:SPAN', log=False)
+SweepType       = Parameter('Auto Sweep Time', ':SWE:TIME:AUTO', log=False)
+RbwType         = Parameter('Auto RBW', ':SENS:BAND:RES:AUTO', log=False)
+VbwType         = Parameter('Auto VBW', ':SENS:BAND:VID:AUTO', log=False)
+BwRatioType     = Parameter('Auto VBW:RBW Ratio', ':SENS:BAND:VID:RATIO', log=False)
+RbwFilterShape  = Parameter('RBW Filter', ':SENS:BAND:SHAP')
+RbwFilterType   = Parameter('RBW Filter BW', ':SENS:BAND:TYPE')
+AttenType       = Parameter('Auto Attenuateion', ':SENS:POWER:ATT:AUTO', log=False)
+YAxisUnit       = Parameter('Y Axis Units', ':UNIT:POW')
+
+# real code starts here
 def isNumber(input):
     try:
         float(f"{input}0")
@@ -824,6 +880,29 @@ class SpecAn(FrontEnd):
 
         self.bindWidgets() 
 
+        # PARAMETERS
+        CenterFreq.update(widget=self.centerFreqEntry)
+        Span.update(widget=self.spanEntry)
+        StartFreq.update(widget=self.startFreqEntry)
+        StopFreq.update(widget=self.stopFreqEntry)
+        SweepTime.update(widget=self.sweepTimeEntry)
+        Rbw.update(widget=self.rbwEntry)
+        Vbw.update(widget=self.vbwEntry)
+        BwRatio.update(widget=self.bwRatioEntry)
+        Ref.update(widget=self.refLevelEntry)
+        NumDiv.update(widget=self.numDivEntry)
+        YScale.update(widget=self.yScaleEntry)
+        Atten.update(widget=self.attenEntry)
+        SpanType.update(widget=tkSpanType)
+        SweepType.update(widget=tkSweepType)
+        RbwType.update(widget=tkRbwType)
+        VbwType.update(widget=tkVbwType)
+        BwRatioType.update(widget=tkBwRatioType)
+        RbwFilterShape.update(widget=self.rbwFilterShapeCombo)
+        RbwFilterType.update(widget=self.rbwFilterTypeCombo)
+        AttenType.update(widget=tkAttenType)
+        YAxisUnit.update(widget=self.unitPowerEntry)
+
         # Generate thread to handle live data plot in background
         analyzerLoop = threading.Thread(target=self.analyzerDisplayLoop, daemon=True)
         analyzerLoop.start()
@@ -938,184 +1017,53 @@ class SpecAn(FrontEnd):
         """
         # TODO: Make sure all commands have full functionality
         global visaLock
-        _list = []
+        _list = Parameter.instances
 
-        # if self.Vi.isSessionOpen() == FALSE:
-        #     logging.error("Session to the Analyzer is not open.")
-        #     return
-
-        # Center Frequency
-        _dict = {
-            'command': ':SENS:FREQ:CENTER',
-            'arg': centerfreq,
-            'widget': self.centerFreqEntry
-        }
-        _list.append(_dict)
-        # Span
-        _dict = {
-            'command': ':SENS:FREQ:SPAN',
-            'arg': span,
-            'widget': self.spanEntry
-        }
-        _list.append(_dict)
-        # Start Frequency
-        _dict = {
-            'command': ':SENS:FREQ:START',
-            'arg': startfreq,
-            'widget': self.startFreqEntry
-        }
-        _list.append(_dict)
-        # Stop Frequency
-        _dict = {
-            'command': ':SENS:FREQ:STOP',
-            'arg': stopfreq,
-            'widget': self.stopFreqEntry
-        }
-        _list.append(_dict)
-        # Sweep Time
-        _dict = {
-            'command': ':SWE:TIME',
-            'arg': sweeptime,
-            'widget': self.sweepTimeEntry
-        }
-        _list.append(_dict)
-        # Resolution Bandwidth
-        _dict = {
-            'command': ':SENS:BANDWIDTH:RESOLUTION',
-            'arg': rbw,
-            'widget': self.rbwEntry
-        }
-        _list.append(_dict)
-        # Video Bandwidth
-        _dict = {
-            'command': ':SENS:BANDWIDTH:VIDEO',
-            'arg': vbw,
-            'widget': self.vbwEntry
-        }
-        _list.append(_dict)
-        # VBW: 3 dB RBW
-        _dict = {
-            'command': ':SENS:BANDWIDTH:VIDEO:RATIO',
-            'arg': bwratio,
-            'widget': self.bwRatioEntry
-        }
-        _list.append(_dict)
-        # Reference Level
-        _dict = {
-            'command': ':DISP:WINDOW:TRACE:Y:RLEVEL',
-            'arg': ref,
-            'widget': self.refLevelEntry
-        }
-        _list.append(_dict)
-        # Number of divisions
-        _dict = {
-            'command': ':DISP:WINDOW:TRACE:Y:NDIV',
-            'arg': numdiv,
-            'widget': self.numDivEntry
-        }
-        _list.append(_dict)
-        # Scale per division
-        _dict = {
-            'command': ':DISP:WINDOW:TRACE:Y:PDIV',
-            'arg': yscale,
-            'widget': self.yScaleEntry
-        }
-        _list.append(_dict)
-        # Mechanical attenuation
-        _dict = {
-            'command': ':SENS:POWER:RF:ATTENUATION',
-            'arg': atten,
-            'widget': self.attenEntry
-        }
-        _list.append(_dict)
-        # SPAN TYPE
-        _dict = {
-            'command': ':SENS:FREQ:SPAN',
-            'arg': spantype,
-            'widget': tkSpanType
-        }
-        _list.append(_dict)
-        # SWEEP TYPE
-        _dict = {
-            'command': ':SWE:TIME:AUTO',
-            'arg': sweeptype,
-            'widget': tkSweepType
-        }
-        _list.append(_dict)
-        # RBW TYPE
-        _dict = {
-            'command': ':SENS:BAND:RES:AUTO',
-            'arg': rbwtype,
-            'widget': tkRbwType
-        }
-        _list.append(_dict)
-        # VBW TYPE
-        _dict = {
-            'command': ':SENS:BAND:VID:AUTO',
-            'arg': vbwtype,
-            'widget': tkVbwType
-        }
-        _list.append(_dict)
-        # BW RATIO TYPE
-        _dict = {
-            'command': ':SENS:BAND:VID:RATIO',
-            'arg': bwratiotype,
-            'widget': tkBwRatioType
-        }
-        _list.append(_dict)
-        # RBW FILTER SHAPE
-        _dict = {
-            'command': ':SENS:BAND:SHAP',
-            'widget': self.rbwFilterShapeCombo,
-            'arg': None,
-        }
+        CenterFreq.update(arg=centerfreq)
+        Span.update(arg=span)
+        StartFreq.update(arg=startfreq)
+        StopFreq.update(arg=stopfreq)
+        SweepTime.update(arg=sweeptime)
+        Rbw.update(arg=rbw)
+        Vbw.update(arg=vbw)
+        BwRatio.update(arg=bwratio)
+        Ref.update(arg=ref)
+        NumDiv.update(arg=numdiv)
+        YScale.update(arg=yscale)
+        Atten.update(arg=atten)
+        SpanType.update(arg=spantype)
+        SweepType.update(arg=sweeptype)
+        RbwType.update(arg=rbwtype)
+        VbwType.update(arg=vbwtype)
+        BwRatioType.update(arg=bwratiotype)
         if rbwfiltershape is not None:
-            _dict.update({'arg': self.RBW_FILTER_SHAPE_VAL_ARGS[rbwfiltershape]})
-        _list.append(_dict)
-        # RBW FILTER TYPE
-        _dict = {
-            'command': ':SENS:BAND:TYPE',
-            'widget': self.rbwFilterTypeCombo,
-            'arg': None,
-        }
+            RbwFilterShape.update(arg=self.RBW_FILTER_SHAPE_VAL_ARGS[rbwfiltershape])
         if rbwfiltertype is not None:
-            _dict.update({'arg': self.RBW_FILTER_TYPE_VAL_ARGS[rbwfiltertype]})
-        _list.append(_dict)
-        # ATTENUATION TYPE
-        _dict = {
-            'command': ':SENS:POWER:ATT:AUTO',
-            'arg': attentype,
-            'widget': tkAttenType
-        }
-        _list.append(_dict)
-        # UNIT OF POWER
-        _dict = {
-            'command': ':UNIT:POW',
-            'arg': None,
-            'widget': self.unitPowerEntry
-        }
-        _list.append(_dict)
+            RbwFilterType.update(arg=self.RBW_FILTER_TYPE_VAL_ARGS[rbwfiltertype])
+        AttenType.update(arg=attentype)
+        YAxisUnit.update(arg=None)
 
         # Sort the list so dictionaries with 'arg': None are placed (and executed) after write commands
         for index in range(len(_list)):
-            if _list[index]['arg'] is not None:
+            if _list[index].arg is not None:
                 _list.insert(0, _list.pop(index))
 
 
         # EXECUTE COMMANDS
         logging.debug(f"setAnalyzerValue generated list of dictionaries '_list' with value {_list}")
         with visaLock:
-            for x in _list:
+            for parameter in _list:
                 # Issue command with argument
-                if x['arg'] is not None:
-                    self.Vi.openRsrc.write(f'{x['command']} {x['arg']}')
+                if parameter.arg is not None:
+                    self.Vi.openRsrc.write(f'{parameter.command} {parameter.arg}')
                 # Set widgets without issuing a parameter to command
                 try:
-                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?') # Default converter is float
+                    buffer = self.Vi.openRsrc.query_ascii_values(f'{parameter.command}?') # Default converter is float
                 except:
-                    buffer = self.Vi.openRsrc.query_ascii_values(f'{x['command']}?', converter='s')
-                logging.verbose(f"Command {x['command']}? returned {buffer}")
-                clearAndSetWidget(x['widget'], buffer)
+                    buffer = self.Vi.openRsrc.query_ascii_values(f'{parameter.command}?', converter='s')
+                logging.verbose(f"Command {parameter.command}? returned {buffer}")
+                parameter.update(value=buffer)
+                clearAndSetWidget(parameter.widget, buffer)
         # Set plot limits
         with specPlotLock:
             self.setAnalyzerPlotLimits()
