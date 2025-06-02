@@ -1,5 +1,4 @@
 # PRIVATE LIBRARIES
-import threading
 import defaultconfig
 from frontendio import *
 from timestamp import *
@@ -7,8 +6,11 @@ from opcodes import *
 from loggingsetup import *
 
 # OTHER MODULES
+import threading
 import sys
 import os
+from datetime import date, datetime
+import datetime as dt
 from pyvisa import attributes
 import numpy as np
 import logging
@@ -32,6 +34,8 @@ from tkinter import colorchooser
 from tkinter import font
 from tkinter.ttk import *
 from ttkthemes import ThemedTk
+from tkcalendar import Calendar, DateEntry
+from tktimepicker import SpinTimePickerModern, constants
 
 # CONSTANTS
 IDLE_DELAY = 1.0
@@ -60,6 +64,7 @@ class state:
     IDLE = 0
     INIT = 1
     LOOP = 2
+    AUTO = 3
 
 # TOML CONFIGURATION
 try:
@@ -318,7 +323,7 @@ class FrontEnd():
         self.standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
         self.manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND, state=DISABLED)
+        self.autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND)
         self.autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton, self.autoButton)
         # Connection Status
@@ -353,9 +358,7 @@ class FrontEnd():
         self.openFreeWriting.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
 
         # self.updateOutput( oFile, root )      # deprecate maybe
-
         root.after(1000, self.update_time )
-
 
     def initDevice(self, event, device, port):
         """Connects to the respective resource and updates the attribute which stores the resource name.
@@ -422,6 +425,7 @@ class FrontEnd():
         """Opens configuration menu on a new toplevel window.
         """
         parent = Toplevel()
+        parent.title('Configure')
 
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
@@ -587,54 +591,7 @@ class FrontEnd():
             return RETURN_SUCCESS
         else:
             return RETURN_ERROR
-    
-    def plotInterface(self, parentWidget):
-        """Generates the main control interface the root level. Also generates frames to contain objects for SpecAn and AziElePlot
-        """
-        # TODO: Deprecate with the new control interface
 
-        # parent = parentWidget
-
-        # styling
-        # parent.rowconfigure(0, weight=1)
-        # parent.rowconfigure(1, weight=1)
-        # parent.rowconfigure(2, weight=1)
-        # parent.rowconfigure(3, weight=1)
-        # parent.columnconfigure(0, weight=0)
-        # parent.columnconfigure(1, weight=1)
-        # parent.columnconfigure(2, weight=1)
-        
-        # COLUMN 0 WIDGETS
-        # antennaPosFrame          = ttk.LabelFrame( parent, text = "Antenna Position" )
-        # antennaPosFrame.grid( row = 1, column = 0 , padx = 20 , pady = 10, sticky=(NSEW))
-
-        # self.azimuth_label      = ttk.Label(antennaPosFrame, text = "Azimuth:")
-        # self.elevation_label    = ttk.Label(antennaPosFrame, text = "Elevation:")
-        # self.inputAzimuth       = ttk.Entry(antennaPosFrame)
-        # self.inputElevation     = ttk.Entry(antennaPosFrame)
-
-        # self.azimuth_label.grid( row = 0, column = 0, padx = 10, pady=5)
-        # self.elevation_label.grid( row = 1, column = 0, padx = 10, pady=5)
-        # self.inputAzimuth.grid( row = 0, column = 1, padx = 10)
-        # self.inputElevation.grid( row = 1, column = 1, padx = 10)
-
-        # self.printbutton        = tk.Button( antennaPosFrame, text = "Enter", command = self.input )
-        # self.printbutton.grid(row = 2, column = 1, padx = 20, pady = 5, sticky=E)
-
-        # clockFrame              = ttk.Frame(parent)
-        # clockFrame.grid(row=0,column=0)
-        # self.clock_label        = ttk.Label(clockFrame, font = ('Arial', 14))
-        # self.clock_label.pack()
-        # self.quickButton        = ttk.Frame( parent )
-        # self.quickButton.grid(row = 2, column = 0, padx = 20, pady = 10, sticky=(S))
-        # self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = ('Arial', 16 ), bg = 'red', fg = 'white', command= self.Estop, width=15)
-        # self.Park               = tk.Button(self.quickButton, text = "Park", font = ('Arial', 16) , bg = 'blue', fg = 'white', command = self.park, width=15)
-        # self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = ('Arial', 16 ), command= self.freewriting, width=15)
-       
-        # self.EmargencyStop.pack( pady = 5 )
-        # self.Park.pack( pady = 5 )
-        # self.openFreeWriting.pack( pady = 5 )
-            
         # TODO: Cleanup boilerplate code below
     def getMotorPort(self):
         return self.motorSelectBox.get()
@@ -1465,6 +1422,12 @@ class AziElePlot(FrontEnd):
                     finally:
                         motorLock.release()
                         time.sleep(MOTOR_LOOP_DELAY)
+
+                case state.AUTO:
+                    time.sleep(IDLE_DELAY)
+                    continue
+                    # FrontEnd opens a window to set automated conditions
+                    # this loop just checks conditions and acts based on them
             
 
 # Thread target to monitor IO connection status
@@ -1485,15 +1448,28 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
         match Azi_Ele.loopState:
             case state.IDLE:
                 for button in FrontEnd.MODE_BUTTONS_LIST:
-                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
-                FrontEnd.setStatus(FrontEnd.standbyButton, background=FrontEnd.SELECT_BACKGROUND)
+                    if button is FrontEnd.standbyButton:
+                        background=FrontEnd.SELECT_BACKGROUND
+                    else:
+                        background=FrontEnd.DEFAULT_BACKGROUND
+                    FrontEnd.setStatus(button, background=background)
             case state.INIT:
                 for button in FrontEnd.MODE_BUTTONS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
             case state.LOOP:
                 for button in FrontEnd.MODE_BUTTONS_LIST:
-                    FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
-                FrontEnd.setStatus(FrontEnd.manualButton, background=FrontEnd.SELECT_BACKGROUND)
+                    if button is FrontEnd.manualButton:
+                        background=FrontEnd.SELECT_BACKGROUND
+                    else:
+                        background=FrontEnd.DEFAULT_BACKGROUND
+                    FrontEnd.setStatus(button, background=background)
+            case state.AUTO:
+                for button in FrontEnd.MODE_BUTTONS_LIST:
+                    if button is FrontEnd.autoButton:
+                        background=FrontEnd.SELECT_BACKGROUND
+                    else:
+                        background=FrontEnd.DEFAULT_BACKGROUND
+                    FrontEnd.setStatus(button, background=background)
         match Azi_Ele.axis0:
             case True:
                 FrontEnd.setStatus(FrontEnd.azStatus, text='ENABLED')
@@ -1685,6 +1661,55 @@ def generateConfigDialog():
         ):
         defaultconfig.generateConfig()
 
+def generateAutoDialog():
+    _list = []
+    _listVar = StringVar(value=_list)
+
+    def addDateTime():
+        removeDateTime()
+
+        _startDate = startDatePicker.get_date()
+        _endDate = endDatePicker.get_date()
+
+        _timePicker = timePicker.time()
+        _timeString = f'{_timePicker[0]}:{_timePicker[1]} {_timePicker[2]}'
+        _time = datetime.strptime(_timeString, '%I:%M %p')
+
+        _delta = _endDate - _startDate
+        for i in range(_delta.days + 1):
+            _date = datetime.combine(_startDate + dt.timedelta(days=i), _time.time())
+            _list.append(_date)
+
+        _listVar.set(_list)
+
+        for i in range(0,len(_list),2):
+            queueListbox.itemconfigure(i, background='#f0f0ff')
+    
+    def removeDateTime():
+        _list.clear()
+        _listVar.set(_list)
+        return
+
+    parent = Toplevel()
+    parent.title('Auto-Sweep Configuration')
+    startLabel = ttk.Label(parent, text='Start Date')
+    startLabel.grid(row=0, column=0, padx=ROOT_PADX, pady=ROOT_PADY)
+    startDatePicker = DateEntry(parent)
+    startDatePicker.grid(row=0, column=1, padx=ROOT_PADX, pady=ROOT_PADY)
+    endLabel = ttk.Label(parent, text='End Date')
+    endLabel.grid(row=1, column=0, padx=ROOT_PADX, pady=ROOT_PADY)
+    endDatePicker = DateEntry(parent)
+    endDatePicker.grid(row=1, column=1, padx=ROOT_PADX, pady=ROOT_PADY)
+    timePicker = SpinTimePickerModern(parent)
+    timePicker.grid(row=2, column=0, padx=ROOT_PADX, pady=ROOT_PADY, sticky=NSEW, columnspan=2)
+    timePicker.addAll(constants.HOURS12)
+    addButton = ttk.Button(parent, text="Generate", command=addDateTime)
+    addButton.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
+    removeButton = ttk.Button(parent, text="Clear", command=removeDateTime)
+    removeButton.grid(row=3, column=2, columnspan=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
+
+    queueListbox = tk.Listbox(parent, listvariable=_listVar, width=30)
+    queueListbox.grid(row=0, column=2, rowspan=3, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
 
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
@@ -1720,6 +1745,7 @@ statusMonitorThread.start()
 # Bind FrontEnd buttons to AziEle methods
 Front_End.standbyButton.configure(command = lambda: Azi_Ele.setState(state.IDLE))
 Front_End.manualButton.configure(command = lambda: Azi_Ele.setState(state.INIT))
+Front_End.autoButton.configure(command = lambda: (Azi_Ele.setState(state.AUTO), generateAutoDialog()))
 
 # Generate menu bars
 root.option_add('*tearOff', False)
