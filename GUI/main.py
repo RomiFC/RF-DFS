@@ -13,6 +13,8 @@ from datetime import date, datetime
 import datetime as dt
 from pyvisa import attributes
 import numpy as np
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
 import logging
 import decimal
 import traceback
@@ -41,6 +43,7 @@ from tktimepicker import SpinTimePickerModern, constants
 IDLE_DELAY = 1.0
 ANALYZER_LOOP_DELAY = 0.5
 MOTOR_LOOP_DELAY = 0.5
+STATUS_MONITOR_DELAY = 0.2
 RETURN_ERROR = 1
 RETURN_SUCCESS = 0
 ENABLE = 1
@@ -65,6 +68,21 @@ class state:
     INIT = 1
     LOOP = 2
     AUTO = 3
+
+# GLOBAL VARIABLES
+autoQueue = []
+autoState = state.IDLE
+autoFilePath = os.getcwd()
+
+# AUTOMATION SCHEDULER
+executors = {
+    'default': ThreadPoolExecutor(20),
+}
+job_defaults = {
+    'coalesce': True,
+    'max_instances': 5
+}
+automationScheduler = BackgroundScheduler(executors=executors, job_defaults=job_defaults)
 
 # TOML CONFIGURATION
 try:
@@ -98,6 +116,7 @@ motorLock = threading.RLock()       # For motor controller
 plcLock = threading.RLock()         # For PLC
 specPlotLock = threading.RLock()    # For matplotlib spectrum plot
 bearingPlotLock = threading.RLock() # For matplotlib antenna direction plot
+autoQueueLock = threading.RLock()   # For list of automated sweep datetimes
 
 # SPECTRUM ANALYZER PARAMETERS
 class Parameter:
@@ -316,19 +335,25 @@ class FrontEnd():
         self.ems1Button.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.PLC_OUTPUTS_LIST = (self.sleepP1Button, self.dfs1Button, self.ems1Button)              # Mutually exclusive buttons for which only one should be selected
         # Mode
-        modeFrame = tk.LabelFrame(controlFrame, text='Mode')
+        modeFrame = tk.LabelFrame(controlFrame, text='Motor Operation')
         modeFrame.grid(row=3, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         modeFrame.columnconfigure(0, weight=1)
         self.standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=self.SELECT_BACKGROUND)
         self.standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
         self.manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.autoButton = tk.Button(modeFrame, text='Auto', font=FONT, bg=self.DEFAULT_BACKGROUND)
-        self.autoButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton, self.autoButton)
+        self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton)
+        # Automation
+        autoFrame = tk.LabelFrame(controlFrame, text='Automation')
+        autoFrame.grid(row=4, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        autoFrame.columnconfigure(0, weight=1)
+        self.autoButton = tk.Button(autoFrame, text='Queue', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.autoButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.autoStartStopButton = tk.Button(autoFrame, text='Start / Stop', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.autoStartStopButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         # Connection Status
         connectionsFrame = tk.LabelFrame(controlFrame, text='Connection Status')
-        connectionsFrame.grid(row=4, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        connectionsFrame.grid(row=5, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         for i in range(2):
             connectionsFrame.columnconfigure(i, weight=1)
         visaLabel = tk.Label(connectionsFrame, text='VISA:', font=FONT)
@@ -347,7 +372,7 @@ class FrontEnd():
 
         # TODO: deprecate
         self.quickButton        = tk.LabelFrame(controlFrame, text='Control')
-        self.quickButton.grid(row = 5, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        self.quickButton.grid(row = 6, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         self.quickButton.columnconfigure(0, weight=0)
         self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = FONT, bg = 'red', fg = 'white', command = self.Estop)
         self.Park               = tk.Button(self.quickButton, text = "Park", font = FONT, bg = 'blue', fg = 'white', command = self.park)
@@ -424,8 +449,8 @@ class FrontEnd():
     def openConfig(self):
         """Opens configuration menu on a new toplevel window.
         """
-        parent = Toplevel()
-        parent.title('Configure')
+        _parent = Toplevel()
+        _parent.title('Configure')
 
         def onRefreshPress():
             """Update the values in the SCPI instrument selection box
@@ -457,7 +482,7 @@ class FrontEnd():
 
 
         # INSTRUMENT SELECTION FRAME & GRID
-        connectFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "Instrument Connections")
+        connectFrame = ttk.LabelFrame(_parent, borderwidth = 2, text = "Instrument Connections")
         connectFrame.grid(column=0, row=0, padx=20, pady=20, columnspan=3, ipadx=5, ipady=5)
         ttk.Label(
             connectFrame, text = "SCPI:", font = ("Times New Roman", 10)).grid(
@@ -489,7 +514,7 @@ class FrontEnd():
         self.plcSelectBox.bind("<<ComboboxSelected>>", lambda event: self.initDevice(event, device='plc', port=self.plcSelectBox.get()[:4]))
 
         # VISA CONFIGURATION FRAME
-        configFrame = ttk.LabelFrame(parent, borderwidth = 2, text = "VISA Configuration")
+        configFrame = ttk.LabelFrame(_parent, borderwidth = 2, text = "VISA Configuration")
         configFrame.grid(row = 1, column = 0, padx=20, pady=10, sticky=NSEW, rowspan=2)
         timeoutLabel = ttk.Label(configFrame, text = 'Timeout (ms)')
         timeoutLabel.grid(row = 0, column = 0, pady=5)
@@ -504,7 +529,7 @@ class FrontEnd():
         applyButton = ttk.Button(configFrame, text = "Apply Changes", command = lambda:self.scpiApplyConfig(self.timeoutWidget.get(), self.chunkSizeWidget.get()))
         applyButton.grid(row = 7, column = 0, columnspan=2, pady=10)
         # VISA TERMINATION FRAME
-        termFrame = ttk.LabelFrame(parent, borderwidth=2, text = 'Termination Methods')
+        termFrame = ttk.LabelFrame(_parent, borderwidth=2, text = 'Termination Methods')
         termFrame.grid(row = 1, column = 1, padx = 5, pady = 10, sticky=(N, E, W), ipadx=5, ipady=5)
         self.sendEndWidget = ttk.Checkbutton(termFrame, text = 'Send \'End or Identify\' on write', variable=self.sendEnd)
         self.sendEndWidget.grid(row = 0, column = 0, pady = 5)
@@ -513,7 +538,7 @@ class FrontEnd():
         self.enableTermWidget = ttk.Checkbutton(termFrame, text = 'Enable Termination Character', variable=self.enableTerm, command=lambda:onEnableTermPress())
         self.enableTermWidget.grid(row = 1, column = 0, pady = 5)
         # REFRESH BUTTON
-        self.refreshButton = ttk.Button(parent, text = "Refresh All", command = lambda:onRefreshPress())
+        self.refreshButton = ttk.Button(_parent, text = "Refresh All", command = lambda:onRefreshPress())
         self.refreshButton.grid(row = 2, column = 1, padx=5)
     
 
@@ -1432,6 +1457,7 @@ class AziElePlot(FrontEnd):
 
 # Thread target to monitor IO connection status
 def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
+    global autoState
     while True:
         # VISA
         try:
@@ -1459,13 +1485,6 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
             case state.LOOP:
                 for button in FrontEnd.MODE_BUTTONS_LIST:
                     if button is FrontEnd.manualButton:
-                        background=FrontEnd.SELECT_BACKGROUND
-                    else:
-                        background=FrontEnd.DEFAULT_BACKGROUND
-                    FrontEnd.setStatus(button, background=background)
-            case state.AUTO:
-                for button in FrontEnd.MODE_BUTTONS_LIST:
-                    if button is FrontEnd.autoButton:
                         background=FrontEnd.SELECT_BACKGROUND
                     else:
                         background=FrontEnd.DEFAULT_BACKGROUND
@@ -1505,7 +1524,14 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
                 for button in FrontEnd.PLC_OUTPUTS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
                 FrontEnd.setStatus(FrontEnd.ems1Button, background=FrontEnd.SELECT_BACKGROUND)
-        time.sleep(0.2)
+                
+        match autoState:
+            case state.IDLE:
+                FrontEnd.setStatus(FrontEnd.autoStartStopButton, background=FrontEnd.DEFAULT_BACKGROUND)
+            case state.AUTO:
+                FrontEnd.setStatus(FrontEnd.autoStartStopButton, background=FrontEnd.SELECT_BACKGROUND)
+                
+        time.sleep(STATUS_MONITOR_DELAY)
 
 # Root tkinter interface (contains Front_End and standard output console)
 root = ThemedTk(theme=cfg['theme']['ttk'])
@@ -1610,7 +1636,8 @@ def checkbuttonStateHandler():
 def openSaveDialog(type):
     if type == 'trace':
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Comma separated variables', '*.csv'), ('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.csv')
-        saveTrace(file)
+        if file is not None:
+            saveTrace(file)
     elif type == 'log':
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
         if file is not None:
@@ -1649,9 +1676,9 @@ def saveTrace(file):
     buffer = buffer + 'DATA\n'
     for index in range(len(data[0])):
         buffer = buffer + str(xdata[index]) + delimiter + str(ydata[index]) + '\n'
-    if file is not None:
-        file.write(buffer)
-        file.close()
+
+    file.write(buffer)
+    file.close()
 
 def generateConfigDialog():
     if messagebox.askokcancel(
@@ -1662,8 +1689,12 @@ def generateConfigDialog():
         defaultconfig.generateConfig()
 
 def generateAutoDialog():
-    _list = []
-    _listVar = StringVar(value=_list)
+    global autoQueue
+    _listVar = StringVar(value=autoQueue)
+
+    if autoState != state.IDLE:
+        logging.info('Cannot edit queue while task scheduler is active.')
+        return
 
     def addDateTime():
         removeDateTime()
@@ -1678,38 +1709,61 @@ def generateAutoDialog():
         _delta = _endDate - _startDate
         for i in range(_delta.days + 1):
             _date = datetime.combine(_startDate + dt.timedelta(days=i), _time.time())
-            _list.append(_date)
+            with autoQueueLock:
+                autoQueue.append(_date)
+        _listVar.set(autoQueue)
 
-        _listVar.set(_list)
-
-        for i in range(0,len(_list),2):
+        for i in range(0,len(autoQueue),2):
             queueListbox.itemconfigure(i, background='#f0f0ff')
     
     def removeDateTime():
-        _list.clear()
-        _listVar.set(_list)
-        return
+        global autoQueue
+        with autoQueueLock:
+            autoQueue.clear()
+            _listVar.set(autoQueue)
 
-    parent = Toplevel()
-    parent.title('Auto-Sweep Configuration')
-    startLabel = ttk.Label(parent, text='Start Date')
+    _parent = Toplevel()
+    _parent.title('Auto-Sweep Configuration')
+    startLabel = ttk.Label(_parent, text='Start Date')
     startLabel.grid(row=0, column=0, padx=ROOT_PADX, pady=ROOT_PADY)
-    startDatePicker = DateEntry(parent)
+    startDatePicker = DateEntry(_parent)
     startDatePicker.grid(row=0, column=1, padx=ROOT_PADX, pady=ROOT_PADY)
-    endLabel = ttk.Label(parent, text='End Date')
+    endLabel = ttk.Label(_parent, text='End Date')
     endLabel.grid(row=1, column=0, padx=ROOT_PADX, pady=ROOT_PADY)
-    endDatePicker = DateEntry(parent)
+    endDatePicker = DateEntry(_parent)
     endDatePicker.grid(row=1, column=1, padx=ROOT_PADX, pady=ROOT_PADY)
-    timePicker = SpinTimePickerModern(parent)
+    timePicker = SpinTimePickerModern(_parent)
     timePicker.grid(row=2, column=0, padx=ROOT_PADX, pady=ROOT_PADY, sticky=NSEW, columnspan=2)
     timePicker.addAll(constants.HOURS12)
-    addButton = ttk.Button(parent, text="Generate", command=addDateTime)
+    addButton = ttk.Button(_parent, text="Generate", command=addDateTime)
     addButton.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
-    removeButton = ttk.Button(parent, text="Clear", command=removeDateTime)
+    removeButton = ttk.Button(_parent, text="Clear", command=removeDateTime)
     removeButton.grid(row=3, column=2, columnspan=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
 
-    queueListbox = tk.Listbox(parent, listvariable=_listVar, width=30)
+    queueListbox = tk.Listbox(_parent, listvariable=_listVar, width=35)
     queueListbox.grid(row=0, column=2, rowspan=3, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
+
+    for i in range(0,len(autoQueue),2):
+            queueListbox.itemconfigure(i, background='#f0f0ff')
+
+def autoStartStop():
+    global autoState, autoQueue
+
+    match autoState:
+        case state.IDLE:
+            # if the scheduler isn't paused when adding more than 2 jobs it breaks most of the time
+            # changing trigger from date to interval fixes it?
+            # also commenting out the sys.stdout/err redirectors fixes it and i have no idea why
+            automationScheduler.pause()
+            for taskDateTime in autoQueue:
+                automationScheduler.add_job(saveTrace, args=('asdf',), trigger='date', run_date = taskDateTime)
+            automationScheduler.resume()
+            autoState = state.AUTO
+        case state.AUTO:
+            for job in automationScheduler.get_jobs():
+                job.remove()
+
+            autoState = state.IDLE
 
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
@@ -1741,11 +1795,13 @@ Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
 statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay, Azi_Ele), daemon=True)
 statusMonitorThread.start()
+automationScheduler.start()
 
-# Bind FrontEnd buttons to AziEle methods
+# Bind FrontEnd buttons to methods
 Front_End.standbyButton.configure(command = lambda: Azi_Ele.setState(state.IDLE))
 Front_End.manualButton.configure(command = lambda: Azi_Ele.setState(state.INIT))
-Front_End.autoButton.configure(command = lambda: (Azi_Ele.setState(state.AUTO), generateAutoDialog()))
+Front_End.autoButton.configure(command = lambda: generateAutoDialog())
+Front_End.autoStartStopButton.configure(command = lambda: autoStartStop())
 
 # Generate menu bars
 root.option_add('*tearOff', False)
