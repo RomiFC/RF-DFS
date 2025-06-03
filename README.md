@@ -53,7 +53,7 @@ graph BT
 ## 🛠️ Development Requirements
 
 - All above requirements.
-- [Python 3.10+](https://www.python.org/) and an understanding of the following:
+- [Python 3.11+](https://www.python.org/) and an understanding of the following:
   - [tkinter](https://docs.python.org/3/library/tkinter.html#module-tkinter)
   - [pySerial](https://pypi.org/project/pyserial/)
   - [PyVisa](https://pyvisa.readthedocs.io/en/latest/)
@@ -80,11 +80,23 @@ pip install matplotlib
 ```
 
 ```bash
+pip install numpy
+```
+
+```bash
+pip install apscheduler
+```
+
+```bash
 pip install ttkthemes
 ```
 
 ```bash
-pip install numpy
+pip install tkcalendar
+```
+
+```bash
+pip install tktimepicker
 ```
 
 ## :mailbox: Authors
