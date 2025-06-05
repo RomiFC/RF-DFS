@@ -177,6 +177,7 @@ AttenType       = Parameter('Auto Attenuation', ':SENS:POWER:ATT:AUTO', log=Fals
 XAxisUnit       = Parameter('X Axis Units', None)
 XAxisUnit.update(value='Hz')
 YAxisUnit       = Parameter('Y Axis Units', ':UNIT:POW')
+TraceType       = Parameter('Trace Type', 'TRACE:TYPE')
 
 # real code starts here
 def isNumber(input):
@@ -703,6 +704,8 @@ class SpecAn(FrontEnd):
         self.RBW_FILTER_SHAPE_VAL_ARGS = ('GAUS', 'FLAT')
         self.RBW_FILTER_TYPE_VALUES = ("-3 dB (Normal)", "-6 dB", "Impulse", "Noise")
         self.RBW_FILTER_TYPE_VAL_ARGS = ('DB3', 'DB6', 'IMP', 'NOISE')
+        self.TRACE_TYPE_VALUES = ('Clear/Write', 'Trace Average', 'Max Hold', 'Min Hold')
+        self.TRACE_TYPE_VAL_ARGS = ('WRIT', 'AVER', 'MAXH', 'MINH')
         # TKINTER VARIABLES
         global tkSweepType, tkSpanType, tkRbwType, tkVbwType, tkBwRatioType, tkAttenType
         tkSweepType = BooleanVar()
@@ -746,116 +749,121 @@ class SpecAn(FrontEnd):
         self.tab1 = ttk.Frame(measurementTab)
         self.tab2 = ttk.Frame(measurementTab)
         self.tab3 = ttk.Frame(measurementTab)
-        measurementTab.add(self.tab1, text="Freq")
-        measurementTab.add(self.tab2, text="BW")
-        measurementTab.add(self.tab3, text="Amp")
+        measurementTab.add(self.tab1, sticky=NSEW, text="Freq")
+        measurementTab.add(self.tab2, sticky=NSEW, text="BW")
+        measurementTab.add(self.tab3, sticky=NSEW, text="Amp")
         measurementTab.grid(row=0, column=1, sticky=NSEW)
 
         # MEASUREMENT TAB 1 (FREQUENCY)
         centerFreqFrame = ttk.LabelFrame(self.tab1, text="Center Frequency")
-        centerFreqFrame.grid(row=0, column=0, sticky=E)
+        centerFreqFrame.grid(row=0, column=0, sticky=NSEW)
         self.centerFreqEntry = ttk.Entry(centerFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.centerFreqEntry.pack()
+        self.centerFreqEntry.pack(expand=True, fill=BOTH)
 
         spanFrame = ttk.LabelFrame(self.tab1, text="Span")
-        spanFrame.grid(row=1, column=0, sticky=E)
+        spanFrame.grid(row=1, column=0, sticky=NSEW)
         self.spanEntry = ttk.Entry(spanFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.spanEntry.pack()
+        self.spanEntry.pack(expand=True, fill=BOTH)
         self.spanSweptButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Swept Span", value=1)
-        self.spanSweptButton.pack(anchor=W)
+        self.spanSweptButton.pack(anchor=W, expand=True, fill=BOTH)
         self.spanZeroButton = ttk.Radiobutton(spanFrame, variable=tkSpanType, text = "Zero Span", value=0)
-        self.spanZeroButton.pack(anchor=W)
+        self.spanZeroButton.pack(anchor=W, expand=True, fill=BOTH)
         self.spanFullButton = ttk.Button(spanFrame, text = "Full Span")
-        self.spanFullButton.pack(anchor=S, fill=BOTH)
+        self.spanFullButton.pack(anchor=S, expand=True, fill=BOTH)
 
         startFreqFrame = ttk.LabelFrame(self.tab1, text="Start Frequency")
-        startFreqFrame.grid(row=2, column=0)
+        startFreqFrame.grid(row=2, column=0, sticky=NSEW)
         self.startFreqEntry = ttk.Entry(startFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.startFreqEntry.pack()
+        self.startFreqEntry.pack(expand=True, fill=BOTH)
 
         stopFreqFrame = ttk.LabelFrame(self.tab1, text="Stop Frequency")
-        stopFreqFrame.grid(row=3, column=0)
+        stopFreqFrame.grid(row=3, column=0, sticky=NSEW)
         self.stopFreqEntry = ttk.Entry(stopFreqFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.stopFreqEntry.pack()
+        self.stopFreqEntry.pack(expand=True, fill=BOTH)
 
         sweepTimeFrame = ttk.LabelFrame(self.tab1, text="Sweep Time")
-        sweepTimeFrame.grid(row=4, column=0)
+        sweepTimeFrame.grid(row=4, column=0, sticky=NSEW)
         self.sweepTimeEntry = ttk.Entry(sweepTimeFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.sweepTimeEntry.pack()
+        self.sweepTimeEntry.pack(expand=True, fill=BOTH)
         self.sweepAutoButton = ttk.Radiobutton(sweepTimeFrame, variable=tkSweepType, text="Auto", value=AUTO)
-        self.sweepAutoButton.pack(anchor=W)
+        self.sweepAutoButton.pack(anchor=W, expand=True, fill=BOTH)
         self.sweepManButton = ttk.Radiobutton(sweepTimeFrame, variable=tkSweepType, text="Manual", value=MANUAL)
-        self.sweepManButton.pack(anchor=W)
+        self.sweepManButton.pack(anchor=W, expand=True, fill=BOTH)
         
 
 
         # MEASUREMENT TAB 2 (BANDWIDTH)
         rbwFrame = ttk.LabelFrame(self.tab2, text="Res BW")
-        rbwFrame.grid(row=0, column=0)
+        rbwFrame.grid(row=0, column=0, sticky=NSEW)
         self.rbwEntry = ttk.Entry(rbwFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.rbwEntry.pack()
+        self.rbwEntry.pack(expand=True, fill=BOTH)
         self.rbwAutoButton = ttk.Radiobutton(rbwFrame, variable=tkRbwType, text="Auto", value=AUTO)
-        self.rbwAutoButton.pack(anchor=W)
+        self.rbwAutoButton.pack(anchor=W, expand=True, fill=BOTH)
         self.rbwManButton = ttk.Radiobutton(rbwFrame, variable=tkRbwType, text="Manual", value=MANUAL)
-        self.rbwManButton.pack(anchor=W)
+        self.rbwManButton.pack(anchor=W, expand=True, fill=BOTH)
         
         vbwFrame = ttk.LabelFrame(self.tab2, text="Video BW")
-        vbwFrame.grid(row=1, column=0)
+        vbwFrame.grid(row=1, column=0, sticky=NSEW)
         self.vbwEntry = ttk.Entry(vbwFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.vbwEntry.pack()
+        self.vbwEntry.pack(expand=True, fill=BOTH)
         self.vbwAutoButton = ttk.Radiobutton(vbwFrame, variable=tkVbwType, text="Auto", value=AUTO)
-        self.vbwAutoButton.pack(anchor=W)
+        self.vbwAutoButton.pack(anchor=W, expand=True, fill=BOTH)
         self.vbwManButton = ttk.Radiobutton(vbwFrame, variable=tkVbwType, text="Manual", value=MANUAL)
-        self.vbwManButton.pack(anchor=W)
+        self.vbwManButton.pack(anchor=W, expand=True, fill=BOTH)
 
         bwRatioFrame = ttk.LabelFrame(self.tab2, text="VBW:RBW")
-        bwRatioFrame.grid(row=2, column=0)
+        bwRatioFrame.grid(row=2, column=0, sticky=NSEW)
         self.bwRatioEntry = ttk.Entry(bwRatioFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.bwRatioEntry.pack()
+        self.bwRatioEntry.pack(expand=True, fill=BOTH)
         self.bwRatioAutoButton = ttk.Radiobutton(bwRatioFrame, variable=tkBwRatioType, text="Auto", value=AUTO)
-        self.bwRatioAutoButton.pack(anchor=W)
+        self.bwRatioAutoButton.pack(anchor=W, expand=True, fill=BOTH)
         self.bwRatioManButton = ttk.Radiobutton(bwRatioFrame, variable=tkBwRatioType, text="Manual", value=MANUAL)
-        self.bwRatioManButton.pack(anchor=W)
+        self.bwRatioManButton.pack(anchor=W, expand=True, fill=BOTH)
 
         rbwFilterShapeFrame = ttk.LabelFrame(self.tab2, text="RBW Filter Shape")
-        rbwFilterShapeFrame.grid(row=3, column=0)
+        rbwFilterShapeFrame.grid(row=3, column=0, sticky=NSEW)
         self.rbwFilterShapeCombo = ttk.Combobox(rbwFilterShapeFrame, values = self.RBW_FILTER_SHAPE_VALUES)
-        self.rbwFilterShapeCombo.pack(anchor=W)
+        self.rbwFilterShapeCombo.pack(anchor=W, expand=True, fill=BOTH)
 
         rbwFilterTypeFrame = ttk.LabelFrame(self.tab2, text="RBW Filter Type")
-        rbwFilterTypeFrame.grid(row=4, column=0)
+        rbwFilterTypeFrame.grid(row=4, column=0, sticky=NSEW)
         self.rbwFilterTypeCombo = ttk.Combobox(rbwFilterTypeFrame, values = self.RBW_FILTER_TYPE_VALUES)
-        self.rbwFilterTypeCombo.pack(anchor=W)
+        self.rbwFilterTypeCombo.pack(anchor=W, expand=True, fill=BOTH)
 
         # MEASUREMENT TAB 3 (AMPLITUDE)
         refLevelFrame = ttk.LabelFrame(self.tab3, text="Ref Level")
-        refLevelFrame.grid(row=0, column=0)
+        refLevelFrame.grid(row=0, column=0, sticky=NSEW)
         self.refLevelEntry = ttk.Entry(refLevelFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.refLevelEntry.pack()
+        self.refLevelEntry.pack(expand=True, fill=BOTH)
 
         yScaleFrame = ttk.LabelFrame(self.tab3, text="Scale/Division")
-        yScaleFrame.grid(row=1, column=0)
+        yScaleFrame.grid(row=1, column=0, sticky=NSEW)
         self.yScaleEntry = ttk.Entry(yScaleFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.yScaleEntry.pack()
+        self.yScaleEntry.pack(expand=True, fill=BOTH)
 
         numDivFrame = ttk.LabelFrame(self.tab3, text="Number of Divisions")
-        numDivFrame.grid(row=2, column=0)
+        numDivFrame.grid(row=2, column=0, sticky=NSEW)
         self.numDivEntry = ttk.Entry(numDivFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.numDivEntry.pack()
+        self.numDivEntry.pack(expand=True, fill=BOTH)
 
         attenFrame = ttk.LabelFrame(self.tab3, text="Mech Atten")
-        attenFrame.grid(row=3, column=0)
+        attenFrame.grid(row=3, column=0, sticky=NSEW)
         self.attenEntry = ttk.Entry(attenFrame, validate="key", validatecommand=(isNumWrapper, '%P'))
-        self.attenEntry.pack()
+        self.attenEntry.pack(expand=True, fill=BOTH)
         self.attenAutoButton = ttk.Radiobutton(attenFrame, variable=tkAttenType, text="Auto", value=AUTO)
-        self.attenAutoButton.pack(anchor=W)
+        self.attenAutoButton.pack(anchor=W, expand=True, fill=BOTH)
         self.attenManButton = ttk.Radiobutton(attenFrame, variable=tkAttenType, text="Manual", value=MANUAL)
-        self.attenManButton.pack(anchor=W)
+        self.attenManButton.pack(anchor=W, expand=True, fill=BOTH)
 
         unitPowerFrame = ttk.LabelFrame(self.tab3, text="Unit (Power)")
-        unitPowerFrame.grid(row=4, column=0)
+        unitPowerFrame.grid(row=4, column=0, sticky=NSEW)
         self.unitPowerEntry = ttk.Entry(unitPowerFrame, state="disabled")
-        self.unitPowerEntry.pack()
+        self.unitPowerEntry.pack(expand=True, fill=BOTH)
+
+        traceTypeFrame = ttk.LabelFrame(self.tab3, text='Trace Type')
+        traceTypeFrame.grid(row=5, column=0, sticky=NSEW)
+        self.traceTypeCombo = ttk.Combobox(traceTypeFrame, values=self.TRACE_TYPE_VALUES)
+        self.traceTypeCombo.pack(anchor=W, expand=True, fill=BOTH)
 
         # SWEEP BUTTONS
         initButton = ttk.Button(spectrumFrame, text="Initialize", command=lambda:self.setState(state.INIT))
@@ -889,6 +897,7 @@ class SpecAn(FrontEnd):
         RbwFilterType.update(widget=self.rbwFilterTypeCombo)
         AttenType.update(widget=tkAttenType)
         YAxisUnit.update(widget=self.unitPowerEntry)
+        TraceType.update(widget=self.traceTypeCombo)
 
         # Generate thread to handle live data plot in background
         analyzerLoop = threading.Thread(target=self.analyzerDisplayLoop, daemon=True)
@@ -925,6 +934,7 @@ class SpecAn(FrontEnd):
         self.rbwFilterTypeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, rbwfiltertype = self.rbwFilterTypeCombo.current()))
         self.attenAutoButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=AUTO))
         self.attenManButton.configure(command = lambda: self.setAnalyzerThreadHandler(attentype=MANUAL))
+        self.traceTypeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, tracetype = self.traceTypeCombo.current()))
 
     def toggleInputs(self, action):
         frames = (self.tab1, self.tab2, self.tab3)
@@ -978,7 +988,7 @@ class SpecAn(FrontEnd):
         thread = threading.Thread(target=self.setAnalyzerValue, kwargs=_dict)
         thread.start()
 
-    def setAnalyzerValue(self, centerfreq=None, span=None, startfreq=None, stopfreq=None, sweeptime=None, rbw=None, vbw=None, bwratio=None, ref=None, numdiv=None, yscale=None, atten=None, spantype=None, sweeptype=None, rbwtype=None, vbwtype=None, bwratiotype=None, rbwfiltershape=None, rbwfiltertype=None, attentype=None):
+    def setAnalyzerValue(self, centerfreq=None, span=None, startfreq=None, stopfreq=None, sweeptime=None, rbw=None, vbw=None, bwratio=None, ref=None, numdiv=None, yscale=None, atten=None, spantype=None, sweeptype=None, rbwtype=None, vbwtype=None, bwratiotype=None, rbwfiltershape=None, rbwfiltertype=None, attentype=None, tracetype=None):
         """Issues command to spectrum analyzer with the value of kwarg as the argument and queries for widget values. If the value is None or if there are no kwargs, query the spectrum analyzer to set widget values instead.
         
         Args:
@@ -1001,6 +1011,7 @@ class SpecAn(FrontEnd):
             rbwfiltershape (int, optional): Index of the combobox widget tied to RBW_FILTER_SHAPE_VAL_ARGS. Defaults to None.
             rbwfiltertype (int, optional): Index of the combobox widget tied to RBW_FILTER_TYPE_VAL_ARGS. Defaults to None.
             attentype (bool, optional): 1 for auto, 0 for manual. Defaults to None.
+            tracetype (int, optional): Index of the combobox widget tied to TRACE_TYPE_VAL_ARGS. Defaults to None.
         """
         # TODO: Make sure all commands have full functionality
         global visaLock
@@ -1029,6 +1040,8 @@ class SpecAn(FrontEnd):
             RbwFilterType.update(arg=self.RBW_FILTER_TYPE_VAL_ARGS[rbwfiltertype])
         AttenType.update(arg=attentype)
         YAxisUnit.update(arg=None)
+        if tracetype is not None:
+            TraceType.update(arg=self.TRACE_TYPE_VAL_ARGS[tracetype])
 
         # Sort the list so dictionaries with 'arg': None are placed (and executed) after write commands
         for index in range(len(_list)):
