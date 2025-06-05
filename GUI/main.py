@@ -68,6 +68,7 @@ class state:
     INIT = 1
     LOOP = 2
     AUTO = 3
+    CLEANUP = 4
 
 # TOML CONFIGURATION
 try:
@@ -339,13 +340,17 @@ class FrontEnd():
         self.ems1Button.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.PLC_OUTPUTS_LIST = (self.sleepP1Button, self.dfs1Button, self.ems1Button)              # Mutually exclusive buttons for which only one should be selected
         # Mode
-        modeFrame = tk.LabelFrame(controlFrame, text='Motor Operation')
+        modeFrame = tk.LabelFrame(controlFrame, text='Motor Operations')
         modeFrame.grid(row=3, column=0, sticky=(N, E, W), columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
         modeFrame.columnconfigure(0, weight=1)
         self.standbyButton = tk.Button(modeFrame, text='Standby', font=FONT, bg=self.SELECT_BACKGROUND)
         self.standbyButton.grid(row=0, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.manualButton = tk.Button(modeFrame, text='Manual', font=FONT, bg=self.DEFAULT_BACKGROUND)
         self.manualButton.grid(row=1, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.haltButton = tk.Button(modeFrame, text='Halt Movement', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.haltButton.grid(row=2, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        self.killDrivesButton = tk.Button(modeFrame, text='Disable Drives', font=FONT, bg=self.DEFAULT_BACKGROUND)
+        self.killDrivesButton.grid(row=3, column=0, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.MODE_BUTTONS_LIST = (self.standbyButton, self.manualButton)
         # Automation
         autoFrame = tk.LabelFrame(controlFrame, text='Automation')
@@ -372,21 +377,19 @@ class FrontEnd():
         self.motorStatus.grid(row=1, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
         self.plcStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
         self.plcStatus.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        
 
         # TODO: deprecate
-        self.quickButton        = tk.LabelFrame(controlFrame, text='Control')
-        self.quickButton.grid(row = 6, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
-        self.quickButton.columnconfigure(0, weight=0)
-        self.EmargencyStop      = tk.Button(self.quickButton, text = "Emergency Stop", font = FONT, bg = 'red', fg = 'white', command = self.Estop)
-        self.Park               = tk.Button(self.quickButton, text = "Park", font = FONT, bg = 'blue', fg = 'white', command = self.park)
-        self.openFreeWriting    = tk.Button(self.quickButton, text = "Motor Terminal", font = FONT, command = self.freewriting)
+        # self.quickButtonFrame        = tk.LabelFrame(controlFrame, text='Control')
+        # self.quickButtonFrame.grid(row = 6, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
+        # self.quickButtonFrame.columnconfigure(0, weight=0)
+        # self.haltButton      = tk.Button(self.quickButtonFrame, text = "Halt", font = FONT, bg = 'red', fg = 'white', command = self.Estop)
+        # self.Park               = tk.Button(self.quickButtonFrame, text = "Park", font = FONT, bg = 'blue', fg = 'white', command = self.park)
+        # self.openFreeWriting    = tk.Button(self.quickButtonFrame, text = "Motor Terminal", font = FONT, command = self.freewriting)
        
-        self.EmargencyStop.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.Park.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        self.openFreeWriting.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        # self.haltButton.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        # self.Park.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
+        # self.openFreeWriting.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
 
-        # self.updateOutput( oFile, root )      # deprecate maybe
         root.after(1000, self.update_time )
 
     def initDevice(self, event, device, port):
@@ -483,8 +486,6 @@ class FrontEnd():
                     self.plcPort = ''
                     self.plcSelectBox.set('')
 
-
-
         # INSTRUMENT SELECTION FRAME & GRID
         connectFrame = ttk.LabelFrame(_parent, borderwidth = 2, text = "Instrument Connections")
         connectFrame.grid(column=0, row=0, padx=20, pady=20, columnspan=3, ipadx=5, ipady=5)
@@ -544,7 +545,6 @@ class FrontEnd():
         # REFRESH BUTTON
         self.refreshButton = ttk.Button(_parent, text = "Refresh All", command = lambda:onRefreshPress())
         self.refreshButton.grid(row = 2, column = 1, padx=5)
-    
 
     def resetConfigWidgets(self, *event):
         # DEPRECATED WITH THE REMOVAL OF CONTROL AND CONFIG TABS
@@ -621,70 +621,10 @@ class FrontEnd():
         else:
             return RETURN_ERROR
 
-        # TODO: Cleanup boilerplate code below
-    def getMotorPort(self):
-        return self.motorSelectBox.get()
-
     def update_time(self):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
         self.clockLabel.config(text=current_time)
         root.after(1000, self.update_time)
-
-    def freewriting(self):
-        """Frexible serial communication Window
-        """
-        if self.motor.port != self.motorSelectBox.get()[:4]: 
-            portName = self.motorSelectBox.get()
-            self.motor.port = portName[:4]
-            self.motor.OpenSerial()
-        self.motor.freeInput()
-
-    def Estop(self):
-        
-        if self.motor.port != self.motorSelectBox.get()[:4]: 
-            portName = self.motorSelectBox.get()
-            self.motor.port = portName[:4]
-            self.motor.OpenSerial()
-        self.motor.EmargencyStop()
-    
-    def park( self ):
-        if self.motor.port != self.motorSelectBox.get()[:4]: 
-            portName = self.motorSelectBox.get()
-            self.motor.port = portName[:4]
-            self.motor.OpenSerial()
-        self.motor.Park()
-
-    def input(self):
-        if self.motor.port != self.motorSelectBox.get()[:4]: 
-            portName = self.motorSelectBox.get()
-            self.motor.port = portName[:4]
-            self.motor.OpenSerial()
-        self.motor.userAzi = self.inputAzimuth.get()
-        self.motor.userEle = self.inputElevation.get()
-        self.motor.readUserInput()      
-
-        # TODO: This isn't called anywhere? Delete?
-    def quit(self):
-        self.motor.CloseSerial()
-        root.destroy()
-
-        # TODO: Figure out what this does or maybe deprecate it
-    def updateOutput( self, oFile, root ):
-        def saveData():
-            # position information is not updated now, path from motor servo is needed. 
-            newData = [time.strftime("%Y-%m-%d %H:%M:%S") , 0 , 0]
-            #
-
-            oFile.add( newData )
-            newData = []
-        
-        buttonFrame = tk.Frame( root )
-        buttonFrame.pack( side = 'right')
-        saveButton = tk.Button( buttonFrame , text = "Save", font = ('Arial', 10), width=10, command = saveData )
-        saveButton.pack()
-        get_logfile = tk.Button( buttonFrame, text = "Get Log File", font = ('Arial', 10),width=10, command = oFile.printData )
-        get_logfile.pack()
-
 
 class SpecAn(FrontEnd):
     """Generates tkinter-embedded matplotlib graph of spectrum analyzer.
@@ -1360,7 +1300,15 @@ class AziElePlot(FrontEnd):
 
         # Disable inputs. If done correctly, the loop thread should enable inputs when bit 516 is 0
         # self.toggleInputs(DISABLE)
-        
+
+    def halt(self):
+        try:
+            with motorLock:
+                self.Motor.write('jog off x y')
+                time.sleep(0.1)
+                self.Motor.flushInput()
+        except Exception as e:
+            logging.error(f'{type(e).__name__}: {e}')
 
     def toggleInputs(self, action):
         frames = (self.azEntryFrame, self.elEntryFrame)
@@ -1388,6 +1336,16 @@ class AziElePlot(FrontEnd):
                     self.toggleInputs(DISABLE)
                     time.sleep(IDLE_DELAY)
                     continue
+            
+                case state.CLEANUP:
+                    try:
+                        motorLock.acquire()
+                        self.Motor.write('DRIVE OFF X Y')
+                        self.queryDriveStates()
+                    except Exception as e:
+                        motorLock.release()
+                        logging.error(f'{type(e).__name__}: {e}')
+                    self.loopState = state.IDLE
 
                 case state.INIT:
                     self.toggleInputs(DISABLE)
@@ -1400,20 +1358,14 @@ class AziElePlot(FrontEnd):
                             raise NotImplementedError(f'Unexpected response from motor controller: {prog}')
                         
                         self.Motor.write('DRIVE ON X Y')
-                        # Check if drive responded correctly here and set status buttons.
-                        drive = self.Motor.query('DRIVE X')
-                        if 'ON' not in drive:
-                            raise NotImplementedError(f'Unexpected response from AXIS0: {drive}')
-                        self.axis0 = True
-                        drive = self.Motor.query('DRIVE Y')
-                        if 'ON' not in drive:
-                            raise NotImplementedError(f'Unexpected response from AXIS1: {drive}')
-                        self.axis1 = True
+                        self.queryDriveStates()
+                        if self.axis0 == False or self.axis1 == False:
+                            raise NotImplementedError('One or more drives did not respond to enable command.')
 
                         self.loopState = state.LOOP
                     except Exception as e:
                         logging.error(f'{type(e).__name__}: {e}')
-                    # Check drive states and output to the buttons on the left hand panel. Enable buttons to allow user to toggle drives
+                        # Check drive states and output to the buttons on the left hand panel. Enable buttons to allow user to toggle drives
                         self.loopState = state.IDLE
                     finally:
                         motorLock.release()
@@ -1469,7 +1421,29 @@ class AziElePlot(FrontEnd):
                     continue
                     # FrontEnd opens a window to set automated conditions
                     # this loop just checks conditions and acts based on them
-            
+
+    def queryDriveStates(self):
+        """Query drives x and y from the motor controller. Sets self.axis0 and self.axis1 to True or False if the drive is enabled or disabled, respectively.
+
+        Raises:
+            NotImplementedError: If the motor controller does not return DRIVE ON or DRIVE OFF
+        """
+        with motorLock:
+            # Check if drive responded correctly here and set status buttons.
+            drive = self.Motor.query('DRIVE X')
+            if 'ON' in drive:
+                self.axis0 = True   # set attribute for statusMonitor
+            elif 'OFF' in drive:
+                self.axis0 = False
+            else:
+                raise NotImplementedError(f'Unexpected response from AXIS0: {drive}')
+            drive = self.Motor.query('DRIVE Y')
+            if 'ON' in drive:
+                self.axis1 = True   # set attribute for statusMonitor
+            elif 'OFF' in drive:
+                self.axis0 = False
+            else:
+                raise NotImplementedError(f'Unexpected response from AXIS1: {drive}')
 
 # Thread target to monitor IO connection status
 def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
@@ -1804,15 +1778,18 @@ def generateAutoDialog():
 def autoStartStop():
     match automation.state:
         case state.IDLE:
+            if automation.queue == []:
+                logging.error('Automation queue is empty')
+                return
             # if the scheduler isn't paused when adding more than 2 jobs it breaks most of the time
             # changing trigger from date to interval fixes it?
             # also commenting out the sys.stdout/err redirectors fixes it and i have no idea why
-            automation.scheduler.pause()
             for taskDateTime in automation.queue:
                 automation.scheduler.add_job(saveTrace, args=(None, automation.filePath), trigger='date', run_date = taskDateTime)
             automation.scheduler.resume()
             automation.state = state.AUTO
         case state.AUTO:
+            automation.scheduler.pause()
             for job in automation.scheduler.get_jobs():
                 job.remove()
 
@@ -1848,11 +1825,13 @@ Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
 statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay, Azi_Ele), daemon=True)
 statusMonitorThread.start()
-automation.scheduler.start()
+automation.scheduler.start(paused=True)
 
 # Bind FrontEnd buttons to methods
 Front_End.standbyButton.configure(command = lambda: Azi_Ele.setState(state.IDLE))
 Front_End.manualButton.configure(command = lambda: Azi_Ele.setState(state.INIT))
+Front_End.haltButton.configure(command = lambda: Azi_Ele.halt())
+Front_End.killDrivesButton.configure(command = lambda: Azi_Ele.setState(state.CLEANUP))
 Front_End.autoButton.configure(command = lambda: generateAutoDialog())
 Front_End.autoStartStopButton.configure(command = lambda: autoStartStop())
 
