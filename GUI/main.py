@@ -69,21 +69,6 @@ class state:
     LOOP = 2
     AUTO = 3
 
-# GLOBAL VARIABLES
-autoQueue = []
-autoState = state.IDLE
-autoFilePath = os.getcwd()
-
-# AUTOMATION SCHEDULER
-executors = {
-    'default': ThreadPoolExecutor(20),
-}
-job_defaults = {
-    'coalesce': True,
-    'max_instances': 5
-}
-automationScheduler = BackgroundScheduler(executors=executors, job_defaults=job_defaults)
-
 # TOML CONFIGURATION
 try:
     missingHeaders = []
@@ -117,6 +102,23 @@ plcLock = threading.RLock()         # For PLC
 specPlotLock = threading.RLock()    # For matplotlib spectrum plot
 bearingPlotLock = threading.RLock() # For matplotlib antenna direction plot
 autoQueueLock = threading.RLock()   # For list of automated sweep datetimes
+
+# AUTOMATION PARAMETERS
+executors = {
+    'default': ThreadPoolExecutor(cfg['automation']['thread_max_workers']),
+}
+job_defaults = {
+    'coalesce': cfg['automation']['coalesce'],
+    'max_instances': cfg['automation']['job_max_instances']
+}
+class Automation():
+    def __init__(self, executors=None, job_defaults=None):
+        self.queue = []
+        self.state = state.IDLE
+        self.filePath = os.getcwd()
+        self.scheduler = BackgroundScheduler(executors=executors, job_defaults=job_defaults)
+
+automation = Automation(executors=executors, job_defaults=job_defaults)
 
 # SPECTRUM ANALYZER PARAMETERS
 class Parameter:
@@ -171,7 +173,7 @@ VbwType         = Parameter('Auto VBW', ':SENS:BAND:VID:AUTO', log=False)
 BwRatioType     = Parameter('Auto VBW:RBW Ratio', ':SENS:BAND:VID:RATIO', log=False)
 RbwFilterShape  = Parameter('RBW Filter', ':SENS:BAND:SHAP')
 RbwFilterType   = Parameter('RBW Filter BW', ':SENS:BAND:TYPE')
-AttenType       = Parameter('Auto Attenuateion', ':SENS:POWER:ATT:AUTO', log=False)
+AttenType       = Parameter('Auto Attenuation', ':SENS:POWER:ATT:AUTO', log=False)
 XAxisUnit       = Parameter('X Axis Units', None)
 XAxisUnit.update(value='Hz')
 YAxisUnit       = Parameter('Y Axis Units', ':UNIT:POW')
@@ -262,6 +264,7 @@ class FrontEnd():
         self.instrument = ''                 # ID of the currently open instrument.
         self.motorPort = ''
         self.plcPort = ''
+        self.chainSelect = 'SLEEP'
         # TKINTER VARIABLES
         self.sendEnd = BooleanVar()
         self.sendEnd.set(TRUE)
@@ -1510,22 +1513,26 @@ def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
                 for button in FrontEnd.PLC_OUTPUTS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
                 FrontEnd.setStatus(FrontEnd.sleepP1Button, background=FrontEnd.SELECT_BACKGROUND)
+                FrontEnd.chainSelect = 'SLEEP'
             case opcodes.P1_INIT.value:
                 FrontEnd.setStatus(FrontEnd.initP1Button, background=FrontEnd.SELECT_BACKGROUND)
             case opcodes.P1_DISABLE.value:
                 for button in FrontEnd.PLC_OUTPUTS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
                 FrontEnd.setStatus(FrontEnd.initP1Button, background=FrontEnd.DEFAULT_BACKGROUND)
+                FrontEnd.chainSelect = 'SLEEP'
             case opcodes.DFS_CHAIN1.value:
                 for button in FrontEnd.PLC_OUTPUTS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
                 FrontEnd.setStatus(FrontEnd.dfs1Button, background=FrontEnd.SELECT_BACKGROUND)
+                FrontEnd.chainSelect = 'DFS1'
             case opcodes.EMS_CHAIN1.value:
                 for button in FrontEnd.PLC_OUTPUTS_LIST:
                     FrontEnd.setStatus(button, background=FrontEnd.DEFAULT_BACKGROUND)
                 FrontEnd.setStatus(FrontEnd.ems1Button, background=FrontEnd.SELECT_BACKGROUND)
+                FrontEnd.chainSelect = 'EMS1'
                 
-        match autoState:
+        match automation.state:
             case state.IDLE:
                 FrontEnd.setStatus(FrontEnd.autoStartStopButton, background=FrontEnd.DEFAULT_BACKGROUND)
             case state.AUTO:
@@ -1637,7 +1644,7 @@ def openSaveDialog(type):
     if type == 'trace':
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Comma separated variables', '*.csv'), ('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.csv')
         if file is not None:
-            saveTrace(file)
+            saveTrace(f=file)
     elif type == 'log':
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')), defaultextension='.txt')
         if file is not None:
@@ -1649,13 +1656,26 @@ def openSaveDialog(type):
             with specPlotLock:
                 Spec_An.fig.savefig(filename)
 
-def saveTrace(file):
+def saveTrace(f=None, filePath=None):
+    if f is None:
+        if filePath is None:
+            raise AttributeError('saveTrace did not receive any arguments.')
+        x=0
+        fileExists = True
+        fileJoined = ''
+        while fileExists:
+            fileName = Front_End.chainSelect + '-' + datetime.now().strftime('%Y-%m-%d') + '-' + str(x) +'.csv'
+            fileJoined = os.path.join(filePath, fileName)
+            fileExists = os.path.exists(fileJoined)
+            x += 1
+        f = open(fileJoined, 'w')
+
     with specPlotLock:
         data = Spec_An.ax.lines[0].get_data()
         xdata = data[0]
         ydata = data[1]
         buffer = ''
-    if '.txt' in file.name:
+    if '.txt' in f.name:
         delimiter = '\t'
     else:
         delimiter = ','
@@ -1677,8 +1697,8 @@ def saveTrace(file):
     for index in range(len(data[0])):
         buffer = buffer + str(xdata[index]) + delimiter + str(ydata[index]) + '\n'
 
-    file.write(buffer)
-    file.close()
+    f.write(buffer)
+    f.close()
 
 def generateConfigDialog():
     if messagebox.askokcancel(
@@ -1689,10 +1709,9 @@ def generateConfigDialog():
         defaultconfig.generateConfig()
 
 def generateAutoDialog():
-    global autoQueue
-    _listVar = StringVar(value=autoQueue)
+    _listVar = StringVar(value=automation.queue)
 
-    if autoState != state.IDLE:
+    if automation.state != state.IDLE:
         logging.info('Cannot edit queue while task scheduler is active.')
         return
 
@@ -1710,60 +1729,81 @@ def generateAutoDialog():
         for i in range(_delta.days + 1):
             _date = datetime.combine(_startDate + dt.timedelta(days=i), _time.time())
             with autoQueueLock:
-                autoQueue.append(_date)
-        _listVar.set(autoQueue)
+                automation.queue.append(_date)
+        _listVar.set(automation.queue)
 
-        for i in range(0,len(autoQueue),2):
+        for i in range(0,len(automation.queue),2):
             queueListbox.itemconfigure(i, background='#f0f0ff')
     
     def removeDateTime():
-        global autoQueue
         with autoQueueLock:
-            autoQueue.clear()
-            _listVar.set(autoQueue)
+            automation.queue.clear()
+            _listVar.set(automation.queue)
+
+    def pickFilePath():
+        dir = filedialog.askdirectory()
+        if dir is None:
+            return
+        with autoQueueLock:
+            automation.filePath = dir
+        clearAndSetWidget(pathEntry, dir)
 
     _parent = Toplevel()
     _parent.title('Auto-Sweep Configuration')
-    startLabel = ttk.Label(_parent, text='Start Date')
-    startLabel.grid(row=0, column=0, padx=ROOT_PADX, pady=ROOT_PADY)
-    startDatePicker = DateEntry(_parent)
-    startDatePicker.grid(row=0, column=1, padx=ROOT_PADX, pady=ROOT_PADY)
-    endLabel = ttk.Label(_parent, text='End Date')
-    endLabel.grid(row=1, column=0, padx=ROOT_PADX, pady=ROOT_PADY)
-    endDatePicker = DateEntry(_parent)
-    endDatePicker.grid(row=1, column=1, padx=ROOT_PADX, pady=ROOT_PADY)
+    _parent.resizable(False, False)
+    pathFrame = tk.Frame(_parent)
+    pathFrame.grid(row=0, column=0, padx=ROOT_PADX, pady=ROOT_PADY, columnspan=2, sticky=NSEW)
+    pathFrame.columnconfigure(0, weight=0)
+    pathFrame.columnconfigure(1, weight=1)
+    pathLabel = tk.Label(pathFrame, text='File Path')
+    pathLabel.grid(row=0, column=0, padx=ROOT_PADX, pady=ROOT_PADY, sticky=W)
+    pathEntry = ttk.Entry(pathFrame, width=50, state='disabled')
+    pathEntry.grid(row=1, column=0, columnspan=2, padx=ROOT_PADX, pady=ROOT_PADY, sticky=NSEW)
+    clearAndSetWidget(pathEntry, automation.filePath)
+    pathPicker = ttk.Button(pathFrame, text='Browse...', command=pickFilePath)
+    pathPicker.grid(row=0, column=1, padx=ROOT_PADX, pady=ROOT_PADY, sticky=E)
+    dateFrame = tk.Frame(_parent)
+    dateFrame.grid(row=1, column=0, padx=ROOT_PADX, pady=ROOT_PADY, columnspan=2, sticky=NSEW)
+    dateFrame.columnconfigure(0, weight=0)
+    dateFrame.columnconfigure(1, weight=1)
+    startLabel = tk.Label(dateFrame, text='Start Date')
+    startLabel.grid(row=0, column=0, padx=ROOT_PADX, pady=ROOT_PADY, sticky=W)
+    startDatePicker = DateEntry(dateFrame)
+    startDatePicker.grid(row=0, column=1, padx=ROOT_PADX, pady=ROOT_PADY, sticky=NSEW)
+    endLabel = tk.Label(dateFrame, text='End Date')
+    endLabel.grid(row=1, column=0, padx=ROOT_PADX, pady=ROOT_PADY, sticky=W)
+    endDatePicker = DateEntry(dateFrame)
+    endDatePicker.grid(row=1, column=1, padx=ROOT_PADX, pady=ROOT_PADY, sticky=NSEW)
     timePicker = SpinTimePickerModern(_parent)
     timePicker.grid(row=2, column=0, padx=ROOT_PADX, pady=ROOT_PADY, sticky=NSEW, columnspan=2)
     timePicker.addAll(constants.HOURS12)
     addButton = ttk.Button(_parent, text="Generate", command=addDateTime)
-    addButton.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
+    addButton.grid(row=3, column=0, columnspan=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
     removeButton = ttk.Button(_parent, text="Clear", command=removeDateTime)
-    removeButton.grid(row=3, column=2, columnspan=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
+    removeButton.grid(row=3, column=1, columnspan=1, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
 
     queueListbox = tk.Listbox(_parent, listvariable=_listVar, width=35)
-    queueListbox.grid(row=0, column=2, rowspan=3, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
+    queueListbox.grid(row=0, column=2, rowspan=4, sticky=NSEW, padx=ROOT_PADX, pady=ROOT_PADY)
 
-    for i in range(0,len(autoQueue),2):
-            queueListbox.itemconfigure(i, background='#f0f0ff')
+    for i in range(0,len(automation.queue),2):
+        queueListbox.itemconfigure(i, background='#f0f0ff')
 
 def autoStartStop():
-    global autoState, autoQueue
-
-    match autoState:
+    match automation.state:
         case state.IDLE:
             # if the scheduler isn't paused when adding more than 2 jobs it breaks most of the time
             # changing trigger from date to interval fixes it?
             # also commenting out the sys.stdout/err redirectors fixes it and i have no idea why
-            automationScheduler.pause()
-            for taskDateTime in autoQueue:
-                automationScheduler.add_job(saveTrace, args=('asdf',), trigger='date', run_date = taskDateTime)
-            automationScheduler.resume()
-            autoState = state.AUTO
+            automation.scheduler.pause()
+            for taskDateTime in automation.queue:
+                automation.scheduler.add_job(saveTrace, args=(None, automation.filePath), trigger='date', run_date = taskDateTime)
+            automation.scheduler.resume()
+            automation.state = state.AUTO
         case state.AUTO:
-            for job in automationScheduler.get_jobs():
+            for job in automation.scheduler.get_jobs():
                 job.remove()
 
-            autoState = state.IDLE
+            automation.state = state.IDLE
 
 evalCheckbutton.configure(command=checkbuttonStateHandler)
 execCheckbutton.configure(command=checkbuttonStateHandler)
@@ -1795,7 +1835,7 @@ Azi_Ele = AziElePlot(Motor, Front_End.directionFrame)
 
 statusMonitorThread = threading.Thread(target=statusMonitor, args = (Front_End, Vi, Motor, Relay, Azi_Ele), daemon=True)
 statusMonitorThread.start()
-automationScheduler.start()
+automation.scheduler.start()
 
 # Bind FrontEnd buttons to methods
 Front_End.standbyButton.configure(command = lambda: Azi_Ele.setState(state.IDLE))
