@@ -28,8 +28,7 @@ graph BT
     end
 
     subgraph Back End
-    Database[(PostgreSQL<br>Database)]
-    Server([Python Server])
+    Database[(DRIFT<br>Database)]
     end
 
     C++ -->|Serial| Python
@@ -41,7 +40,6 @@ graph BT
     ACR9000 & AR-04AE --> AcroBASIC
     N9040B --> SCPI
     client --> Database
-    Database <--> Server
 ```
 
 ## 🚀 Deployment Requirements
