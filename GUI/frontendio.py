@@ -261,6 +261,10 @@ class MotorIO:
                 self.ser.close()
             self.ser = serial.Serial(port, baud, timeout=timeout)
 
+    def closeSerial(self):
+        with self.serialLock:
+            self.ser.close()
+
     def write(self, msg, log=False):
         """Write a message to the serial object and append it with a CRLF if not present.
 
@@ -370,7 +374,8 @@ class SerialIO:
     def close(self):
         """Closes serial communications.
         """
-        self.serial.close()
+        with self.serialLock:
+            self.serial.close()
 
     def query(self, msg, converter='bin', delay=None, queryStatus=True):
         """Writes message to the serial object at self.serial and logs the response after 'delay' seconds at level SERIAL. Due to the delay this should only be called by the thread handler to prevent blocking.
@@ -509,6 +514,8 @@ class VisaIO():
         return RETURN_SUCCESS
     
     def closeSession(self):
+        """If a session is open, closes it.
+        """
         try:
             sessionOpen = self.openRsrc.session
         except:

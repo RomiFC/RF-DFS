@@ -182,6 +182,14 @@ TraceType       = Parameter('Trace Type', 'TRACE:TYPE')
 
 # real code starts here
 def isNumber(input):
+    """is it a number
+
+    Args:
+        input (thing): thing to test
+
+    Returns:
+        Bool: if it's a number
+    """
     try:
         float(f"{input}0")
         return TRUE
@@ -229,6 +237,11 @@ def clearAndSetWidget(widget, arg):
         widget.configure(state=state)
 
 def disableChildren(parent):
+    """Tries to set the state of the child widgets of parent to 'disable'.
+
+    Args:
+        parent (tk:widget): Parent widget whose children should be disabled.
+    """
     for child in parent.winfo_children():
         wtype = child.winfo_class()
         if wtype not in ('Frame', 'LabelFrame', 'TFrame', 'TLabelframe'):
@@ -237,6 +250,11 @@ def disableChildren(parent):
             disableChildren(child)
 
 def enableChildren(parent):
+    """Tries to set the state of the child widgets of parent to 'enable' or 'normal'.
+
+    Args:
+        parent (tk:widget): Parent widget whose children should be enabled.
+    """
     for child in parent.winfo_children():
         wtype = child.winfo_class()
         if wtype not in ('Frame', 'LabelFrame', 'TFrame', 'TLabelframe'):
@@ -378,18 +396,6 @@ class FrontEnd():
         self.plcStatus = tk.Button(connectionsFrame, text='NC', font=FONT, state=DISABLED, width=12)
         self.plcStatus.grid(row=2, column=1, sticky=NSEW, padx=BUTTON_PADX, pady=BUTTON_PADY)
 
-        # TODO: deprecate
-        # self.quickButtonFrame        = tk.LabelFrame(controlFrame, text='Control')
-        # self.quickButtonFrame.grid(row = 6, column = 0, sticky=NSEW, columnspan=2, padx=FRAME_PADX, pady=FRAME_PADY)
-        # self.quickButtonFrame.columnconfigure(0, weight=0)
-        # self.haltButton      = tk.Button(self.quickButtonFrame, text = "Halt", font = FONT, bg = 'red', fg = 'white', command = self.Estop)
-        # self.Park               = tk.Button(self.quickButtonFrame, text = "Park", font = FONT, bg = 'blue', fg = 'white', command = self.park)
-        # self.openFreeWriting    = tk.Button(self.quickButtonFrame, text = "Motor Terminal", font = FONT, command = self.freewriting)
-       
-        # self.haltButton.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        # self.Park.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
-        # self.openFreeWriting.pack(expand=True, fill=BOTH, padx=BUTTON_PADX, pady=BUTTON_PADY)
-
         root.after(1000, self.update_time )
 
     def initDevice(self, event, device, port):
@@ -435,7 +441,7 @@ class FrontEnd():
 
     
     def onExit( self ):
-        """ Ask to close serial communication when 'X' button is pressed """
+        """Ask to close serial communication when 'X' button is pressed. *do we need this?"""
         SaveCheck = messagebox.askokcancel( title = "Window closing", message = "Do you want to close communication to the motor?" )
         if SaveCheck is True:      
             while (self.motor.ser.is_open):
@@ -478,7 +484,7 @@ class FrontEnd():
                     self.instrument = ''
                     self.instrSelectBox.set('')
                 case 'motor':
-                    # TODO: Make this do something
+                    self.motor.closeSerial()
                     self.motorPort = ''
                     self.motorSelectBox.set('')
                 case 'plc':
@@ -877,18 +883,23 @@ class SpecAn(FrontEnd):
         self.traceTypeCombo.bind("<<ComboboxSelected>>", lambda event: self.setAnalyzerThreadHandler(event, tracetype = self.traceTypeCombo.current()))
 
     def toggleInputs(self, action):
-        frames = (self.tab1, self.tab2, self.tab3)
-        widgets = (self.singleSweepButton, self.continuousSweepButton)
+        """Enables or disables the widgets in _frames and _widgets along with all of their children.
+
+        Args:
+            action (int): 0 or DISABLE to disable, 1 or ENABLE to enable.
+        """
+        _frames = (self.tab1, self.tab2, self.tab3)
+        _widgets = (self.singleSweepButton, self.continuousSweepButton)
 
         if action == ENABLE:
-            for frame in frames:
+            for frame in _frames:
                 enableChildren(frame)
-            for widget in widgets:
+            for widget in _widgets:
                 widget.configure(state='enable')
         elif action == DISABLE:
-            for frame in frames:
+            for frame in _frames:
                 disableChildren(frame)
-            for widget in widgets:
+            for widget in _widgets:
                 widget.configure(state='disable')
 
     def setAnalyzerPlotLimits(self, **kwargs):
@@ -922,6 +933,8 @@ class SpecAn(FrontEnd):
         self.ax.grid(visible=TRUE, which='major', axis='both', linestyle='-.')
 
     def setAnalyzerThreadHandler(self, *event, **kwargs):
+        """Generates a thread that calls setAnalyzerValue to prevent race conditions.
+        """
         _dict = {}
         for key in kwargs:
             _dict[key] = kwargs.get(key)
@@ -1012,9 +1025,16 @@ class SpecAn(FrontEnd):
         return
     
     def setState(self, val):
+        """Sets self.loopState to val.
+
+        Args:
+            val (int): Should be a constant in class State (state.IDLE, state.INIT, state.LOOP).
+        """
         self.loopState = val
 
     def analyzerDisplayLoop(self):
+        """Main spectrum analyzer state machine. Initializes spectrum analyzer connection and plots sweeps in the matplotlib canvas.
+        """
         global visaLock, specPlotLock
 
         while TRUE:
@@ -1045,8 +1065,8 @@ class SpecAn(FrontEnd):
                         try:
                             self.Vi.queryErrors()
                         except Exception as e:
-                            pass
                             # logging.error(f'{type(e).__name__}: {e}. Could not query errors from device.')
+                            pass
                         self.toggleInputs(ENABLE)
                         visaLock.release()
                         self.loopState = state.IDLE
@@ -1117,10 +1137,28 @@ class SpecAn(FrontEnd):
         self.singleSweepFlag = True
 
     def setPlotThreadHandler(self, color=None, marker=None, linestyle=None, linewidth=None, markersize=None):
+        """Generates thread to issue setPlotParam.
+
+        Args:
+            color (string, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            marker (string, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            linestyle (string, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            linewidth (float, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            markersize (float, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+        """
         thread = threading.Thread(target=self.setPlotParam, daemon=True, args=(color, marker, linestyle, linewidth, markersize))
         thread.start()
 
     def setPlotParam(self, color=None, marker=None, linestyle=None, linewidth=None, markersize=None):
+        """Sets various matplotlib parameters with a threading lock to prevent race conditions. Should be called with setPlotThreadHandler to prevent blocking.
+
+        Args:
+            color (string, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            marker (string, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            linestyle (string, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            linewidth (float, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+            markersize (float, optional): Argument passed to matplotlib.pyplot.plot. Defaults to None.
+        """
         global specPlotLock
 
         if color is None:
@@ -1302,33 +1340,47 @@ class AziElePlot(FrontEnd):
         # self.toggleInputs(DISABLE)
 
     def halt(self):
+        """Issues 'JOG OFF X Y' to Motor.
+        """
         try:
             with motorLock:
-                self.Motor.write('jog off x y')
+                self.Motor.write('JOG OFF X Y')
                 time.sleep(0.1)
                 self.Motor.flushInput()
         except Exception as e:
             logging.error(f'{type(e).__name__}: {e}')
 
     def toggleInputs(self, action):
-        frames = (self.azEntryFrame, self.elEntryFrame)
-        widgets = ()
+        """Enables or disables the widgets in _frames and _widgets along with all of their children.
+
+        Args:
+            action (int): 0 or DISABLE to disable, 1 or ENABLE to enable.
+        """
+        _frames = (self.azEntryFrame, self.elEntryFrame)
+        _widgets = ()
 
         if action == ENABLE:
-            for frame in frames:
+            for frame in _frames:
                 enableChildren(frame)
-            for widget in widgets:
+            for widget in _widgets:
                 widget.configure(state='normal')
         elif action == DISABLE:
-            for frame in frames:
+            for frame in _frames:
                 disableChildren(frame)
-            for widget in widgets:
+            for widget in _widgets:
                 widget.configure(state='disable')
 
     def setState(self, val):
+        """Sets self.loopState to val.
+
+        Args:
+            val (int): Should be a constant in class State (state.IDLE, state.INIT, state.LOOP).
+        """
         self.loopState = val
 
     def bearingDisplayLoop(self):
+        """Main motor bearing state machine. Initializes motor, drives, prog, etc. and plots direction in the matplotlib canvas.
+        """
         while TRUE:
             match self.loopState:
                 case state.IDLE:
@@ -1416,12 +1468,6 @@ class AziElePlot(FrontEnd):
                         motorLock.release()
                         time.sleep(MOTOR_LOOP_DELAY)
 
-                case state.AUTO:
-                    time.sleep(IDLE_DELAY)
-                    continue
-                    # FrontEnd opens a window to set automated conditions
-                    # this loop just checks conditions and acts based on them
-
     def queryDriveStates(self):
         """Query drives x and y from the motor controller. Sets self.axis0 and self.axis1 to True or False if the drive is enabled or disabled, respectively.
 
@@ -1447,6 +1493,8 @@ class AziElePlot(FrontEnd):
 
 # Thread target to monitor IO connection status
 def statusMonitor(FrontEnd, Vi, Motor, PLC, Azi_Ele):
+    """Thread target to monitor IO connection statuses and reflect their state in FrontEnd buttons.
+    """
     global autoState
     while True:
         # VISA
@@ -1584,10 +1632,22 @@ commandList = []
 commandIndex = -1
 
 def focusHandler(event, widget):
+    """Used to initiate focus on a widget on a tkinter event. Used to focus the terminal entry when textbox is clicked.
+
+    Args:
+        event (event): tkinter event which initiates function call
+        widget (tk:widget): Widget to focus on
+    """
     widget.focus()
     return('break')     # Prevents class binding from firing (executing the normal event callback)
 
 def commandListHandler(event, direction):
+    """Handler function that iterates through previously used terminal commands when the user presses up or down arrow keys.
+
+    Args:
+        event (event): tkinter event which initiates function call
+        direction (string): 'up' or 'down' (what button did the user press)
+    """
     global commandIndex
 
     consoleInput.delete(0, END)
@@ -1598,6 +1658,12 @@ def commandListHandler(event, direction):
     consoleInput.insert(0, commandList[commandIndex])    
 
 def executeHandler(event, arg):
+    """Handler function that determines whether or not to evaluate/execute a terminal command based on execBool.
+
+    Args:
+        event (event): tkinter event which initiates function call
+        arg (string): Command to execute/evaluate
+    """
     global commandIndex, commandList
 
     commandIndex = -1               # Reset index so up/down arrows start at the last issued command
@@ -1616,18 +1682,30 @@ def executeHandler(event, arg):
         logging.terminal(f'{type(e).__name__}: {e}')
 
 def redirector(inputStr):           # Redirect print/logging statements to the console textbox
+    """Redirects print/logging statements to the console textbox and automatically scrolls down.
+
+    Args:
+        inputStr (string): String to print/log from sys.stdout.write and sys.stderr.write
+    """
     console.config(state=NORMAL)
     console.insert(INSERT, inputStr)
     console.yview(MOVETO, 1)
     console.config(state=DISABLED)
 
 def checkbuttonStateHandler():
+    """Handler function that disables the 'Print Return Value' checkbutton when execBool is true.
+    """
     if execBool.get():
         printCheckbutton.configure(state=DISABLED)
     else:
         printCheckbutton.configure(state=NORMAL)
 
 def openSaveDialog(type):
+    """Function called when the user presses 'Save trace', 'Save image', or 'Save log'.
+
+    Args:
+        type (string): Either 'trace', 'log', or 'image'. Determines what file to save.
+    """
     if type == 'trace':
         file = filedialog.asksaveasfile(initialdir = os.getcwd(), filetypes=(('Comma separated variables', '*.csv'), ('Text File (Tab delimited)', '*.txt'), ('All Files', '*.*')), defaultextension='.csv')
         if file is not None:
@@ -1644,6 +1722,15 @@ def openSaveDialog(type):
                 Spec_An.fig.savefig(filename)
 
 def saveTrace(f=None, filePath=None):
+    """Saves trace as csv to the file object passed in f or the filePath string. If filePath points to an existing file, an iterating integer is appended to the file name until an unused name is found.
+
+    Args:
+        f (file, optional): File object to save to. Defaults to None.
+        filePath (string, optional): File path to save to if f is None. Defaults to None.
+
+    Raises:
+        AttributeError: If both f and filePath is None
+    """
     if f is None:
         if filePath is None:
             raise AttributeError('saveTrace did not receive any arguments.')
@@ -1688,6 +1775,8 @@ def saveTrace(f=None, filePath=None):
     f.close()
 
 def generateConfigDialog():
+    """Opens confirmation message if the user wants to generate a new config file.
+    """
     if messagebox.askokcancel(
         message="Would you like to generate the default configuration file loaded with this software version? This will overwrite any preexisting config.toml if present.",
         icon='question',
@@ -1696,6 +1785,8 @@ def generateConfigDialog():
         defaultconfig.generateConfig()
 
 def generateAutoDialog():
+    """Opens a dialog that allows the user to modify the automation queue and file path.
+    """
     _listVar = StringVar(value=automation.queue)
 
     if automation.state != state.IDLE:
@@ -1776,6 +1867,8 @@ def generateAutoDialog():
         queueListbox.itemconfigure(i, background='#f0f0ff')
 
 def autoStartStop():
+    """If the automation scheduler is active, pauses it and removes all jobs. If it is paused, add all jobs in automation.queue and resume.
+    """
     match automation.state:
         case state.IDLE:
             if automation.queue == []:
